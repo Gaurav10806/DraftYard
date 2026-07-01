@@ -1,8 +1,12 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const dns = require("node:dns");
 const Burial = require("./models/burial");
 
 dotenv.config();
+
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+dns.setDefaultResultOrder("ipv4first");
 
 const fakeBurials = [
   {
