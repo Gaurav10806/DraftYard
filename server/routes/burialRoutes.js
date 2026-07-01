@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Burial = require('../models/Burial');
+const Burial = require('../models/burial');
 
 // POST /api/bury
 router.post('/bury', async (req, res) => {
