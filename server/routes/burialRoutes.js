@@ -7,6 +7,23 @@ router.post('/bury', async (req, res) => {
   try {
     const burial = new Burial(req.body);
     await burial.save();
+
+    // Ask Django to classify the death reason
+    try {
+      const response = await fetch('http://localhost:8000/api/ml/classify/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          burials: [{ id: burial._id.toString(), whyItDied: burial.whyItDied }]
+        })
+      });
+      const result = await response.json();
+      burial.deathCategory = result[0].deathCategory;
+      await burial.save();
+    } catch (mlError) {
+      console.error('ML classification failed, continuing without it:', mlError.message);
+    }
+
     res.status(201).json(burial);
   } catch (err) {
     res.status(400).json({ error: err.message });

@@ -4,4 +4,6 @@ venv/
 __pycache__/
 *.pyc
 dist/
-build/
+build/"ml-backend/venv/" 
+"node_modules/" 
+ml-backend/db.sqlite3
