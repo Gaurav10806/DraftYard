@@ -6,7 +6,6 @@ const connectDB = require("./config/db");
 
 dotenv.config();
 
-console.log("URI:", process.env.MONGO_URI); // Temporary
 
 connectDB();
 
@@ -14,6 +13,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+const burialRoutes = require("./routes/burialRoutes");  // ← add
+app.use("/api", burialRoutes); 
 
 app.get("/", (req, res) => {
   res.send("DraftYard API is running 🚀");
