@@ -18,6 +18,20 @@ const burialSchema = new mongoose.Schema({
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   deathCategory: { type: String, default: null },
   upvotes: { type: Number, default: 0 },
+
+  // --- Added for the Revival Board (Member C) ---
+  // Everyone who has "raised their hand" wanting to revive this project
+  raisedHands: {
+    type: [
+      {
+        name: { type: String, required: true, trim: true },
+        message: { type: String, default: '', trim: true },
+        contact: { type: String, default: '', trim: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Burial', burialSchema);
