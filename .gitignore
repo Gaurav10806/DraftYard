@@ -1,9 +1,22 @@
+# Node
 node_modules/
-.env
+
+# Python
 venv/
+ml-backend/venv/
 __pycache__/
 *.pyc
+
+# Env files (secrets)
+.env
+
+# Build output
 dist/
-build/"ml-backend/venv/" 
-"node_modules/" 
+build/
+
+# Databases
+db.sqlite3
 ml-backend/db.sqlite3
+
+# ML model (regenerate locally with `python manage.py train_model`)
+ml_api/ml_models/*.pkl
