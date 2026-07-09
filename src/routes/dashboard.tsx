@@ -7,10 +7,7 @@ import { ProjectCompass } from "@/components/dashboard/project-compass";
 import { OpenQuestions } from "@/components/dashboard/open-questions";
 import { DraftShelf } from "@/components/dashboard/draft-shelf";
 import { QuickActions } from "@/components/dashboard/quick-actions";
-import { DomainDonut } from "@/components/dashboard/insights/domain-donut";
-import { WhyDiedBar } from "@/components/dashboard/insights/why-died-bar";
-import { TechStackBar } from "@/components/dashboard/insights/tech-stack-bar";
-import { TeamVsStageBar } from "@/components/dashboard/insights/team-vs-stage-bar";
+import { BenefitsRow } from "@/components/dashboard/benefits-row";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
