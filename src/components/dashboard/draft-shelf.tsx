@@ -13,7 +13,7 @@ export function DraftShelf() {
   const items = drafts.slice(0, 12);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Draft Shelf</h2>
         <a href="#" className="text-sm text-primary hover:underline">View all drafts →</a>
