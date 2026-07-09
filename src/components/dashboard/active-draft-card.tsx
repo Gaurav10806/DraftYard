@@ -9,7 +9,7 @@ export function ActiveDraftCard() {
   const d = drafts[0];
   const progress = stageToProgress(d.stageDied);
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-6">
+    <div className="group flex h-full flex-col rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest text-primary">Active Draft</span>
         <button className="text-muted-foreground hover:text-foreground">•••</button>
@@ -21,13 +21,13 @@ export function ActiveDraftCard() {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-xl font-semibold">{d.projectName}</h3>
+            <h3 className="font-display text-[22px] font-semibold tracking-tight">{d.projectName}</h3>
             <Badge variant="secondary" className="rounded-full text-[10px]">
               <span className="mr-1 h-1.5 w-1.5 rounded-full bg-[color:var(--revive)]" />
               {d.openForRevival ? "Open for revival" : "Buried"}
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{d.oneLiner}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d.oneLiner}</p>
         </div>
       </div>
 

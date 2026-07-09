@@ -26,7 +26,7 @@ export function OpenQuestions() {
   const q = QUESTIONS[i];
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-6">
+    <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest text-primary">Open Questions</span>
         <span className="text-xs text-muted-foreground">{i + 1} of {QUESTIONS.length}</span>
@@ -36,12 +36,13 @@ export function OpenQuestions() {
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15">
           <Bot className="h-5 w-5 text-primary" />
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Your project is in <span className="font-semibold text-foreground">{q.stage}</span> stage.
         </p>
       </div>
 
-      <h3 className="mt-4 text-center font-display text-xl font-semibold">{q.q}</h3>
+      <h3 className="mt-4 text-center font-display text-[22px] font-semibold leading-snug tracking-tight">{q.q}</h3>
+
 
       <div className="mt-5 grid grid-cols-2 gap-2">
         {q.options.map((opt) => {
@@ -50,16 +51,17 @@ export function OpenQuestions() {
             <button
               key={opt}
               onClick={() => setPicked({ ...picked, [i]: opt })}
-              className={`rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+              className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98] ${
                 active
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border bg-background hover:border-primary/50"
+                  ? "border-primary bg-primary/10 text-foreground shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)] scale-[1.02]"
+                  : "border-border bg-background hover:border-primary/50 hover:-translate-y-0.5 hover:shadow-sm"
               }`}
             >
               {opt}
             </button>
           );
         })}
+
       </div>
 
       <div className="mt-auto flex justify-end pt-5">
