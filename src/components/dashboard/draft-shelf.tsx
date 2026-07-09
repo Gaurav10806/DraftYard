@@ -27,7 +27,7 @@ export function DraftShelf() {
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <div ref={scroller} className="scrollbar-none flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2">
+        <div ref={scroller} className="scrollbar-none shelf-edge-fade flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-2 [-webkit-overflow-scrolling:touch]">
           {items.map((d, i) => {
             const progress = stageToProgress(d.stageDied);
             const pinned = i === 1;
