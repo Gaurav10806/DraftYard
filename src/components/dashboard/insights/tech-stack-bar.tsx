@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { topTechStacks } from "@/lib/drafts-insights";
+import { AXIS, CHART_COLORS } from "./colors";
 
 export function TechStackBar() {
   const data = topTechStacks();
@@ -10,14 +11,11 @@ export function TechStackBar() {
       <div className="mt-4 h-56">
         <ResponsiveContainer>
           <BarChart data={data} margin={{ left: -8 }}>
-            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} interval={0} angle={-25} textAnchor="end" height={50} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-            <Tooltip
-              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-              cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-            />
-            <Bar dataKey="value" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
+            <CartesianGrid stroke="rgba(148,163,184,0.15)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="name" stroke={AXIS} fontSize={10} interval={0} angle={-25} textAnchor="end" height={50} />
+            <YAxis stroke={AXIS} fontSize={11} />
+            <Tooltip cursor={{ fill: "rgba(148,163,184,0.1)" }} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+            <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

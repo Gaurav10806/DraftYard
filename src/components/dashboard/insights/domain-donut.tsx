@@ -1,7 +1,6 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { domainDistribution } from "@/lib/drafts-insights";
-
-const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+import { CHART_COLORS } from "./colors";
 
 export function DomainDonut() {
   const data = domainDistribution();
@@ -13,12 +12,11 @@ export function DomainDonut() {
         <ResponsiveContainer>
           <PieChart>
             <Tooltip
-              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-              itemStyle={{ color: "var(--foreground)" }}
+              contentStyle={{ background: "hsl(var(--popover, 240 6% 10%))", borderRadius: 8, fontSize: 12, border: "1px solid rgba(255,255,255,0.1)" }}
             />
             <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
               {data.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="var(--card)" strokeWidth={2} />
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="transparent" />
               ))}
             </Pie>
           </PieChart>
@@ -27,7 +25,7 @@ export function DomainDonut() {
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         {data.map((d, i) => (
           <span key={d.name} className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <span className="h-2 w-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
+            <span className="h-2 w-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
             <span className="capitalize text-foreground">{d.name}</span> · {d.value}
           </span>
         ))}

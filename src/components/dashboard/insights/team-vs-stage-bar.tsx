@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { teamSizeVsStage } from "@/lib/drafts-insights";
+import { AXIS, CHART_COLORS } from "./colors";
 
 export function TeamVsStageBar() {
   const data = teamSizeVsStage();
@@ -10,17 +11,14 @@ export function TeamVsStageBar() {
       <div className="mt-4 h-56">
         <ResponsiveContainer>
           <BarChart data={data} margin={{ left: -8 }}>
-            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="stage" stroke="var(--muted-foreground)" fontSize={10} interval={0} angle={-20} textAnchor="end" height={50} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-            <Tooltip
-              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-              cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-            />
+            <CartesianGrid stroke="rgba(148,163,184,0.15)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="stage" stroke={AXIS} fontSize={10} interval={0} angle={-20} textAnchor="end" height={50} />
+            <YAxis stroke={AXIS} fontSize={11} />
+            <Tooltip cursor={{ fill: "rgba(148,163,184,0.1)" }} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="solo" stackId="a" fill="var(--chart-1)" />
-            <Bar dataKey="2-3" stackId="a" fill="var(--chart-2)" />
-            <Bar dataKey="4+" stackId="a" fill="var(--chart-3)" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="solo" stackId="a" fill={CHART_COLORS[0]} />
+            <Bar dataKey="2-3" stackId="a" fill={CHART_COLORS[1]} />
+            <Bar dataKey="4+" stackId="a" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
