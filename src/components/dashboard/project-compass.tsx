@@ -223,23 +223,40 @@ export function ProjectCompass() {
 
                 {active && (
                   <>
+                    {/* Soft outer glow ring */}
+                    <motion.circle
+                      cx={dx}
+                      cy={dy}
+                      r={18}
+                      fill="var(--primary)"
+                      opacity={0.12}
+                      filter="url(#nodeGlow)"
+                      animate={{ scale: [1, 1.25, 1], opacity: [0.12, 0.28, 0.12] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                      style={{ transformOrigin: `${dx}px ${dy}px` }}
+                    />
+                    {/* Ripple 1 */}
                     <motion.circle
                       cx={dx}
                       cy={dy}
                       r={12}
-                      fill="var(--primary)"
-                      animate={{ scale: [1, 2.2, 1], opacity: [0.35, 0, 0.35] }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth={1.5}
+                      animate={{ scale: [1, 2.6], opacity: [0.55, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeOut" }}
                       style={{ transformOrigin: `${dx}px ${dy}px` }}
                     />
+                    {/* Ripple 2 (delayed) */}
                     <motion.circle
                       cx={dx}
                       cy={dy}
-                      r={16}
-                      fill="var(--primary)"
-                      opacity={0.14}
-                      animate={{ scale: [1, 1.35, 1] }}
-                      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                      r={12}
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth={1}
+                      animate={{ scale: [1, 2.4], opacity: [0.4, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeOut", delay: 1.5 }}
                       style={{ transformOrigin: `${dx}px ${dy}px` }}
                     />
                   </>
@@ -248,14 +265,18 @@ export function ProjectCompass() {
                 <motion.circle
                   cx={dx}
                   cy={dy}
-                  r={active ? 6 : 3.5}
+                  r={active ? 8 : 3}
                   fill={active ? "var(--primary)" : "var(--muted-foreground)"}
-                  opacity={active ? 1 : 0.55}
-                  animate={{ r: active ? 6 : 3.5 }}
-                  transition={{ duration: 0.3 }}
+                  opacity={active ? 1 : 0.45}
+                  animate={{
+                    r: active ? [7, 8.5, 7] : 3,
+                    scale: active ? [1, 1.15, 1] : 1,
+                  }}
+                  transition={active ? { duration: 3, repeat: Infinity, ease: "easeInOut" } : { duration: 0.25 }}
                   style={{
+                    transformOrigin: `${dx}px ${dy}px`,
                     filter: active
-                      ? "drop-shadow(0 0 8px color-mix(in oklab, var(--primary) 70%, transparent))"
+                      ? "drop-shadow(0 0 10px color-mix(in oklab, var(--primary) 80%, transparent))"
                       : undefined,
                   }}
                 />
