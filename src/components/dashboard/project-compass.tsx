@@ -145,53 +145,35 @@ export function ProjectCompass() {
             </linearGradient>
           </defs>
 
-          <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="url(#ringGrad)" strokeWidth={3} opacity={0.65} />
-          <circle cx={CX} cy={CY} r={RING_R - 8} fill="none" stroke="var(--border)" strokeWidth={1} opacity={0.55} />
+          {/* Thicker outer ring like the landing page */}
+          <circle cx={CX} cy={CY} r={RING_R + 6} fill="none" stroke="url(#ringGrad)" strokeWidth={7} opacity={0.75} />
+          <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="url(#ringGrad)" strokeWidth={3} opacity={0.5} />
+          <circle cx={CX} cy={CY} r={RING_R - 10} fill="none" stroke="var(--border)" strokeWidth={1} opacity={0.55} />
 
-          {/* Needle — sharp tapered blade, 3D shading, glow + shadow, springy arrival */}
+          {/* Classic compass needle — thicker diamond blades (N primary, S muted) */}
           <motion.g
             style={{ transformOrigin: `${CX}px ${CY}px` }}
             initial={{ rotate: needle - 40 }}
             animate={{ rotate: needle }}
             transition={{ type: "spring", stiffness: 140, damping: 12, mass: 0.6 }}
           >
-            {/* Counterweight tail (opposite the tip) */}
-            <ellipse
-              cx={CX}
-              cy={CY + 22}
-              rx={5.5}
-              ry={11}
-              fill="url(#tailGrad)"
-            />
-
             <g filter="url(#needleShadow)">
-              {/* Main blade — sharp tip at top, narrow shoulders, tapers back to hub */}
-              <path
-                d={`M ${CX} ${CY - RING_R + 2}
-                    L ${CX + 6.5} ${CY - 14}
-                    Q ${CX + 7.5} ${CY - 4} ${CX + 3.2} ${CY + 4}
-                    L ${CX - 3.2} ${CY + 4}
-                    Q ${CX - 7.5} ${CY - 4} ${CX - 6.5} ${CY - 14} Z`}
+              {/* North blade — tip toward selected pole */}
+              <polygon
+                points={`${CX},${CY - RING_R + 6} ${CX + 14},${CY} ${CX},${CY + 6} ${CX - 14},${CY}`}
                 fill="url(#needleGrad)"
                 filter="url(#needleGlow)"
               />
-              {/* Side shading overlay for 3D form */}
-              <path
-                d={`M ${CX} ${CY - RING_R + 2}
-                    L ${CX + 6.5} ${CY - 14}
-                    Q ${CX + 7.5} ${CY - 4} ${CX + 3.2} ${CY + 4}
-                    L ${CX - 3.2} ${CY + 4}
-                    Q ${CX - 7.5} ${CY - 4} ${CX - 6.5} ${CY - 14} Z`}
-                fill="url(#needleShade)"
-              />
-              {/* Central highlight sliver — gloss */}
-              <path
-                d={`M ${CX} ${CY - RING_R + 6}
-                    L ${CX + 1.4} ${CY - 14}
-                    L ${CX + 0.8} ${CY - 2}
-                    L ${CX - 0.8} ${CY - 2}
-                    L ${CX - 1.4} ${CY - 14} Z`}
+              {/* Center highlight for gloss */}
+              <polygon
+                points={`${CX},${CY - RING_R + 10} ${CX + 3},${CY - 2} ${CX},${CY + 2} ${CX - 3},${CY - 2}`}
                 fill="url(#needleGloss)"
+              />
+              {/* South blade — counterweight */}
+              <polygon
+                points={`${CX},${CY + RING_R - 6} ${CX + 14},${CY} ${CX},${CY - 6} ${CX - 14},${CY}`}
+                fill="var(--muted-foreground)"
+                opacity={0.42}
               />
             </g>
           </motion.g>
