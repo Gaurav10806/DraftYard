@@ -95,24 +95,42 @@ export function ProjectCompass() {
                 fill="none"
               />
             ))}
-            {/* Premium needle gradient */}
+            {/* Premium needle — vertical gradient tip→shoulder */}
             <linearGradient id="needleGrad" x1="50%" y1="0%" x2="50%" y2="100%">
               <stop offset="0%" stopColor="var(--primary)" stopOpacity="1" />
-              <stop offset="55%" stopColor="var(--primary)" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="var(--revive)" stopOpacity="0.95" />
+              <stop offset="45%" stopColor="var(--primary)" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="var(--revive)" stopOpacity="0.85" />
             </linearGradient>
-            <linearGradient id="needleHighlight" x1="50%" y1="0%" x2="50%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
-              <stop offset="60%" stopColor="#ffffff" stopOpacity="0" />
+            {/* Left/right shading for 3D body */}
+            <linearGradient id="needleShade" x1="0%" y1="50%" x2="100%" y2="50%">
+              <stop offset="0%" stopColor="#000" stopOpacity="0.35" />
+              <stop offset="45%" stopColor="#000" stopOpacity="0" />
+              <stop offset="55%" stopColor="#fff" stopOpacity="0" />
+              <stop offset="100%" stopColor="#fff" stopOpacity="0.28" />
             </linearGradient>
+            <linearGradient id="needleGloss" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.75" />
+              <stop offset="70%" stopColor="#ffffff" stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="tailGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="var(--muted-foreground)" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="var(--muted-foreground)" stopOpacity="0.15" />
+            </radialGradient>
             <filter id="needleShadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" />
-              <feOffset dx="0" dy="0.6" result="off" />
+              <feGaussianBlur in="SourceAlpha" stdDeviation="1.8" />
+              <feOffset dx="0" dy="1.2" />
               <feComponentTransfer>
                 <feFuncA type="linear" slope="0.55" />
               </feComponentTransfer>
               <feMerge>
                 <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="needleGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
@@ -130,30 +148,52 @@ export function ProjectCompass() {
           <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="url(#ringGrad)" strokeWidth={3} opacity={0.65} />
           <circle cx={CX} cy={CY} r={RING_R - 8} fill="none" stroke="var(--border)" strokeWidth={1} opacity={0.55} />
 
-          {/* Needle — thicker body, sharper tip, gradient + highlight + shadow, bounce on arrival */}
+          {/* Needle — sharp tapered blade, 3D shading, glow + shadow, springy arrival */}
           <motion.g
             style={{ transformOrigin: `${CX}px ${CY}px` }}
-            initial={{ rotate: needle - 30 }}
+            initial={{ rotate: needle - 40 }}
             animate={{ rotate: needle }}
-            transition={{ type: "spring", stiffness: 120, damping: 11, mass: 0.55 }}
-            filter="url(#needleShadow)"
+            transition={{ type: "spring", stiffness: 140, damping: 12, mass: 0.6 }}
           >
-            {/* Main body */}
-            <polygon
-              points={`${CX},${CY - RING_R + 4} ${CX + 7},${CY - 6} ${CX + 4},${CY + 10} ${CX - 4},${CY + 10} ${CX - 7},${CY - 6}`}
-              fill="url(#needleGrad)"
+            {/* Counterweight tail (opposite the tip) */}
+            <ellipse
+              cx={CX}
+              cy={CY + 22}
+              rx={5.5}
+              ry={11}
+              fill="url(#tailGrad)"
             />
-            {/* Highlight sliver for subtle inner shadow / gloss */}
-            <polygon
-              points={`${CX - 1.5},${CY - RING_R + 8} ${CX + 1.5},${CY - RING_R + 8} ${CX + 1},${CY - 6} ${CX - 1},${CY - 6}`}
-              fill="url(#needleHighlight)"
-            />
-            {/* Counterweight tail */}
-            <polygon
-              points={`${CX},${CY + RING_R - 22} ${CX + 5},${CY + 8} ${CX - 5},${CY + 8}`}
-              fill="var(--muted-foreground)"
-              opacity={0.28}
-            />
+
+            <g filter="url(#needleShadow)">
+              {/* Main blade — sharp tip at top, narrow shoulders, tapers back to hub */}
+              <path
+                d={`M ${CX} ${CY - RING_R + 2}
+                    L ${CX + 6.5} ${CY - 14}
+                    Q ${CX + 7.5} ${CY - 4} ${CX + 3.2} ${CY + 4}
+                    L ${CX - 3.2} ${CY + 4}
+                    Q ${CX - 7.5} ${CY - 4} ${CX - 6.5} ${CY - 14} Z`}
+                fill="url(#needleGrad)"
+                filter="url(#needleGlow)"
+              />
+              {/* Side shading overlay for 3D form */}
+              <path
+                d={`M ${CX} ${CY - RING_R + 2}
+                    L ${CX + 6.5} ${CY - 14}
+                    Q ${CX + 7.5} ${CY - 4} ${CX + 3.2} ${CY + 4}
+                    L ${CX - 3.2} ${CY + 4}
+                    Q ${CX - 7.5} ${CY - 4} ${CX - 6.5} ${CY - 14} Z`}
+                fill="url(#needleShade)"
+              />
+              {/* Central highlight sliver — gloss */}
+              <path
+                d={`M ${CX} ${CY - RING_R + 6}
+                    L ${CX + 1.4} ${CY - 14}
+                    L ${CX + 0.8} ${CY - 2}
+                    L ${CX - 0.8} ${CY - 2}
+                    L ${CX - 1.4} ${CY - 14} Z`}
+                fill="url(#needleGloss)"
+              />
+            </g>
           </motion.g>
 
           {/* Premium hexagonal center hub */}
