@@ -116,6 +116,16 @@ export function ProjectCompass() {
               <stop offset="0%" stopColor="var(--muted-foreground)" stopOpacity="0.55" />
               <stop offset="100%" stopColor="var(--muted-foreground)" stopOpacity="0.15" />
             </radialGradient>
+            <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feFlood floodColor="var(--primary)" floodOpacity="0.55" result="color" />
+              <feComposite in="color" in2="blur" operator="in" result="glow" />
+              <feMerge>
+                <feMergeNode in="glow" />
+                <feMergeNode in="glow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
             <filter id="needleShadow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur in="SourceAlpha" stdDeviation="1.8" />
               <feOffset dx="0" dy="1.2" />
