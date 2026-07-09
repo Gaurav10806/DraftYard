@@ -64,37 +64,59 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="gap-1">
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
+            Workspace
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {primary.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title}>
-                    <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            <SidebarMenu className="gap-0.5">
+              {primary.map((item) => {
+                const active = pathname === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      tooltip={item.title}
+                      className="group/link relative h-9 transition-colors duration-200 ease-out data-[active=true]:bg-sidebar-accent/70"
+                    >
+                      <Link to={item.url} className="flex items-center gap-3">
+                        <span
+                          aria-hidden
+                          className={`absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary transition-all duration-300 ease-out ${
+                            active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50"
+                          }`}
+                        />
+                        <item.icon className={`h-4 w-4 shrink-0 transition-colors duration-200 ${active ? "text-primary" : "group-hover/link:text-foreground"}`} />
+                        <span className="truncate">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>You</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
+            You
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {secondary.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={item.title}
+                    className="group/link h-9 transition-colors duration-200 ease-out"
+                  >
                     <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      <span className="flex-1">{item.title}</span>
+                      <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover/link:text-foreground" />
+                      <span className="flex-1 truncate">{item.title}</span>
                       {item.badge && !collapsed && (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
                           {item.badge}
                         </span>
                       )}
@@ -106,6 +128,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed ? (
