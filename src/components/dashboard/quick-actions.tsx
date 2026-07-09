@@ -11,7 +11,7 @@ const actions = [
 
 export function QuickActions() {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-shadow duration-300 hover:shadow-md">
+    <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
       <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
         Quick Actions
       </h2>
@@ -19,7 +19,7 @@ export function QuickActions() {
         {actions.map((a) => (
           <button
             key={a.label}
-            className="group flex flex-col items-center gap-2 rounded-xl border border-border bg-background p-4 text-center transition-colors hover:border-primary/60 hover:bg-primary/5"
+            className="group flex h-full flex-col items-center gap-2 rounded-xl border border-border bg-background p-4 text-center transition-all duration-300 hover:border-primary/60 hover:bg-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
           >
             <span className={`grid h-10 w-10 place-items-center rounded-xl ${a.tint}`}>
               <a.icon className="h-4 w-4" />
@@ -28,6 +28,7 @@ export function QuickActions() {
           </button>
         ))}
       </div>
+
     </div>
   );
 }
