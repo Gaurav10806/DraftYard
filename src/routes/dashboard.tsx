@@ -41,7 +41,7 @@ function Dashboard() {
               <OpenQuestions />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+            <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]">
               <DraftShelf />
               <QuickActions />
             </div>
