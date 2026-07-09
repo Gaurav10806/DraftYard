@@ -27,7 +27,10 @@ export function DraftShelf() {
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <div ref={scroller} className="scrollbar-none shelf-edge-fade flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-2 [-webkit-overflow-scrolling:touch]">
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-8 bg-gradient-to-r from-card to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-8 bg-gradient-to-l from-card to-transparent" />
+        <div ref={scroller} className="scrollbar-none flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-2 [-webkit-overflow-scrolling:touch]">
+
           {items.map((d, i) => {
             const progress = stageToProgress(d.stageDied);
             const pinned = i === 1;
