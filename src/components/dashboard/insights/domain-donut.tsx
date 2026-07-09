@@ -14,7 +14,7 @@ export function DomainDonut() {
             <Tooltip
               contentStyle={{ background: "hsl(var(--popover, 240 6% 10%))", borderRadius: 8, fontSize: 12, border: "1px solid rgba(255,255,255,0.1)" }}
             />
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
+            <Pie isAnimationActive={false} data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
               {data.map((_, i) => (
                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="transparent" />
               ))}

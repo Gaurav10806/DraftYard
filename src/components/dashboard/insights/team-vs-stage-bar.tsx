@@ -16,9 +16,9 @@ export function TeamVsStageBar() {
             <YAxis stroke={AXIS} fontSize={11} />
             <Tooltip cursor={{ fill: "rgba(148,163,184,0.1)" }} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="solo" stackId="a" fill={CHART_COLORS[0]} />
-            <Bar dataKey="2-3" stackId="a" fill={CHART_COLORS[1]} />
-            <Bar dataKey="4+" stackId="a" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
+            <Bar isAnimationActive={false} dataKey="solo" stackId="a" fill={CHART_COLORS[0]} />
+            <Bar isAnimationActive={false} dataKey="2-3" stackId="a" fill={CHART_COLORS[1]} />
+            <Bar isAnimationActive={false} dataKey="4+" stackId="a" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -15,7 +15,7 @@ export function WhyDiedBar() {
             <XAxis type="number" stroke={AXIS} fontSize={11} />
             <YAxis type="category" dataKey="name" stroke={AXIS} fontSize={11} width={110} />
             <Tooltip cursor={{ fill: "rgba(148,163,184,0.1)" }} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-            <Bar dataKey="value" fill={CHART_COLORS[0]} radius={[0, 6, 6, 0]} />
+            <Bar isAnimationActive={false} dataKey="value" fill={CHART_COLORS[0]} radius={[0, 6, 6, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -15,7 +15,7 @@ export function TechStackBar() {
             <XAxis dataKey="name" stroke={AXIS} fontSize={10} interval={0} angle={-25} textAnchor="end" height={50} />
             <YAxis stroke={AXIS} fontSize={11} />
             <Tooltip cursor={{ fill: "rgba(148,163,184,0.1)" }} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-            <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
+            <Bar isAnimationActive={false} dataKey="value" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
