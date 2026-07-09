@@ -1,0 +1,71 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { TopBar } from "@/components/dashboard/top-bar";
+import { ActiveDraftCard } from "@/components/dashboard/active-draft-card";
+import { ProjectCompass } from "@/components/dashboard/project-compass";
+import { OpenQuestions } from "@/components/dashboard/open-questions";
+import { DraftShelf } from "@/components/dashboard/draft-shelf";
+import { QuickActions } from "@/components/dashboard/quick-actions";
+import { DomainDonut } from "@/components/dashboard/insights/domain-donut";
+import { WhyDiedBar } from "@/components/dashboard/insights/why-died-bar";
+import { TechStackBar } from "@/components/dashboard/insights/tech-stack-bar";
+import { TeamVsStageBar } from "@/components/dashboard/insights/team-vs-stage-bar";
+
+export const Route = createFileRoute("/dashboard")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard · DraftYard" },
+      {
+        name: "description",
+        content: "Your DraftYard dashboard — active drafts, project compass, and insights across 100+ unfinished projects.",
+      },
+      { property: "og:title", content: "DraftYard Dashboard" },
+      {
+        property: "og:description",
+        content: "Track drafts, set focus, and learn from the graveyard of unfinished projects.",
+      },
+    ],
+  }),
+  component: Dashboard,
+});
+
+function Dashboard() {
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background text-foreground">
+        <AppSidebar />
+        <SidebarInset className="flex min-w-0 flex-1 flex-col">
+          <TopBar />
+          <main className="flex-1 space-y-6 p-4 sm:p-6">
+            <div className="grid gap-6 lg:grid-cols-3">
+              <ActiveDraftCard />
+              <ProjectCompass />
+              <OpenQuestions />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+              <DraftShelf />
+              <QuickActions />
+            </div>
+
+            <div>
+              <div className="mb-4 flex items-end justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">Insights</p>
+                  <h2 className="font-display text-2xl font-semibold">What the yard is telling us</h2>
+                </div>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <DomainDonut />
+                <WhyDiedBar />
+                <TechStackBar />
+                <TeamVsStageBar />
+              </div>
+            </div>
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
+}
