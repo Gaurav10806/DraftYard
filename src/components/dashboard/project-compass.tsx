@@ -66,7 +66,7 @@ export function ProjectCompass() {
   const needle = angleFor(focus);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+    <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
       <div className="text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary">
           Project Compass <Info className="h-3 w-3 text-muted-foreground" />

@@ -13,7 +13,7 @@ export function DraftShelf() {
   const items = drafts.slice(0, 12);
 
   return (
-    <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+    <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold tracking-tight">Draft Shelf</h2>
         <a href="#" className="text-sm font-medium text-primary hover:underline">View all drafts →</a>
@@ -34,7 +34,7 @@ export function DraftShelf() {
             return (
               <div
                 key={d.projectName}
-                className="group/card relative snap-start shrink-0 w-64 rounded-2xl border border-border/60 bg-background p-4 shadow-sm transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-xl hover:border-primary/50 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent),0_18px_40px_-18px_color-mix(in_oklab,var(--primary)_40%,transparent)]"
+                className="group/card relative snap-start shrink-0 w-64 rounded-2xl border border-border/60 bg-background p-4 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-xl hover:border-primary/50 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent),0_18px_40px_-18px_color-mix(in_oklab,var(--primary)_40%,transparent)]"
               >
                 <div className="flex items-center justify-between">
                   {pinned ? (
@@ -65,7 +65,7 @@ export function DraftShelf() {
                 <p className="mt-3 text-[11px] text-muted-foreground">Updated {i + 1}d ago</p>
 
                 {/* Reveal quick actions on hover */}
-                <div className="pointer-events-none absolute inset-x-3 bottom-3 flex gap-2 opacity-0 translate-y-2 transition-all duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:pointer-events-auto">
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 flex gap-2 opacity-0 translate-y-2 transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:pointer-events-auto">
                   <button className="flex-1 rounded-lg bg-gradient-to-r from-primary to-primary/85 px-2 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-sm transition hover:brightness-110">Open</button>
                   <button className="flex-1 rounded-lg border border-border bg-background/95 px-2 py-1.5 text-[11px] font-semibold backdrop-blur transition hover:border-primary/50">Revive</button>
                 </div>

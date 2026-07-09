@@ -79,16 +79,16 @@ export function AppSidebar() {
                       asChild
                       isActive={active}
                       tooltip={item.title}
-                      className="group/link relative h-9 transition-colors duration-200 ease-out data-[active=true]:bg-sidebar-accent/70"
+                      className="group/link relative h-9 transition-colors duration-[180ms] ease-out data-[active=true]:bg-sidebar-accent/70"
                     >
                       <Link to={item.url} className="flex items-center gap-3">
                         <span
                           aria-hidden
-                          className={`absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary transition-all duration-300 ease-out ${
+                          className={`absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary transition-all duration-[220ms] ease-out ${
                             active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50"
                           }`}
                         />
-                        <item.icon className={`h-4 w-4 shrink-0 transition-colors duration-200 ${active ? "text-primary" : "group-hover/link:text-foreground"}`} />
+                        <item.icon className={`h-4 w-4 shrink-0 transition-colors duration-[180ms] ${active ? "text-primary" : "group-hover/link:text-foreground"}`} />
                         <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -110,10 +110,10 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    className="group/link h-9 transition-colors duration-200 ease-out"
+                    className="group/link h-9 transition-colors duration-[180ms] ease-out"
                   >
                     <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover/link:text-foreground" />
+                      <item.icon className="h-4 w-4 shrink-0 transition-colors duration-[180ms] group-hover/link:text-foreground" />
                       <span className="flex-1 truncate">{item.title}</span>
                       {item.badge && !collapsed && (
                         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">

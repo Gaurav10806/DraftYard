@@ -9,7 +9,7 @@ export function ActiveDraftCard() {
   const d = drafts[0];
   const progress = stageToProgress(d.stageDied);
   return (
-    <div className="group flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+    <div className="group flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Active Draft</span>
         <button className="text-muted-foreground hover:text-foreground">•••</button>
@@ -64,10 +64,10 @@ export function ActiveDraftCard() {
       </div>
 
       <Button
-        className="mt-7 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-300 hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5 group-hover:shadow-lg"
+        className="mt-7 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-[220ms] hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5 group-hover:shadow-lg"
       >
         Open Draft
-        <ArrowRight className="ml-1 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+        <ArrowRight className="ml-1 h-4 w-4 transition-transform duration-[220ms] group-hover:translate-x-0.5" />
       </Button>
     </div>
   );

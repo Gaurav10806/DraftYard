@@ -50,7 +50,7 @@ export function OpenQuestions() {
   };
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+    <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Open Questions</span>
         <span className="text-xs text-muted-foreground">{i + 1} of {QUESTIONS.length}</span>
@@ -84,7 +84,7 @@ export function OpenQuestions() {
                 <button
                   key={label}
                   onClick={() => answer(label)}
-                  className={`group/opt flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all duration-200 active:scale-[0.98] ${
+                  className={`group/opt flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all duration-[180ms] active:scale-[0.98] ${
                     active
                       ? "border-primary bg-primary/10 text-foreground shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
                       : "border-border bg-background hover:border-primary/50 hover:-translate-y-0.5 hover:shadow-sm hover:bg-primary/[0.03]"
