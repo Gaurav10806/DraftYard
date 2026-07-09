@@ -46,20 +46,7 @@ function Dashboard() {
               <QuickActions />
             </div>
 
-            <div>
-              <div className="mb-4 flex items-end justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">Insights</p>
-                  <h2 className="font-display text-2xl font-semibold">What the yard is telling us</h2>
-                </div>
-              </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <DomainDonut />
-                <WhyDiedBar />
-                <TechStackBar />
-                <TeamVsStageBar />
-              </div>
-            </div>
+            <BenefitsRow />
           </main>
         </SidebarInset>
       </div>
