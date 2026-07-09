@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Boxes,
   FileStack,
-  Compass,
   Skull,
   Bot,
   Sprout,
@@ -14,7 +13,7 @@ import {
   HelpCircle,
   Hexagon,
   LayoutDashboard,
-  Rocket,
+  Plus,
 } from "lucide-react";
 import {
   Sidebar,
