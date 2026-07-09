@@ -64,10 +64,10 @@ export function ActiveDraftCard() {
       </div>
 
       <Button
-        className="mt-7 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-[220ms] hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5 group-hover:shadow-lg"
+        className="mt-7 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-[180ms] hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5 group-hover:shadow-lg"
       >
         Open Draft
-        <ArrowRight className="ml-1 h-4 w-4 transition-transform duration-[220ms] group-hover:translate-x-0.5" />
+        <ArrowRight className="ml-1 h-4 w-4 transition-transform duration-[180ms] group-hover:translate-x-0.5" />
       </Button>
     </div>
   );
