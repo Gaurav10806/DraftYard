@@ -208,3 +208,12 @@
   );
 }
 
+@utility sidebar-fade-y {
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 32px),
+    transparent 100%
+  );
+}
+

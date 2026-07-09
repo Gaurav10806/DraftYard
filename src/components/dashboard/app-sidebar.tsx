@@ -64,7 +64,7 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="gap-1">
+      <SidebarContent className="gap-1 scrollbar-none scroll-smooth sidebar-fade-y [-webkit-overflow-scrolling:touch] overscroll-contain pb-4">
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
             Workspace
