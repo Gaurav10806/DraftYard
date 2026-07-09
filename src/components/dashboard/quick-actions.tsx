@@ -12,9 +12,10 @@ const actions = [
 export function QuickActions() {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-      <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
         Quick Actions
       </h2>
+
       <div className="mt-4 grid grid-cols-3 gap-3">
         {actions.map((a) => (
           <button
