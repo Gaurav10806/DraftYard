@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Bell, Search } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -5,15 +6,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function TopBar() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const [greeting, setGreeting] = useState("Good afternoon");
+  useEffect(() => {
+    const h = new Date().getHours();
+    setGreeting(h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
+  }, []);
   return (
     <header className="flex flex-col gap-4 border-b border-border/60 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {greeting}, Dev <span className="inline-block">👋</span>
+            {greeting}, Dev_Cosmos! <span className="inline-block">👋</span>
           </h1>
           <p className="text-sm text-muted-foreground">Let's turn your ideas into incredible projects.</p>
         </div>

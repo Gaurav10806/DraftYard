@@ -7,10 +7,7 @@ import { ProjectCompass } from "@/components/dashboard/project-compass";
 import { OpenQuestions } from "@/components/dashboard/open-questions";
 import { DraftShelf } from "@/components/dashboard/draft-shelf";
 import { QuickActions } from "@/components/dashboard/quick-actions";
-import { DomainDonut } from "@/components/dashboard/insights/domain-donut";
-import { WhyDiedBar } from "@/components/dashboard/insights/why-died-bar";
-import { TechStackBar } from "@/components/dashboard/insights/tech-stack-bar";
-import { TeamVsStageBar } from "@/components/dashboard/insights/team-vs-stage-bar";
+import { BenefitsRow } from "@/components/dashboard/benefits-row";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -49,20 +46,7 @@ function Dashboard() {
               <QuickActions />
             </div>
 
-            <div>
-              <div className="mb-4 flex items-end justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">Insights</p>
-                  <h2 className="font-display text-2xl font-semibold">What the yard is telling us</h2>
-                </div>
-              </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <DomainDonut />
-                <WhyDiedBar />
-                <TechStackBar />
-                <TeamVsStageBar />
-              </div>
-            </div>
+            <BenefitsRow />
           </main>
         </SidebarInset>
       </div>
