@@ -33,13 +33,14 @@ export function ActiveDraftCard() {
 
       <div className="mt-7 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-muted/50 p-3">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Stage</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stage</div>
           <div className="mt-1 text-sm font-medium">{d.stageDied}</div>
         </div>
         <div className="rounded-xl bg-muted/50 p-3">
-          <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             <span>Progress</span>
-            <span className="font-semibold text-foreground">{progress}%</span>
+            <span className="text-foreground">{progress}%</span>
+
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
             <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${progress}%` }} />
