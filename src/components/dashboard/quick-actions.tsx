@@ -11,7 +11,7 @@ const actions = [
 
 export function QuickActions() {
   return (
-    <div className="rounded-2xl border border-border bg-card p-6">
+    <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-shadow duration-300 hover:shadow-md">
       <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
         Quick Actions
       </h2>
