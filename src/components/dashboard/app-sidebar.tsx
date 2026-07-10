@@ -1,16 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Boxes,
-  FileStack,
-  Skull,
+  Rss,
+  RefreshCw,
+  BarChart2,
+  Layers,
+  ClipboardCheck,
   Bot,
-  Sprout,
-  BookOpen,
-  Plug,
-  MessageSquare,
-  Users,
+  UserCircle,
   Settings,
-  HelpCircle,
   Hexagon,
   LayoutDashboard,
   Plus,
@@ -32,20 +30,15 @@ import { Button } from "@/components/ui/button";
 
 const primary = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "All Drafts", url: "#", icon: FileStack },
-  { title: "Draft Explorer", url: "#", icon: Boxes },
-  { title: "Autopsy Room", url: "#", icon: Skull },
+  { title: "Workspace", url: "#", icon: Boxes },
+  { title: "DraftYard Feed", url: "#", icon: Rss },
+  { title: "Revival Board", url: "#", icon: RefreshCw },
+  { title: "Insights", url: "#", icon: BarChart2 },
+  { title: "Stack Intelligence", url: "#", icon: Layers },
+  { title: "Idea Review", url: "#", icon: ClipboardCheck },
   { title: "AI Assistant", url: "#", icon: Bot },
-  { title: "Adoption Hub", url: "#", icon: Sprout },
-  { title: "Knowledge Base", url: "#", icon: BookOpen },
-  { title: "Integrations", url: "#", icon: Plug },
-];
-
-const secondary = [
-  { title: "Messages", url: "#", icon: MessageSquare, badge: "3" },
-  { title: "Team", url: "#", icon: Users },
+  { title: "Profile", url: "#", icon: UserCircle },
   { title: "Settings", url: "#", icon: Settings },
-  { title: "Help & Docs", url: "#", icon: HelpCircle },
 ];
 
 export function AppSidebar() {
@@ -98,37 +91,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
-            You
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {secondary.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.title}
-                    className="group/link h-9 transition-colors duration-[180ms] ease-out"
-                  >
-                    <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4 shrink-0 transition-colors duration-[180ms] group-hover/link:text-foreground" />
-                      <span className="flex-1 truncate">{item.title}</span>
-                      {item.badge && !collapsed && (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
-
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed ? (
