@@ -34,7 +34,6 @@ import {
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
-import { ProjectCompass } from "@/components/dashboard/project-compass";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -507,6 +506,7 @@ function Card({
 function OverviewTab() {
   return (
     <div className="space-y-6">
+      {/* Row 1: Why It Stalled · What's Next · Draft Compass */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Why It Stalled">
           <div className="flex items-start gap-2">
@@ -545,101 +545,87 @@ function OverviewTab() {
           </Button>
         </Card>
 
+        <Card title="Draft Compass">
+          <DraftCompassMini />
+        </Card>
+      </div>
+
+      {/* Row 2: Project Snapshot · Top Activity (Last 7 Days) */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <Card title="Project Snapshot">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             {[
               { label: "Tasks", value: "23", sub: "8 done" },
               { label: "Contributors", value: "4", sub: "3 active" },
               { label: "Files", value: "18" },
               { label: "Commits", value: "132" },
             ].map((m) => (
-              <div key={m.label} className="rounded-xl bg-muted/50 p-3">
+              <div key={m.label}>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {m.label}
                 </div>
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-display text-xl font-semibold leading-none">{m.value}</span>
-                  {m.sub && <span className="text-[11px] text-muted-foreground">{m.sub}</span>}
-                </div>
+                <div className="mt-1 font-display text-xl font-semibold leading-none">{m.value}</div>
+                {m.sub && <div className="mt-1 text-[11px] text-muted-foreground">{m.sub}</div>}
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" /> Updated 2h ago
           </div>
         </Card>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card title="Draft Compass">
-          <p className="-mt-1 text-sm leading-relaxed text-muted-foreground">
-            Set the focus that guides how contributors and AI prioritize this draft.
-          </p>
-          <div className="mt-4">
-            <ProjectCompass />
-          </div>
-        </Card>
-
-        <Card title="Focus Insights">
-          <ul className="space-y-3 text-sm">
-            {[
-              { label: "Build momentum", value: "High", tone: "text-[color:var(--revive)]" },
-              { label: "Open questions", value: "3 unresolved", tone: "text-foreground" },
-              { label: "Last activity", value: "2h ago", tone: "text-muted-foreground" },
-              { label: "Contributors online", value: "2 of 4", tone: "text-foreground" },
-            ].map((r) => (
-              <li key={r.label} className="flex items-center justify-between border-b border-border/50 pb-3 last:border-0 last:pb-0">
-                <span className="text-muted-foreground">{r.label}</span>
-                <span className={`font-medium ${r.tone}`}>{r.value}</span>
-              </li>
-            ))}
-          </ul>
-          <Button variant="outline" size="sm" className="mt-5 w-full rounded-full">
-            <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Ask AI for next focus
-          </Button>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]">
-
-        <Card title="Recent Activity">
+        <Card
+          title="Top Activity (Last 7 Days)"
+          action={
+            <button className="text-muted-foreground transition-colors duration-[180ms] hover:text-foreground">
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          }
+        >
           <ul className="divide-y divide-border/60">
-            {activity.map((a, i) => (
-              <li key={i} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <Avatar className="h-7 w-7 ring-2 ring-card">
-                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                    {a.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">
-                    <span className="font-medium">{a.who}</span>{" "}
-                    <span className="text-muted-foreground">{a.what}</span>
-                  </p>
-                </div>
+            {[
+              { icon: CheckCircle2, tone: "text-[color:var(--revive)]", what: "Stage updated to Building by Ansh", when: "2h ago" },
+              { icon: GitPullRequest, tone: "text-primary", what: "Aditya pushed 3 commits", when: "5h ago" },
+              { icon: UserPlus, tone: "text-primary", what: "Gaurav joined as contributor", when: "1d ago" },
+              { icon: Circle, tone: "text-muted-foreground", what: "Login API task marked in progress", when: "1d ago" },
+              { icon: Circle, tone: "text-muted-foreground", what: "Database schema added", when: "2d ago" },
+            ].map((a, i) => (
+              <li key={i} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                <a.icon className={`h-3.5 w-3.5 shrink-0 ${a.tone}`} />
+                <span className="flex-1 truncate text-sm">{a.what}</span>
                 <span className="text-xs text-muted-foreground">{a.when}</span>
               </li>
             ))}
           </ul>
+          <button className="mt-3 text-xs font-medium text-primary transition-colors duration-[180ms] hover:text-primary/80">
+            View all activity
+          </button>
+        </Card>
+      </div>
+
+      {/* Row 3: Recent Notes · Tags */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+        <Card title="Recent Notes">
+          <p className="text-sm leading-relaxed">
+            Need to finalize the API contract for authentication flow.
+          </p>
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <span>— Ansh V.</span>
+            <span className="text-muted-foreground/50">·</span>
+            <span>Yesterday</span>
+          </div>
         </Card>
 
-        <Card title="Quick Actions">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { icon: Plus, label: "Create Task", tint: "bg-tint-lilac" },
-              { icon: UserPlus, label: "Invite Contributor", tint: "bg-tint-mint" },
-              { icon: Github, label: "Open GitHub", tint: "bg-tint-sky" },
-              { icon: UploadCloud, label: "Upload File", tint: "bg-tint-peach" },
-            ].map((a) => (
-              <button
-                key={a.label}
-                className="group flex h-full flex-col items-center gap-2 rounded-xl border border-border bg-background p-4 text-center transition-all duration-[220ms] hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 hover:shadow-sm"
+        <Card title="Tags">
+          <div className="flex flex-wrap gap-2">
+            {["React", "Node.js", "MongoDB", "JWT", "Tailwind CSS", "+2"].map((t) => (
+              <Badge
+                key={t}
+                variant="outline"
+                className="rounded-full border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
               >
-                <span className={`grid h-10 w-10 place-items-center rounded-xl ${a.tint}`}>
-                  <a.icon className="h-4 w-4" />
-                </span>
-                <span className="text-xs font-medium leading-tight">{a.label}</span>
-              </button>
+                {t}
+              </Badge>
             ))}
           </div>
         </Card>
@@ -647,6 +633,72 @@ function OverviewTab() {
     </div>
   );
 }
+
+// Compact Draft Compass — small radar with axis list (workspace-only, distinct from dashboard's ProjectCompass)
+function DraftCompassMini() {
+  const axes = [
+    { label: "Focus", value: 78 },
+    { label: "Clarity", value: 65 },
+    { label: "Momentum", value: 60 },
+    { label: "Resources", value: 55 },
+  ];
+  const cx = 70;
+  const cy = 70;
+  const rMax = 56;
+  const N = axes.length;
+  const angle = (i: number) => (i / N) * Math.PI * 2 - Math.PI / 2;
+  const pt = (i: number, v: number) => {
+    const r = (v / 100) * rMax;
+    return [cx + r * Math.cos(angle(i)), cy + r * Math.sin(angle(i))] as const;
+  };
+  const poly = axes.map((a, i) => pt(i, a.value).join(",")).join(" ");
+  const rings = [0.33, 0.66, 1];
+
+  return (
+    <div className="flex items-center gap-5">
+      <svg viewBox="0 0 140 140" className="h-32 w-32 shrink-0">
+        {rings.map((k) => (
+          <circle
+            key={k}
+            cx={cx}
+            cy={cy}
+            r={rMax * k}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth={1}
+            opacity={0.6}
+          />
+        ))}
+        {axes.map((_, i) => {
+          const [x, y] = pt(i, 100);
+          return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--border)" strokeWidth={1} opacity={0.5} />;
+        })}
+        <polygon
+          points={poly}
+          fill="var(--primary)"
+          fillOpacity={0.18}
+          stroke="var(--primary)"
+          strokeWidth={1.5}
+        />
+        {axes.map((a, i) => {
+          const [x, y] = pt(i, a.value);
+          return <circle key={a.label} cx={x} cy={y} r={2.5} fill="var(--primary)" />;
+        })}
+      </svg>
+
+      <ul className="flex-1 space-y-2 text-sm">
+        {axes.map((a) => (
+          <li key={a.label} className="flex items-center justify-between">
+            <span className="text-muted-foreground">{a.label}</span>
+            <span className="font-medium text-foreground">{a.value}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
 
 // ————————————————————————————————————————————————————————————————
 // TASKS
