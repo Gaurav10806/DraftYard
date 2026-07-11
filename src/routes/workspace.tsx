@@ -570,7 +570,38 @@ function OverviewTab() {
         </Card>
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Card title="Draft Compass">
+          <p className="-mt-1 text-sm leading-relaxed text-muted-foreground">
+            Set the focus that guides how contributors and AI prioritize this draft.
+          </p>
+          <div className="mt-4">
+            <ProjectCompass />
+          </div>
+        </Card>
+
+        <Card title="Focus Insights">
+          <ul className="space-y-3 text-sm">
+            {[
+              { label: "Build momentum", value: "High", tone: "text-[color:var(--revive)]" },
+              { label: "Open questions", value: "3 unresolved", tone: "text-foreground" },
+              { label: "Last activity", value: "2h ago", tone: "text-muted-foreground" },
+              { label: "Contributors online", value: "2 of 4", tone: "text-foreground" },
+            ].map((r) => (
+              <li key={r.label} className="flex items-center justify-between border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                <span className="text-muted-foreground">{r.label}</span>
+                <span className={`font-medium ${r.tone}`}>{r.value}</span>
+              </li>
+            ))}
+          </ul>
+          <Button variant="outline" size="sm" className="mt-5 w-full rounded-full">
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Ask AI for next focus
+          </Button>
+        </Card>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]">
+
         <Card title="Recent Activity">
           <ul className="divide-y divide-border/60">
             {activity.map((a, i) => (
