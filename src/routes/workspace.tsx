@@ -1255,5 +1255,3 @@ function FloatingAI({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
   );
 }
 
-// unused imports guard (keep tree-shaking friendly)
-void Folder; void FileText; void Layers;
