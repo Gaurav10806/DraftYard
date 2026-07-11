@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NewDraftRouteImport } from './routes/new-draft'
+import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 
 const NewDraftRoute = NewDraftRouteImport.update({
   id: '/new-draft',
   path: '/new-draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/insights': typeof InsightsRoute
   '/new-draft': typeof NewDraftRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/insights': typeof InsightsRoute
   '/new-draft': typeof NewDraftRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/insights': typeof InsightsRoute
   '/new-draft': typeof NewDraftRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/new-draft'
+  fullPaths: '/' | '/dashboard' | '/insights' | '/new-draft'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/new-draft'
-  id: '__root__' | '/' | '/dashboard' | '/new-draft'
+  to: '/' | '/dashboard' | '/insights' | '/new-draft'
+  id: '__root__' | '/' | '/dashboard' | '/insights' | '/new-draft'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  InsightsRoute: typeof InsightsRoute
   NewDraftRoute: typeof NewDraftRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/new-draft'
       fullPath: '/new-draft'
       preLoaderRoute: typeof NewDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  InsightsRoute: InsightsRoute,
   NewDraftRoute: NewDraftRoute,
 }
 export const routeTree = rootRouteImport

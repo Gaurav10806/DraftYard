@@ -1,9 +1,10 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { teamSizeVsStage } from "@/lib/drafts-insights";
 import { AXIS, CHART_COLORS } from "./colors";
+import { drafts, type Draft } from "@/data/drafts";
 
-export function TeamVsStageBar() {
-  const data = teamSizeVsStage();
+export function TeamVsStageBar({ drafts }: { drafts: Draft[] }) {
+  const data = teamSizeVsStage(drafts);
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <h3 className="font-display text-sm font-semibold">Team size vs stage died</h3>

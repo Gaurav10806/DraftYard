@@ -34,7 +34,7 @@ const primary = [
   { title: "Workspace", url: "#", icon: Boxes },
   { title: "DraftYard Feed", url: "#", icon: Rss },
   { title: "Revival Board", url: "#", icon: RefreshCw },
-  { title: "Insights", url: "#", icon: BarChart2 },
+  { title: "Insights", url: "/insights", icon: BarChart2 },
   { title: "Stack Intelligence", url: "#", icon: Layers },
   { title: "Idea Review", url: "#", icon: ClipboardCheck },
   { title: "AI Assistant", url: "#", icon: Bot },
