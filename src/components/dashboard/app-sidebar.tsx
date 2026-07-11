@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 
 const primary = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Workspace", url: "#", icon: Boxes },
+  { title: "Workspace", url: "/workspace", icon: Boxes },
   { title: "DraftYard Feed", url: "#", icon: Rss },
   { title: "Revival Board", url: "#", icon: RefreshCw },
   { title: "Insights", url: "#", icon: BarChart2 },
