@@ -8,6 +8,7 @@ import { ProjectCompass } from "@/components/dashboard/project-compass";
 import { OpenQuestions } from "@/components/dashboard/open-questions";
 import { DraftShelf } from "@/components/dashboard/draft-shelf";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { useDrafts } from "@/hooks/use-drafts";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -33,6 +34,7 @@ const fadeUp = {
 };
 
 function Dashboard() {
+  const { data: drafts = [], isLoading } = useDrafts();
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -56,7 +58,7 @@ function Dashboard() {
           >
             <div className="grid gap-6 lg:grid-cols-3">
               <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-                <ActiveDraftCard />
+                <ActiveDraftCard drafts={drafts} />
               </motion.div>
               <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
                 <ProjectCompass />
@@ -71,7 +73,7 @@ function Dashboard() {
               variants={fadeUp}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <DraftShelf />
+              <DraftShelf drafts={drafts} />
               <QuickActions />
             </motion.div>
           </motion.main>

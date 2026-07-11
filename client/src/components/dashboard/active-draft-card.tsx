@@ -2,10 +2,18 @@ import { ArrowRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { drafts } from "@/data/drafts";
+import type { Draft } from "@/data/drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
 
-export function ActiveDraftCard() {
+export function ActiveDraftCard({ drafts }: { drafts: Draft[] }) {
+  if (drafts.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">
+        No drafts yet — bury your first project to see it here.
+      </div>
+    );
+  }
+
   const d = drafts[0];
   const progress = stageToProgress(d.stageDied);
   return (

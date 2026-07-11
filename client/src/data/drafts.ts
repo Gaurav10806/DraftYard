@@ -1,4 +1,5 @@
 export type Draft = {
+   _id?: string;
   projectName: string;
   oneLiner: string;
   domain: string;
@@ -10,6 +11,8 @@ export type Draft = {
   salvageable: string;
   openForRevival: boolean;
   isAnonymous: boolean;
+  deathCategory?: string | null;
+  upvotes?: number;
 };
 
 export const drafts: Draft[] = [

@@ -2,8 +2,10 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { domainDistribution } from "@/lib/drafts-insights";
 import { CHART_COLORS } from "./colors";
 
-export function DomainDonut() {
-  const data = domainDistribution();
+import type { Draft } from "@/data/drafts";
+
+export function DomainDonut({ drafts }: { drafts: Draft[] }) {
+  const data = domainDistribution(drafts);
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <h3 className="font-display text-sm font-semibold">Where drafts live</h3>

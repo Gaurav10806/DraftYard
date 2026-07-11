@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+
 import {
   Boxes,
   Rss,
@@ -98,14 +99,18 @@ export function AppSidebar() {
           <div className="rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-4">
             <p className="font-display text-sm font-semibold leading-tight">Big ideas<br/>start here.</p>
             <p className="mt-1 text-xs text-muted-foreground">Capture today,<br/>build tomorrow.</p>
-            <Button size="sm" className="mt-3 w-full rounded-lg">
-              <Plus className="mr-1 h-3.5 w-3.5" /> New Draft
-            </Button>
+            <Link to="/new-draft">
+              <Button size="sm" className="mt-3 w-full rounded-lg">
+                <Plus className="mr-1 h-3.5 w-3.5" /> New Draft
+              </Button>
+            </Link>
           </div>
         ) : (
-          <Button size="icon" className="rounded-lg">
-            <Plus className="h-4 w-4" />
-          </Button>
+          <Link to="/new-draft">
+            <Button size="icon" className="rounded-lg">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </Link>
         )}
       </SidebarFooter>
     </Sidebar>

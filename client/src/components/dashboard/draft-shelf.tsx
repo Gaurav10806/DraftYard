@@ -1,10 +1,10 @@
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Plus, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { drafts } from "@/data/drafts";
+import type { Draft } from "@/data/drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
 
-export function DraftShelf() {
+export function DraftShelf({ drafts }: { drafts: Draft[] }) {
   const scroller = useRef<HTMLDivElement>(null);
   const scroll = (dir: number) => {
     scroller.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
