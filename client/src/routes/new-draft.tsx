@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getOwnerToken } from "@/lib/owner-token";
+
 import {
   Select,
   SelectContent,
@@ -43,10 +45,11 @@ const schema = z.object({
   ]),
   whyItDied: z.string().min(1, "Required"),
   timeSpentValue: z.coerce.number().min(0),
-  timeSpentUnit: z.enum(["days", "weeks", "months"]),
+    timeSpentUnit: z.enum(["days", "weeks", "months"]),
   salvageable: z.string().optional(),
+  projectLink: z.string().optional(),
   openForRevival: z.boolean(),
-isAnonymous: z.boolean(),
+  isAnonymous: z.boolean(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -82,20 +85,22 @@ function NewDraft() {
   });
 
   function onSubmit(values: FormValues) {
-    mutation.mutate({
-      projectName: values.projectName,
-      oneLiner: values.oneLiner,
-      domain: values.domain,
-      techStack: values.techStack.split(",").map((t) => t.trim()).filter(Boolean),
-      teamSize: values.teamSize,
-      stageDied: values.stageDied,
-      whyItDied: values.whyItDied,
-      timeSpent: { value: values.timeSpentValue, unit: values.timeSpentUnit },
-      salvageable: values.salvageable ?? "",
-      openForRevival: values.openForRevival,
-      isAnonymous: values.isAnonymous,
-    });
-  }
+  mutation.mutate({
+    projectName: values.projectName,
+    oneLiner: values.oneLiner,
+    domain: values.domain,
+    techStack: values.techStack.split(",").map((t) => t.trim()).filter(Boolean),
+    teamSize: values.teamSize,
+    stageDied: values.stageDied,
+    whyItDied: values.whyItDied,
+    timeSpent: { value: values.timeSpentValue, unit: values.timeSpentUnit },
+    salvageable: values.salvageable ?? "",
+    projectLink: values.projectLink ?? "",
+    openForRevival: values.openForRevival,
+    isAnonymous: values.isAnonymous,
+    ownerToken: getOwnerToken(),
+  });
+}
 
   return (
     <div className="mx-auto max-w-2xl p-6">
@@ -289,7 +294,20 @@ function NewDraft() {
                 <FormMessage />
               </FormItem>
             )}
-          />
+                  />
+                  <FormField
+  control={form.control}
+  name="projectLink"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Project link (optional)</FormLabel>
+      <FormControl>
+        <Input placeholder="https://github.com/you/project" {...field} />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
 
           <FormField
             control={form.control}

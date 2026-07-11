@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { useDrafts } from "@/hooks/use-drafts";
 import { DomainDonut } from "@/components/dashboard/insights/domain-donut";
 import { TechStackBar } from "@/components/dashboard/insights/tech-stack-bar";
@@ -12,22 +13,25 @@ export const Route = createFileRoute("/insights")({
 function InsightsPage() {
   const { data: drafts = [], isLoading } = useDrafts();
 
-  if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading insights…</div>;
-  }
-
   return (
-    <div className="p-6">
-      <h1 className="font-display text-2xl font-semibold">Autopsy Room</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        What the graveyard says about how projects die.
-      </p>
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
-        <DomainDonut drafts={drafts} />
-        <TechStackBar drafts={drafts} />
-        <WhyDiedBar drafts={drafts} />
-        <TeamVsStageBar drafts={drafts} />
+    <DashboardLayout>
+      <div>
+        <h1 className="font-display text-2xl font-semibold">Autopsy Room</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          What the graveyard says about how projects die.
+        </p>
       </div>
-    </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Loading insights…</div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          <DomainDonut drafts={drafts} />
+          <TechStackBar drafts={drafts} />
+          <WhyDiedBar drafts={drafts} />
+          <TeamVsStageBar drafts={drafts} />
+        </div>
+      )}
+    </DashboardLayout>
   );
 }
