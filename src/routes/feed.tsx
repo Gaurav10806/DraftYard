@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { slugify } from "./project.$slug";
 import { motion } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -697,7 +698,9 @@ function TrendingCard({
   onBookmark: () => void;
 }) {
   return (
-    <div
+    <Link
+      to="/project/$slug"
+      params={{ slug: slugify(draft.projectName) }}
       data-tint={tintIndex}
       className="feed-trending group/tc relative snap-start w-72 shrink-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)]"
     >
@@ -746,7 +749,7 @@ function TrendingCard({
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -1061,16 +1064,20 @@ function FeedCard({
           </button>
           <span className="text-[11px] text-muted-foreground">{draft.timeAgo}</span>
         </div>
-        {open && (
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
+          {open ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-medium text-emerald-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Open for Revival
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--feed-accent)] opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
-              View Draft <ArrowRight className="h-3 w-3" />
-            </span>
-          </div>
-        )}
+          ) : <span />}
+          <Link
+            to="/project/$slug"
+            params={{ slug: slugify(draft.projectName) }}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--feed-accent)] transition-all duration-[220ms] hover:gap-1.5"
+          >
+            View Draft <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
     </motion.article>
   );
