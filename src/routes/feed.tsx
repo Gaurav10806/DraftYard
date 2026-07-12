@@ -419,57 +419,49 @@ function TrendingCard({
   onBookmark: () => void;
 }) {
   return (
-    <div className="group/tc relative snap-start w-72 shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_18px_40px_-18px_color-mix(in_oklab,var(--primary)_45%,transparent)]">
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-primary via-fuchsia-500 to-primary opacity-80" />
-      <div className={`relative h-28 w-full overflow-hidden bg-gradient-to-br ${tint}`}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.35),transparent_60%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
-        <Badge className="absolute left-3 top-3 rounded-full border-0 bg-black/40 text-[10px] font-medium text-white backdrop-blur">
-          <Flame className="mr-1 h-3 w-3" /> Trending
-        </Badge>
-        <button
-          onClick={onBookmark}
-          className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white backdrop-blur transition-colors hover:bg-black/50"
-        >
-          {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-        </button>
-      </div>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          <div
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${tint} font-display text-sm font-bold text-white shadow-sm`}
-          >
-            {draft.projectName.slice(0, 1)}
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate font-display text-sm font-semibold tracking-tight">
-              {draft.projectName}
-            </h3>
-            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{draft.oneLiner}</p>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1">
+    <div className={`group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[#aa3bff] hover:shadow-[0_18px_40px_-18px_rgba(170,59,255,0.55)] bg-gradient-to-br ${tint}`}>
+      {/* purple → pink top gradient border */}
+      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#aa3bff] to-[#ff6b9d]" />
+      {/* dark gradient overlay for readability */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/75" />
+      {/* soft top highlight */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
+
+      <Badge className="absolute left-3 top-3 z-10 rounded-full border-0 bg-black/45 text-[10px] font-medium text-white backdrop-blur">
+        <Flame className="mr-1 h-3 w-3" /> Trending
+      </Badge>
+      <button
+        onClick={onBookmark}
+        className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
+      >
+        {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+      </button>
+
+      <div className="relative z-[1] mt-auto flex flex-col gap-2 p-4 leading-[1.5]">
+        <h3 className="text-[16px] font-semibold leading-[1.3] tracking-tight text-white drop-shadow-sm">
+          {draft.projectName}
+        </h3>
+        <p className="line-clamp-2 text-[12px] leading-[1.5] text-white/80">
+          {draft.oneLiner}
+        </p>
+        <div className="flex flex-wrap gap-1">
           {draft.techStack.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm"
             >
               {t}
             </span>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <span className="inline-flex items-center gap-1 font-medium text-foreground">
-              <TrendingUp className="h-3 w-3 text-primary" />
-              {draft.upvotes}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-3 w-3" />+{draft.contributors}
-            </span>
-          </div>
+        <div className="flex items-center justify-between pt-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white">
+            <TrendingUp className="h-3 w-3" />
+            {draft.upvotes}
+          </span>
           {draft.openForRevival && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Open for Revival
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-medium text-emerald-100 ring-1 ring-emerald-400/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open for Revival
             </span>
           )}
         </div>
