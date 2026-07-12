@@ -150,26 +150,31 @@ function ProjectPage() {
     <SidebarProvider>
       <div className="project-page flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col">
-          <ProjectTopBar />
-          <motion.main
-            className="flex-1 p-4 sm:p-6"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <ProjectHero
-              draft={draft}
-              bookmarked={bookmarked}
-              onBookmark={() => setBookmarked((b) => !b)}
-            />
-            <ProjectTabs tab={tab} onTab={setTab} />
-            <div className="h-6" />
-            {tab === "overview" && <OverviewTab draft={draft} />}
-            {tab === "discussions" && <DiscussionsTab />}
-            {tab === "contributors" && <ContributorsTab />}
-            {tab === "activity" && <ActivityTab />}
-          </motion.main>
+        <SidebarInset className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 z-0 opacity-60">
+            <ProjectNodeNetwork variant="page" />
+          </div>
+          <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+            <ProjectTopBar />
+            <motion.main
+              className="flex-1 p-4 sm:p-6"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <ProjectHero
+                draft={draft}
+                bookmarked={bookmarked}
+                onBookmark={() => setBookmarked((b) => !b)}
+              />
+              <ProjectTabs tab={tab} onTab={setTab} />
+              <div className="h-6" />
+              {tab === "overview" && <OverviewTab draft={draft} />}
+              {tab === "discussions" && <DiscussionsTab />}
+              {tab === "contributors" && <ContributorsTab />}
+              {tab === "activity" && <ActivityTab />}
+            </motion.main>
+          </div>
         </SidebarInset>
       </div>
     </SidebarProvider>
