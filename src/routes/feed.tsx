@@ -316,16 +316,8 @@ function HeroHeader() {
   ];
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f] sm:p-8">
-      <div className="pointer-events-none absolute -right-8 top-1/2 hidden -translate-y-1/2 md:block">
-        <img
-          src={heroCubePlant}
-          alt=""
-          width={320}
-          height={320}
-          className="h-[220px] w-[220px] select-none opacity-95 drop-shadow-[0_20px_40px_color-mix(in_oklab,var(--primary)_35%,transparent)] lg:h-[260px] lg:w-[260px]"
-        />
-      </div>
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_18%,transparent),transparent_60%)]" />
+      <HeroNetwork />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_60%)]" />
       <div className="relative max-w-2xl">
         <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:text-[48px]">
           Discover unfinished{" "}
