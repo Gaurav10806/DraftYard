@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { drafts, type Draft } from "@/data/drafts";
-import heroCubePlant from "@/assets/feed-hero-cube-plant.png";
+
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
