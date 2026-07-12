@@ -438,7 +438,7 @@ function HeroHeader() {
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f] sm:p-8">
       <HeroNetwork />
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(124,58,237,0.15),transparent_60%)]" />
       <div className="relative max-w-2xl">
         <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:text-[48px]">
           Discover unfinished{" "}
