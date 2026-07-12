@@ -882,40 +882,40 @@ function ContributorsTab() {
             BETA
           </Badge>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           We analyzed your profile and skills.
         </p>
         <div className="mt-4 flex items-center gap-5">
           <CompatibilityRing value={91} />
-          <div className="min-w-0 flex-1 space-y-2 text-xs">
+          <div className="min-w-0 flex-1 space-y-3 text-sm">
             <div>
-              <div className="mb-1 font-semibold">Why you're a great fit</div>
-              <ul className="space-y-1 text-muted-foreground">
-                <li className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-emerald-500" /> Strong in React & TypeScript
+              <div className="mb-1.5 font-semibold text-[13px]">Why you're a great fit</div>
+              <ul className="space-y-1.5 text-[12.5px] text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Strong in React & TypeScript
                 </li>
-                <li className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-emerald-500" /> Experience with Node.js & APIs
+                <li className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Experience with Node.js & APIs
                 </li>
-                <li className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-emerald-500" /> Interest in productivity tools
+                <li className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Interest in productivity tools
                 </li>
               </ul>
             </div>
             <div>
-              <div className="mb-1 font-semibold">Skills you can grow</div>
-              <ul className="space-y-1 text-muted-foreground">
-                <li className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Real-time systems (Socket.io)
+              <div className="mb-1.5 font-semibold text-[13px]">Skills you can grow</div>
+              <ul className="space-y-1.5 text-[12.5px] text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> Real-time systems (Socket.io)
                 </li>
-                <li className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> MongoDB Aggregations
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> MongoDB Aggregations
                 </li>
               </ul>
             </div>
           </div>
         </div>
-        <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--project-accent)]">
+        <button className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-[var(--project-accent)]">
           Update your skills in your profile for better matches →
         </button>
       </Card>
