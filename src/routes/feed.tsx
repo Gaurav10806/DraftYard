@@ -184,26 +184,29 @@ function FeedPage() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background text-foreground">
+      <div className="feed-page flex min-h-screen w-full bg-background text-foreground leading-[1.5] dark:bg-[#0d0d14]">
         <AppSidebar />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col">
+        <SidebarInset className="flex min-w-0 flex-1 flex-col dark:bg-[#0d0d14]">
           <FeedTopBar />
 
           <motion.main
-            className="flex-1 space-y-6 p-4 sm:p-6"
+            className="flex-1 p-4 sm:p-6"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
               {/* Left column */}
-              <div className="min-w-0 space-y-6">
+              <div className="min-w-0">
                 <HeroHeader />
+                <div className="h-8" />
                 <TrendingCarousel
                   bookmarks={bookmarks}
                   onBookmark={toggleBookmark}
                 />
+                <div className="h-6" />
                 <FilterBar tab={tab} onTab={setTab} query={query} onQuery={setQuery} />
+                <div className="h-6" />
                 <FeedGrid
                   items={visible}
                   bookmarks={bookmarks}
@@ -211,7 +214,7 @@ function FeedPage() {
                   onBookmark={toggleBookmark}
                   onUpvote={toggleUpvote}
                 />
-                <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between pt-6 text-sm text-muted-foreground">
                   <span>
                     Showing 1 – {visible.length} of {TOTAL_DRAFTS.toLocaleString()} drafts
                   </span>
@@ -221,7 +224,7 @@ function FeedPage() {
               </div>
 
               {/* Right sidebar */}
-              <aside className="space-y-6">
+              <aside className="space-y-4">
                 <InsightsCard />
                 <StallPatternsCard />
                 <SpotlightCard />
@@ -287,7 +290,7 @@ function HeroHeader() {
     { label: "Avg. Revival Rate", value: `${AVG_REVIVAL}%`, trend: "+12%" },
   ];
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8">
+    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f] sm:p-8">
       <div className="pointer-events-none absolute -right-8 top-1/2 hidden -translate-y-1/2 md:block">
         <img
           src={heroCubePlant}
@@ -299,14 +302,15 @@ function HeroHeader() {
       </div>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_18%,transparent),transparent_60%)]" />
       <div className="relative max-w-2xl">
-        <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:text-[48px]">
           Discover unfinished{" "}
-          <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">
+          <span className="text-[#aa3bff]">
             ideas.
           </span>
           <br />
-          <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">
-            Revive what matters.
+          <span className="dark:text-white">Revive what </span>
+          <span className="text-[#aa3bff]">
+            matters.
           </span>
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
@@ -415,57 +419,49 @@ function TrendingCard({
   onBookmark: () => void;
 }) {
   return (
-    <div className="group/tc relative snap-start w-72 shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_18px_40px_-18px_color-mix(in_oklab,var(--primary)_45%,transparent)]">
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-primary via-fuchsia-500 to-primary opacity-80" />
-      <div className={`relative h-28 w-full overflow-hidden bg-gradient-to-br ${tint}`}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.35),transparent_60%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
-        <Badge className="absolute left-3 top-3 rounded-full border-0 bg-black/40 text-[10px] font-medium text-white backdrop-blur">
-          <Flame className="mr-1 h-3 w-3" /> Trending
-        </Badge>
-        <button
-          onClick={onBookmark}
-          className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white backdrop-blur transition-colors hover:bg-black/50"
-        >
-          {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-        </button>
-      </div>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          <div
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${tint} font-display text-sm font-bold text-white shadow-sm`}
-          >
-            {draft.projectName.slice(0, 1)}
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate font-display text-sm font-semibold tracking-tight">
-              {draft.projectName}
-            </h3>
-            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{draft.oneLiner}</p>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1">
+    <div className={`group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[#aa3bff] hover:shadow-[0_18px_40px_-18px_rgba(170,59,255,0.55)] bg-gradient-to-br ${tint}`}>
+      {/* purple → pink top gradient border */}
+      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#aa3bff] to-[#ff6b9d]" />
+      {/* dark gradient overlay for readability */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/75" />
+      {/* soft top highlight */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
+
+      <Badge className="absolute left-3 top-3 z-10 rounded-full border-0 bg-black/45 text-[10px] font-medium text-white backdrop-blur">
+        <Flame className="mr-1 h-3 w-3" /> Trending
+      </Badge>
+      <button
+        onClick={onBookmark}
+        className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
+      >
+        {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+      </button>
+
+      <div className="relative z-[1] mt-auto flex flex-col gap-2 p-4 leading-[1.5]">
+        <h3 className="text-[16px] font-semibold leading-[1.3] tracking-tight text-white drop-shadow-sm">
+          {draft.projectName}
+        </h3>
+        <p className="line-clamp-2 text-[12px] leading-[1.5] text-white/80">
+          {draft.oneLiner}
+        </p>
+        <div className="flex flex-wrap gap-1">
           {draft.techStack.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm"
             >
               {t}
             </span>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <span className="inline-flex items-center gap-1 font-medium text-foreground">
-              <TrendingUp className="h-3 w-3 text-primary" />
-              {draft.upvotes}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-3 w-3" />+{draft.contributors}
-            </span>
-          </div>
+        <div className="flex items-center justify-between pt-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white">
+            <TrendingUp className="h-3 w-3" />
+            {draft.upvotes}
+          </span>
           {draft.openForRevival && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Open for Revival
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-medium text-emerald-100 ring-1 ring-emerald-400/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open for Revival
             </span>
           )}
         </div>
@@ -499,7 +495,7 @@ function FilterBar({
   return (
     <div
       id="feed"
-      className="sticky top-2 z-20 space-y-3 rounded-2xl border border-border/60 bg-card/85 p-3 shadow-sm backdrop-blur-md"
+      className="sticky top-2 z-20 space-y-3 rounded-2xl border border-border/60 bg-card/85 dark:border-[#2a2a3d] dark:bg-[#13131f]/85 p-3 shadow-sm backdrop-blur-md"
     >
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1">
@@ -507,10 +503,10 @@ function FilterBar({
             <button
               key={t.id}
               onClick={() => onTab(t.id)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-[180ms] ${
+              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-[180ms] ${
                 tab === t.id
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-[#aa3bff] text-white shadow-[0_4px_20px_-6px_rgba(170,59,255,0.55)]"
+                  : "bg-transparent text-muted-foreground hover:bg-[#aa3bff]/10 hover:text-[#aa3bff]"
               }`}
             >
               {t.label}
@@ -603,7 +599,7 @@ function FeedGrid({
   onUpvote: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
       {items.map((d, i) => (
         <FeedCard
           key={d.id}
@@ -628,7 +624,7 @@ function scoreColor(v: number) {
 
 function RevivalRing({ value }: { value: number }) {
   const c = scoreColor(value);
-  const r = 22;
+  const r = 24;
   const circ = 2 * Math.PI * r;
   const dash = (value / 100) * circ;
   return (
@@ -648,10 +644,7 @@ function RevivalRing({ value }: { value: number }) {
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center leading-none">
-        <div className="text-center">
-          <div className={`font-display text-sm font-bold ${c.text}`}>{value}</div>
-          <div className="text-[8px] text-muted-foreground">/100</div>
-        </div>
+        <div className={`font-display text-[20px] font-bold leading-none ${c.text}`}>{value}</div>
       </div>
     </div>
   );
@@ -680,10 +673,8 @@ function FeedCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
-      className={`group/card relative overflow-hidden rounded-2xl border bg-card p-5 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-[0_22px_50px_-24px_color-mix(in_oklab,var(--primary)_45%,transparent)] ${
-        open
-          ? "border-emerald-500/30 hover:border-emerald-500/60"
-          : "border-border/60 hover:border-primary/40"
+      className={`group/card relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-card p-5 leading-[1.5] shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[#aa3bff] hover:shadow-[0_18px_40px_-18px_rgba(170,59,255,0.55)] dark:border-[#2a2a3d] dark:bg-[#13131f] ${
+        open ? "dark:border-emerald-500/40" : ""
       }`}
     >
       {open && (
@@ -701,15 +692,15 @@ function FeedCard({
           >
             {draft.projectName.slice(0, 1)}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate font-display text-base font-semibold tracking-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2">
+              <h3 className="text-[16px] font-semibold leading-[1.3] tracking-tight text-foreground">
                 {draft.projectName}
               </h3>
               <button
                 onClick={onBookmark}
                 aria-label="Bookmark"
-                className="text-muted-foreground transition-colors hover:text-primary"
+                className="mt-0.5 text-muted-foreground transition-colors hover:text-[#aa3bff]"
               >
                 {bookmarked ? (
                   <BookmarkCheck className="h-3.5 w-3.5" />
@@ -718,25 +709,25 @@ function FeedCard({
                 )}
               </button>
             </div>
-            <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
+            <p className="mt-1 text-xs leading-[1.5] text-muted-foreground">
               {draft.oneLiner}
             </p>
           </div>
         </div>
         <Badge
           variant="outline"
-          className="shrink-0 rounded-full border-border/60 bg-background/60 text-[10px] font-medium"
+          className="shrink-0 rounded-full border-border/60 bg-background/60 text-[10px] font-medium dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
         >
           {draft.stage}
         </Badge>
       </div>
 
       {/* Tech pills */}
-      <div className="mt-3 flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1">
         {draft.techStack.slice(0, 4).map((t) => (
           <span
             key={t}
-            className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+            className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
           >
             {t}
           </span>
@@ -744,54 +735,54 @@ function FeedCard({
       </div>
 
       {/* AI Insight + Revival Score */}
-      <div className="mt-4 flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1 border-l-2 border-[#aa3bff] pl-[10px]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#aa3bff]">
             <Sparkles className="h-3 w-3" /> AI Insight
           </div>
-          <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
+          <p className="mt-1 line-clamp-2 text-xs italic leading-[1.5] text-muted-foreground">
             {draft.aiInsight}
           </p>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center gap-1">
           <RevivalRing value={draft.revivalScore} />
-          <span className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
-            Revival Score
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Revival
           </span>
         </div>
       </div>
 
       {draft.stallAnalyzed && (
-        <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+        <div className="inline-flex w-fit items-center gap-1 rounded-full bg-[#aa3bff]/10 px-2 py-0.5 text-[10px] font-medium text-[#aa3bff]">
           🧬 Stall DNA analyzed
         </div>
       )}
 
-      {/* Bottom row */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Bottom: upvote row + badge row (separated to avoid overlap) */}
+      <div className="mt-auto flex flex-col gap-3 pt-1">
+        <div className="flex items-center justify-between">
           <button
             onClick={onUpvote}
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all duration-[180ms] ${
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition-all duration-[180ms] ${
               upvoted
-                ? "bg-primary text-primary-foreground shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
-                : "bg-primary/10 text-primary hover:bg-primary/15 group-hover/card:shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
+                ? "bg-[#aa3bff] text-white shadow-[0_0_18px_rgba(170,59,255,0.45)]"
+                : "bg-[#aa3bff]/10 text-[#aa3bff] hover:bg-[#aa3bff]/20"
             }`}
           >
-            ▲ {draft.upvotes + (upvoted ? 1 : 0)}
+            ▲ {draft.upvotes + (upvoted ? 1 : 0)} upvotes
           </button>
-          {open && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium text-emerald-500">
+          <span className="text-[11px] text-muted-foreground">{draft.timeAgo}</span>
+        </div>
+        {open && (
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-medium text-emerald-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Open for Revival
             </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span>{draft.timeAgo}</span>
-          <span className="inline-flex items-center gap-1 font-medium text-primary opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
-            View Draft <ArrowRight className="h-3 w-3" />
-          </span>
-        </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#aa3bff] opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
+              View Draft <ArrowRight className="h-3 w-3" />
+            </span>
+          </div>
+        )}
       </div>
     </motion.article>
   );
@@ -809,7 +800,7 @@ function InsightsCard() {
     { label: "Avg. Revival Score", value: `71 /100`, trend: "+12%" },
   ];
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 font-display text-sm font-semibold tracking-tight">
           DraftYard Insights <Info className="h-3 w-3 text-muted-foreground" />
@@ -837,7 +828,7 @@ function InsightsCard() {
 
 function StallPatternsCard() {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <h3 className="flex items-center gap-1.5 font-display text-sm font-semibold tracking-tight">
         Top Stall Patterns (ML) <Info className="h-3 w-3 text-muted-foreground" />
       </h3>
@@ -881,7 +872,7 @@ function SpotlightCard() {
     },
   ];
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <h3 className="font-display text-sm font-semibold tracking-tight">Community Spotlight</h3>
       <ul className="mt-4 space-y-3">
         {items.map((i) => (
