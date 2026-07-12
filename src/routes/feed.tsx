@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { drafts, type Draft } from "@/data/drafts";
-import heroCubePlant from "@/assets/feed-hero-cube-plant.png";
+
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -307,6 +307,85 @@ function FeedTopBar() {
 // Hero
 // ————————————————————————————————————————————————————————————————
 
+function HeroNetwork() {
+  // Deterministic node positions (viewBox 400x300). Right-side network.
+  const nodes = [
+    { x: 60, y: 40, r: 3 },
+    { x: 130, y: 90, r: 2.5 },
+    { x: 200, y: 30, r: 3.5 },
+    { x: 280, y: 80, r: 2.5 },
+    { x: 350, y: 40, r: 3 },
+    { x: 90, y: 170, r: 2.5 },
+    { x: 170, y: 210, r: 3 },
+    { x: 250, y: 160, r: 2.5 },
+    { x: 330, y: 220, r: 3 },
+    { x: 40, y: 250, r: 2.5 },
+    { x: 210, y: 120, r: 4 },
+    { x: 300, y: 260, r: 2.5 },
+  ];
+  const edges: Array<[number, number, boolean?]> = [
+    [0, 1], [1, 2], [2, 3, true], [3, 4], [1, 10], [2, 10, true],
+    [3, 10], [10, 6], [5, 6], [6, 7, true], [7, 8], [5, 9],
+    [6, 10], [7, 3], [8, 11, true], [9, 6], [4, 3], [0, 5],
+  ];
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 right-0 hidden w-[40%] overflow-hidden md:block"
+    >
+      {/* Light-mode lavender radial fade */}
+      <div className="absolute inset-0 dark:hidden bg-[radial-gradient(ellipse_at_center_right,rgba(196,181,253,0.18),transparent_70%)]" />
+      <svg
+        viewBox="0 0 400 300"
+        preserveAspectRatio="xMidYMid meet"
+        className="absolute inset-0 h-full w-full opacity-[0.08] dark:opacity-[0.15]"
+      >
+        <g className="text-slate-400 dark:text-[#a78bfa]">
+          {edges.map(([a, b, pulse], i) => {
+            const n1 = nodes[a];
+            const n2 = nodes[b];
+            return (
+              <line
+                key={i}
+                x1={n1.x}
+                y1={n1.y}
+                x2={n2.x}
+                y2={n2.y}
+                stroke="currentColor"
+                strokeWidth={0.8}
+                strokeLinecap="round"
+              >
+                {pulse && (
+                  <animate
+                    attributeName="stroke-opacity"
+                    values="0.3;1;0.3"
+                    dur={`${3 + (i % 3)}s`}
+                    repeatCount="indefinite"
+                  />
+                )}
+              </line>
+            );
+          })}
+        </g>
+        <g className="text-[#c4b5fd]">
+          {nodes.map((n, i) => (
+            <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor">
+              {i % 3 === 0 && (
+                <animate
+                  attributeName="opacity"
+                  values="0.6;1;0.6"
+                  dur={`${2.5 + (i % 4) * 0.6}s`}
+                  repeatCount="indefinite"
+                />
+              )}
+            </circle>
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 function HeroHeader() {
   const stats = [
     { label: "Total Drafts", value: TOTAL_DRAFTS.toLocaleString() },
@@ -316,16 +395,8 @@ function HeroHeader() {
   ];
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f] sm:p-8">
-      <div className="pointer-events-none absolute -right-8 top-1/2 hidden -translate-y-1/2 md:block">
-        <img
-          src={heroCubePlant}
-          alt=""
-          width={320}
-          height={320}
-          className="h-[220px] w-[220px] select-none opacity-95 drop-shadow-[0_20px_40px_color-mix(in_oklab,var(--primary)_35%,transparent)] lg:h-[260px] lg:w-[260px]"
-        />
-      </div>
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_18%,transparent),transparent_60%)]" />
+      <HeroNetwork />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_60%)]" />
       <div className="relative max-w-2xl">
         <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:text-[48px]">
           Discover unfinished{" "}
