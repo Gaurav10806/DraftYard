@@ -536,7 +536,7 @@ function FilterBar({
               onClick={() => onTab(t.id)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-[180ms] ${
                 tab === t.id
-                  ? "bg-[var(--feed-accent)] text-white shadow-[0_4px_20px_-6px_var(--feed-glow-rgba)]"
+                  ? "feed-tab-active bg-[var(--feed-accent)] text-white shadow-[0_4px_20px_-6px_var(--feed-glow-rgba)]"
                   : "bg-transparent text-muted-foreground hover:bg-[var(--feed-accent)]/10 hover:text-[var(--feed-accent)]"
               }`}
             >
