@@ -105,7 +105,31 @@ function aiInsightFor(d: Draft): string {
   return "Strong concept and early traction. Needs product direction and a small revival team.";
 }
 
-const FEED: FeedDraft[] = drafts.map((d, i) => {
+const STALL_PATTERN_POOL = [
+  "Scope Creep",
+  "Solo Burnout",
+  "Lack of Consistency",
+  "Waiting on Data",
+  "Perfectionism Trap",
+  "Lost Motivation",
+  "Team Fell Apart",
+  "Technical Blocker",
+];
+
+function stallPatternFor(d: Draft, h: number): string {
+  const why = d.whyItDied.toLowerCase();
+  if (/scope|feature|kept adding/.test(why)) return "Scope Creep";
+  if (/burnout|burned|alone|solo/.test(why)) return "Solo Burnout";
+  if (/motivation|interest|boring/.test(why)) return "Lost Motivation";
+  if (/team|cofounder|co-founder/.test(why)) return "Team Fell Apart";
+  if (/time|exam|semester|job|internship|deadline/.test(why)) return "Lack of Consistency";
+  if (/data|dataset|accuracy/.test(why)) return "Waiting on Data";
+  if (/api|bug|technical|cost|gpu/.test(why)) return "Technical Blocker";
+  if (/perfect|polish/.test(why)) return "Perfectionism Trap";
+  return STALL_PATTERN_POOL[h % STALL_PATTERN_POOL.length];
+}
+
+const FEED: (FeedDraft & { stallPattern: string })[] = drafts.map((d, i) => {
   const h = hashStr(d.projectName);
   return {
     ...d,
@@ -118,13 +142,14 @@ const FEED: FeedDraft[] = drafts.map((d, i) => {
     revivalScore: 55 + (h % 45),
     stallAnalyzed: h % 3 !== 0,
     stage: stageLabel(d.stageDied),
+    stallPattern: stallPatternFor(d, h),
   };
 });
 
 const TRENDING = [...FEED].sort((a, b) => b.upvotes - a.upvotes).slice(0, 8);
 
 const TOTAL_DRAFTS = 1248;
-const OPEN_FOR_REVIVAL = FEED.filter((d) => d.openForRevival).length * 20;
+const OPEN_FOR_REVIVAL = 392;
 const REVIVED_WEEK = 57;
 const AVG_REVIVAL = 78;
 
@@ -455,13 +480,13 @@ function TrendingCard({
           ))}
         </div>
         <div className="flex items-center justify-between pt-1">
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white">
-            <TrendingUp className="h-3 w-3" />
-            {draft.upvotes}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[13px] font-bold text-white ring-1 ring-white/25 backdrop-blur-sm">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {draft.upvotes.toLocaleString()}
           </span>
           {draft.openForRevival && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-medium text-emerald-100 ring-1 ring-emerald-400/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open for Revival
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open
             </span>
           )}
         </div>
@@ -599,7 +624,7 @@ function FeedGrid({
   onUpvote: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((d, i) => (
         <FeedCard
           key={d.id}
@@ -723,7 +748,7 @@ function FeedCard({
       </div>
 
       {/* Tech pills */}
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {draft.techStack.slice(0, 4).map((t) => (
           <span
             key={t}
@@ -732,6 +757,14 @@ function FeedCard({
             {t}
           </span>
         ))}
+      </div>
+
+      {/* Stall pattern tag */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          Stall Pattern: {(draft as FeedDraft & { stallPattern?: string }).stallPattern ?? "Unknown"}
+        </span>
       </div>
 
       {/* AI Insight + Revival Score */}
