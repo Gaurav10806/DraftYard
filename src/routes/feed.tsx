@@ -673,10 +673,8 @@ function FeedCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
-      className={`group/card relative overflow-hidden rounded-2xl border bg-card p-5 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-[0_22px_50px_-24px_color-mix(in_oklab,var(--primary)_45%,transparent)] ${
-        open
-          ? "border-emerald-500/30 hover:border-emerald-500/60"
-          : "border-border/60 hover:border-primary/40"
+      className={`group/card relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-card p-5 leading-[1.5] shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[#aa3bff] hover:shadow-[0_18px_40px_-18px_rgba(170,59,255,0.55)] dark:border-[#2a2a3d] dark:bg-[#13131f] ${
+        open ? "dark:border-emerald-500/40" : ""
       }`}
     >
       {open && (
@@ -694,15 +692,15 @@ function FeedCard({
           >
             {draft.projectName.slice(0, 1)}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate font-display text-base font-semibold tracking-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2">
+              <h3 className="text-[16px] font-semibold leading-[1.3] tracking-tight text-foreground">
                 {draft.projectName}
               </h3>
               <button
                 onClick={onBookmark}
                 aria-label="Bookmark"
-                className="text-muted-foreground transition-colors hover:text-primary"
+                className="mt-0.5 text-muted-foreground transition-colors hover:text-[#aa3bff]"
               >
                 {bookmarked ? (
                   <BookmarkCheck className="h-3.5 w-3.5" />
@@ -711,25 +709,25 @@ function FeedCard({
                 )}
               </button>
             </div>
-            <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
+            <p className="mt-1 text-xs leading-[1.5] text-muted-foreground">
               {draft.oneLiner}
             </p>
           </div>
         </div>
         <Badge
           variant="outline"
-          className="shrink-0 rounded-full border-border/60 bg-background/60 text-[10px] font-medium"
+          className="shrink-0 rounded-full border-border/60 bg-background/60 text-[10px] font-medium dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
         >
           {draft.stage}
         </Badge>
       </div>
 
       {/* Tech pills */}
-      <div className="mt-3 flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1">
         {draft.techStack.slice(0, 4).map((t) => (
           <span
             key={t}
-            className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+            className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
           >
             {t}
           </span>
@@ -737,54 +735,54 @@ function FeedCard({
       </div>
 
       {/* AI Insight + Revival Score */}
-      <div className="mt-4 flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1 border-l-2 border-[#aa3bff] pl-[10px]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#aa3bff]">
             <Sparkles className="h-3 w-3" /> AI Insight
           </div>
-          <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">
+          <p className="mt-1 line-clamp-2 text-xs italic leading-[1.5] text-muted-foreground">
             {draft.aiInsight}
           </p>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center gap-1">
           <RevivalRing value={draft.revivalScore} />
-          <span className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
-            Revival Score
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Revival
           </span>
         </div>
       </div>
 
       {draft.stallAnalyzed && (
-        <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+        <div className="inline-flex w-fit items-center gap-1 rounded-full bg-[#aa3bff]/10 px-2 py-0.5 text-[10px] font-medium text-[#aa3bff]">
           🧬 Stall DNA analyzed
         </div>
       )}
 
-      {/* Bottom row */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Bottom: upvote row + badge row (separated to avoid overlap) */}
+      <div className="mt-auto flex flex-col gap-3 pt-1">
+        <div className="flex items-center justify-between">
           <button
             onClick={onUpvote}
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all duration-[180ms] ${
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition-all duration-[180ms] ${
               upvoted
-                ? "bg-primary text-primary-foreground shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
-                : "bg-primary/10 text-primary hover:bg-primary/15 group-hover/card:shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
+                ? "bg-[#aa3bff] text-white shadow-[0_0_18px_rgba(170,59,255,0.45)]"
+                : "bg-[#aa3bff]/10 text-[#aa3bff] hover:bg-[#aa3bff]/20"
             }`}
           >
-            ▲ {draft.upvotes + (upvoted ? 1 : 0)}
+            ▲ {draft.upvotes + (upvoted ? 1 : 0)} upvotes
           </button>
-          {open && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium text-emerald-500">
+          <span className="text-[11px] text-muted-foreground">{draft.timeAgo}</span>
+        </div>
+        {open && (
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-medium text-emerald-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Open for Revival
             </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span>{draft.timeAgo}</span>
-          <span className="inline-flex items-center gap-1 font-medium text-primary opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
-            View Draft <ArrowRight className="h-3 w-3" />
-          </span>
-        </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#aa3bff] opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
+              View Draft <ArrowRight className="h-3 w-3" />
+            </span>
+          </div>
+        )}
       </div>
     </motion.article>
   );
