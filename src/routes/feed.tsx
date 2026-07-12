@@ -330,21 +330,24 @@ function HeroNetwork() {
     [3, 10], [10, 6], [5, 6], [6, 7, true], [7, 8], [5, 9],
     [6, 10], [7, 3], [8, 11, true], [9, 6], [4, 3], [0, 5],
   ];
+  // Signature edge for the slow traveling pulse (nodes 10 → 6).
+  const travelFrom = nodes[10];
+  const travelTo = nodes[6];
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-y-0 right-0 hidden w-[40%] overflow-hidden md:block"
     >
       {/* Soft lavender radial glow behind the whole network (light mode only) */}
-      <div className="absolute inset-0 dark:hidden bg-[radial-gradient(ellipse_60%_55%_at_65%_50%,rgba(167,139,250,0.22),transparent_75%)]" />
+      <div className="absolute inset-0 dark:hidden bg-[radial-gradient(ellipse_65%_60%_at_65%_50%,rgba(167,139,250,0.32),transparent_78%)]" />
       <svg
         viewBox="0 0 400 300"
         preserveAspectRatio="xMidYMid meet"
-        className="absolute inset-0 h-full w-full opacity-[0.22] dark:opacity-[0.15]"
-        style={{ filter: "drop-shadow(0 1px 1px rgba(76, 29, 149, 0.12))" }}
+        className="absolute inset-0 h-full w-full opacity-[0.55] dark:opacity-[0.15]"
+        style={{ filter: "drop-shadow(0 1px 1.5px rgba(76, 29, 149, 0.10))" }}
       >
-        {/* Connection lines — soft lavender-gray in light, indigo in dark */}
-        <g className="text-[#a8a3c8] dark:text-[#a78bfa]">
+        {/* Connection lines — soft lavender in light, indigo in dark */}
+        <g className="text-[#C9B8FF] dark:text-[#a78bfa]">
           {edges.map(([a, b, pulse], i) => {
             const n1 = nodes[a];
             const n2 = nodes[b];
@@ -356,13 +359,13 @@ function HeroNetwork() {
                 x2={n2.x}
                 y2={n2.y}
                 stroke="currentColor"
-                strokeWidth={0.9}
+                strokeWidth={1}
                 strokeLinecap="round"
               >
                 {pulse && (
                   <animate
                     attributeName="stroke-opacity"
-                    values="0.35;1;0.35"
+                    values="0.4;1;0.4"
                     dur={`${3 + (i % 3)}s`}
                     repeatCount="indefinite"
                   />
@@ -372,28 +375,54 @@ function HeroNetwork() {
           })}
         </g>
         {/* Neutral nodes */}
-        <g className="text-[#cbd0dc] dark:text-[#c4b5fd]">
+        <g className="text-[#B8BECC] dark:text-[#c4b5fd]">
           {nodes.map((n, i) =>
             HIGHLIGHTED.has(i) ? null : (
               <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor" />
             )
           )}
         </g>
-        {/* Highlighted purple accent nodes with gentle pulse */}
+        {/* Highlighted purple accent nodes — slow synchronized pulse (~7s) */}
         <g className="text-[#7C3AED] dark:text-[#c4b5fd]">
           {nodes.map((n, i) =>
             HIGHLIGHTED.has(i) ? (
-              <circle key={i} cx={n.x} cy={n.y} r={n.r + 0.4} fill="currentColor">
+              <circle
+                key={i}
+                cx={n.x}
+                cy={n.y}
+                r={n.r + 0.6}
+                fill="currentColor"
+              >
                 <animate
                   attributeName="opacity"
-                  values="0.55;1;0.55"
-                  dur={`${3 + (i % 4) * 0.7}s`}
+                  values="0.6;1;0.6"
+                  dur="7s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="r"
+                  values={`${n.r + 0.4};${n.r + 1.2};${n.r + 0.4}`}
+                  dur="7s"
                   repeatCount="indefinite"
                 />
               </circle>
             ) : null
           )}
         </g>
+        {/* Slow traveling pulse dot along one signature connection */}
+        <circle r="2.2" fill="#7C3AED" className="dark:fill-[#c4b5fd]" opacity="0.9">
+          <animate
+            attributeName="opacity"
+            values="0;0.9;0"
+            dur="7s"
+            repeatCount="indefinite"
+          />
+          <animateMotion
+            dur="7s"
+            repeatCount="indefinite"
+            path={`M${travelFrom.x},${travelFrom.y} L${travelTo.x},${travelTo.y}`}
+          />
+        </circle>
       </svg>
     </div>
   );
