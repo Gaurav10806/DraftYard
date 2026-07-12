@@ -221,7 +221,7 @@ function ProjectHero({
   const revivalScore = 78;
   return (
     <section className="project-hero relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
-      <ProjectNodeNetwork />
+      <HeroDotWave />
       <div className="relative z-10 grid gap-6 lg:grid-cols-[auto_1fr_auto_auto]">
         {/* Logo */}
         <div className="project-hero-logo grid h-24 w-24 shrink-0 place-items-center rounded-2xl">
@@ -438,6 +438,68 @@ function ProjectNodeNetwork({
             )}
           </circle>
         ))}
+      </g>
+    </svg>
+  );
+}
+
+// Wavy dotted line flowing horizontally across the hero (reference look)
+function HeroDotWave() {
+  const { dots, bright } = useMemo(() => {
+    const arr: { x: number; y: number; r: number }[] = [];
+    const bright: number[] = [];
+    const count = 70;
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
+      const x = 20 + t * 780;
+      // dual sine for a gentle organic wave
+      const y =
+        130 +
+        Math.sin(t * Math.PI * 2.4) * 46 +
+        Math.sin(t * Math.PI * 5.1 + 1.3) * 10;
+      const r = 1.2 + (i % 7 === 0 ? 1.3 : 0);
+      arr.push({ x, y, r });
+      if (i % 8 === 3) bright.push(i);
+    }
+    return { dots: arr, bright };
+  }, []);
+  return (
+    <svg
+      viewBox="0 0 800 260"
+      preserveAspectRatio="xMidYMid slice"
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      aria-hidden
+    >
+      <g className="project-node-dots">
+        {dots.map((d, i) => {
+          const isBright = bright.includes(i);
+          return (
+            <circle
+              key={i}
+              cx={d.x}
+              cy={d.y}
+              r={d.r}
+              className={isBright ? "project-node-bright" : ""}
+            >
+              {isBright && (
+                <>
+                  <animate
+                    attributeName="opacity"
+                    values="0.3;1;0.3"
+                    dur={`${4 + (i % 5) * 0.6}s`}
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="r"
+                    values={`${d.r};${d.r * 2.1};${d.r}`}
+                    dur={`${4 + (i % 5) * 0.6}s`}
+                    repeatCount="indefinite"
+                  />
+                </>
+              )}
+            </circle>
+          );
+        })}
       </g>
     </svg>
   );
