@@ -331,3 +331,65 @@
 :root:not(.dark) .feed-page .group\/card button.shadow-\[0_0_18px_var\(--feed-glow-rgba-soft\)\] {
   box-shadow: none !important;
 }
+
+
+/* ————————————————————————————————————————————————————————————
+ * Project details page — light/dark themed, node network, glow
+ * ———————————————————————————————————————————————————————————— */
+.project-page {
+  --project-accent: #a855f7;
+  --project-glow: rgba(168, 85, 247, 0.55);
+}
+.project-page .project-hero-logo {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 100%);
+  box-shadow: 0 12px 40px -12px rgba(139, 92, 246, 0.55);
+}
+
+/* Dark: neon node network */
+.dark .project-page .project-node-lines line { stroke: rgba(168, 85, 247, 0.35); }
+.dark .project-page .project-node-dots circle { fill: rgba(190, 160, 255, 0.7); }
+.dark .project-page .project-node-dots circle.project-node-bright {
+  fill: #22d3ee;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.9));
+}
+.dark .project-page .project-hero {
+  background:
+    radial-gradient(600px 260px at 90% 0%, rgba(168, 85, 247, 0.18), transparent 65%),
+    radial-gradient(500px 240px at 0% 100%, rgba(34, 211, 238, 0.12), transparent 60%),
+    #13131f;
+  border-color: rgba(168, 85, 247, 0.25);
+}
+.dark .project-page .project-card {
+  background: #13131f;
+  border-color: #2a2a3d;
+}
+
+/* Light: intentional lavender design (not inverted) */
+:root:not(.dark) .project-page {
+  --project-accent: #7c3aed;
+  --project-glow: rgba(124, 58, 237, 0.25);
+  background: #fafafa;
+}
+:root:not(.dark) .project-page [data-sidebar="inset"] { background: #fafafa; }
+:root:not(.dark) .project-page .project-node-lines line { stroke: rgba(124, 58, 237, 0.22); }
+:root:not(.dark) .project-page .project-node-dots circle { fill: rgba(124, 58, 237, 0.5); }
+:root:not(.dark) .project-page .project-node-dots circle.project-node-bright {
+  fill: #7c3aed;
+  filter: drop-shadow(0 0 4px rgba(124, 58, 237, 0.55));
+}
+:root:not(.dark) .project-page .project-hero {
+  background:
+    radial-gradient(700px 300px at 90% -10%, rgba(168, 85, 247, 0.14), transparent 60%),
+    radial-gradient(600px 280px at -10% 110%, rgba(236, 72, 153, 0.08), transparent 60%),
+    #ffffff;
+  border-color: #ece7f7;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.05), 0 12px 32px -18px rgba(124, 58, 237, 0.2);
+}
+:root:not(.dark) .project-page .project-card {
+  background: #ffffff;
+  border-color: #ece7f7;
+  box-shadow: 0 1px 2px rgba(15, 15, 30, 0.04), 0 6px 16px -10px rgba(124, 58, 237, 0.12);
+}
+:root:not(.dark) .project-page .project-card:hover {
+  box-shadow: 0 1px 2px rgba(15, 15, 30, 0.04), 0 14px 30px -14px rgba(124, 58, 237, 0.22);
+}
