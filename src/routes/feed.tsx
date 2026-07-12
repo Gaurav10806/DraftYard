@@ -415,6 +415,7 @@ function TrendingCarousel({
               key={d.id}
               draft={d}
               tint={AVATAR_TINTS[i % AVATAR_TINTS.length]}
+              tintIndex={i % AVATAR_TINTS.length}
               bookmarked={bookmarks.has(d.id)}
               onBookmark={() => onBookmark(d.id)}
             />
@@ -435,52 +436,57 @@ function TrendingCarousel({
 function TrendingCard({
   draft,
   tint,
+  tintIndex,
   bookmarked,
   onBookmark,
 }: {
   draft: FeedDraft;
   tint: string;
+  tintIndex: number;
   bookmarked: boolean;
   onBookmark: () => void;
 }) {
   return (
-    <div className={`group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)] bg-gradient-to-br ${tint}`}>
+    <div
+      data-tint={tintIndex}
+      className={`feed-trending group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)] bg-gradient-to-br ${tint}`}
+    >
       {/* purple → pink top gradient border */}
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[var(--feed-accent)] to-[#ff6b9d]" />
-      {/* dark gradient overlay for readability */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/75" />
+      <div className="feed-trending-topbar absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[var(--feed-accent)] to-[#ff6b9d]" />
+      {/* readability overlay (dark theme keeps strong, light theme softens) */}
+      <div className="feed-trending-overlay pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/75" />
       {/* soft top highlight */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
+      <div className="feed-trending-shine pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
 
-      <Badge className="absolute left-3 top-3 z-10 rounded-full border-0 bg-black/45 text-[10px] font-medium text-white backdrop-blur">
+      <Badge className="feed-trending-badge absolute left-3 top-3 z-10 rounded-full border-0 bg-black/45 text-[10px] font-medium text-white backdrop-blur">
         <Flame className="mr-1 h-3 w-3" /> Trending
       </Badge>
       <button
         onClick={onBookmark}
-        className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
+        className="feed-trending-bookmark absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
       >
         {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
       </button>
 
       <div className="relative z-[1] mt-auto flex flex-col gap-2 p-4 leading-[1.5]">
-        <h3 className="text-[16px] font-semibold leading-[1.3] tracking-tight text-white drop-shadow-sm">
+        <h3 className="feed-trending-title text-[16px] font-semibold leading-[1.3] tracking-tight text-white drop-shadow-sm">
           {draft.projectName}
         </h3>
-        <p className="line-clamp-2 text-[12px] leading-[1.5] text-white/80">
+        <p className="feed-trending-desc line-clamp-2 text-[12px] leading-[1.5] text-white/80">
           {draft.oneLiner}
         </p>
         <div className="flex flex-wrap gap-1">
           {draft.techStack.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm"
+              className="feed-trending-pill rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm"
             >
               {t}
             </span>
           ))}
         </div>
         <div className="flex items-center justify-between pt-1">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[13px] font-bold text-white ring-1 ring-white/25 backdrop-blur-sm">
+          <span className="feed-trending-upvote inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[13px] font-bold text-white ring-1 ring-white/25 backdrop-blur-sm">
             <TrendingUp className="h-3.5 w-3.5" />
             {draft.upvotes.toLocaleString()}
           </span>
@@ -761,8 +767,8 @@ function FeedCard({
 
       {/* Stall pattern tag */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        <span className="feed-stall-tag inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          <span className="feed-stall-dot h-1.5 w-1.5 rounded-full bg-amber-500" />
           Stall Pattern: {(draft as FeedDraft & { stallPattern?: string }).stallPattern ?? "Unknown"}
         </span>
       </div>
