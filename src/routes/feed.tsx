@@ -616,9 +616,84 @@ function TrendingCarousel({
   );
 }
 
+function TrendingArtwork({ tintIndex }: { tintIndex: number }) {
+  // Four low-saturation "cover" variants — abstract editorial artwork,
+  // inspired by GitHub Explore / Vercel Showcase project covers.
+  const variant = tintIndex % 4;
+  return (
+    <div className="feed-trending-art relative h-[110px] w-full overflow-hidden" data-variant={variant}>
+      {/* Base gradient (themed via CSS below) */}
+      <div className="feed-trending-art-bg absolute inset-0" />
+      {/* Soft radial highlight */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_25%_15%,rgba(255,255,255,0.35),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_25%_15%,rgba(255,255,255,0.08),transparent_60%)]" />
+      {/* Abstract SVG artwork — one shape per variant */}
+      <svg
+        viewBox="0 0 320 120"
+        preserveAspectRatio="xMidYMid slice"
+        className="absolute inset-0 h-full w-full"
+      >
+        {variant === 0 && (
+          // Concentric orbits — knowledge / connection
+          <g fill="none" stroke="currentColor" className="text-white/40 dark:text-white/25">
+            <ellipse cx="230" cy="60" rx="90" ry="34" strokeWidth="1" />
+            <ellipse cx="230" cy="60" rx="60" ry="22" strokeWidth="1" />
+            <ellipse cx="230" cy="60" rx="30" ry="11" strokeWidth="1" />
+            <circle cx="230" cy="60" r="4" fill="currentColor" stroke="none" />
+            <circle cx="290" cy="60" r="2.5" fill="currentColor" stroke="none" className="text-white/70" />
+            <circle cx="170" cy="60" r="2" fill="currentColor" stroke="none" className="text-white/70" />
+          </g>
+        )}
+        {variant === 1 && (
+          // Overlapping soft circles — collaboration
+          <g>
+            <circle cx="90" cy="70" r="46" fill="currentColor" className="text-white/25 dark:text-white/15" />
+            <circle cx="150" cy="45" r="34" fill="currentColor" className="text-white/30 dark:text-white/18" />
+            <circle cx="220" cy="75" r="42" fill="currentColor" className="text-white/22 dark:text-white/12" />
+            <circle cx="280" cy="40" r="24" fill="currentColor" className="text-white/35 dark:text-white/20" />
+          </g>
+        )}
+        {variant === 2 && (
+          // Layered peaks / mountain range — progress
+          <g>
+            <path d="M0,110 L60,55 L120,85 L190,35 L260,75 L320,45 L320,120 L0,120 Z"
+              fill="currentColor" className="text-white/25 dark:text-white/15" />
+            <path d="M0,120 L40,80 L110,100 L170,70 L240,95 L320,72 L320,120 Z"
+              fill="currentColor" className="text-white/30 dark:text-white/20" />
+            <circle cx="255" cy="30" r="10" fill="currentColor" className="text-white/60 dark:text-white/40" />
+          </g>
+        )}
+        {variant === 3 && (
+          // Grid + connection nodes — knowledge graph
+          <g>
+            <g stroke="currentColor" strokeWidth="1" className="text-white/22 dark:text-white/12">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <line key={`v${i}`} x1={40 + i * 36} y1="0" x2={40 + i * 36} y2="120" />
+              ))}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <line key={`h${i}`} x1="0" y1={20 + i * 28} x2="320" y2={20 + i * 28} />
+              ))}
+            </g>
+            <g fill="currentColor" className="text-white/85">
+              <circle cx="76" cy="48" r="3" />
+              <circle cx="184" cy="76" r="3.5" />
+              <circle cx="256" cy="48" r="3" />
+              <circle cx="220" cy="20" r="2.5" />
+            </g>
+            <g stroke="currentColor" strokeWidth="1.2" className="text-white/55">
+              <line x1="76" y1="48" x2="184" y2="76" />
+              <line x1="184" y1="76" x2="256" y2="48" />
+              <line x1="220" y1="20" x2="256" y2="48" />
+            </g>
+          </g>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 function TrendingCard({
   draft,
-  tint,
+  tint: _tint,
   tintIndex,
   bookmarked,
   onBookmark,
@@ -632,50 +707,49 @@ function TrendingCard({
   return (
     <div
       data-tint={tintIndex}
-      className={`feed-trending group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)] bg-gradient-to-br ${tint}`}
+      className="feed-trending group/tc relative snap-start w-72 shrink-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)]"
     >
-      {/* purple → pink top gradient border */}
-      <div className="feed-trending-topbar absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[var(--feed-accent)] to-[#ff6b9d]" />
-      {/* readability overlay (dark theme keeps strong, light theme softens) */}
-      <div className="feed-trending-overlay pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/75" />
-      {/* soft top highlight */}
-      <div className="feed-trending-shine pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)] transition-transform duration-[350ms] ease-out group-hover/tc:scale-110" />
+      {/* Artwork header (top ~38%) */}
+      <div className="relative">
+        <TrendingArtwork tintIndex={tintIndex} />
+        <Badge className="absolute left-3 top-3 z-10 rounded-full border-0 bg-black/45 text-[10px] font-medium text-white backdrop-blur">
+          <Flame className="mr-1 h-3 w-3" /> Trending
+        </Badge>
+        <button
+          onClick={onBookmark}
+          aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
+          className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
+        >
+          {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+        </button>
+      </div>
 
-      <Badge className="feed-trending-badge absolute left-3 top-3 z-10 rounded-full border-0 bg-black/45 text-[10px] font-medium text-white backdrop-blur">
-        <Flame className="mr-1 h-3 w-3" /> Trending
-      </Badge>
-      <button
-        onClick={onBookmark}
-        className="feed-trending-bookmark absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
-      >
-        {bookmarked ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-      </button>
-
-      <div className="relative z-[1] mt-auto flex flex-col gap-2 p-4 leading-[1.5]">
-        <h3 className="feed-trending-title text-[16px] font-semibold leading-[1.3] tracking-tight text-white drop-shadow-sm">
+      {/* Info surface */}
+      <div className="relative flex flex-1 flex-col gap-2 p-4">
+        <h3 className="text-[15px] font-semibold leading-[1.3] tracking-tight text-foreground">
           {draft.projectName}
         </h3>
-        <p className="feed-trending-desc line-clamp-2 text-[12px] leading-[1.5] text-white/80">
+        <p className="line-clamp-2 text-[12px] leading-[1.5] text-muted-foreground">
           {draft.oneLiner}
         </p>
         <div className="flex flex-wrap gap-1">
           {draft.techStack.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="feed-trending-pill rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm"
+              className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground/80"
             >
               {t}
             </span>
           ))}
         </div>
-        <div className="flex items-center justify-between pt-1">
-          <span className="feed-trending-upvote inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[13px] font-bold text-white ring-1 ring-white/25 backdrop-blur-sm">
+        <div className="mt-auto flex items-center justify-between pt-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--feed-accent)]/10 px-2.5 py-1 text-[13px] font-bold text-[var(--feed-accent)] ring-1 ring-[var(--feed-accent)]/20">
             <TrendingUp className="h-3.5 w-3.5" />
             {draft.upvotes.toLocaleString()}
           </span>
           {draft.openForRevival && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-medium text-emerald-100 ring-1 ring-emerald-400/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] font-medium text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-300" /> Open
             </span>
           )}
         </div>
