@@ -217,3 +217,118 @@
   );
 }
 
+
+/* ————————————————————————————————————————————————————————————
+ * Feed page — theme tokens + first-class light mode
+ * ———————————————————————————————————————————————————————————— */
+.feed-page {
+  --feed-accent: #aa3bff;
+  --feed-glow-rgba: rgba(170, 59, 255, 0.55);
+  --feed-glow-rgba-soft: rgba(170, 59, 255, 0.45);
+}
+
+:root:not(.dark) .feed-page {
+  /* deeper, calmer purple for light backgrounds */
+  --feed-accent: #7C3AED;
+  --feed-glow-rgba: rgba(124, 58, 237, 0.16);
+  --feed-glow-rgba-soft: rgba(124, 58, 237, 0.12);
+
+  background-color: #FAFAFA;
+  color: #0F0F0F;
+}
+
+:root:not(.dark) .feed-page [data-sidebar="inset"],
+:root:not(.dark) .feed-page > main,
+:root:not(.dark) .feed-page .SidebarInset {
+  background-color: #FAFAFA;
+}
+
+/* Card surfaces: pure white + soft premium shadow, quiet gray border */
+:root:not(.dark) .feed-page .bg-card {
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+:root:not(.dark) .feed-page .border-border\/60,
+:root:not(.dark) .feed-page .border-border {
+  border-color: #E5E7EB;
+}
+
+/* Headings + secondary text tuning */
+:root:not(.dark) .feed-page h1,
+:root:not(.dark) .feed-page h2,
+:root:not(.dark) .feed-page h3 {
+  color: #0F0F0F;
+}
+:root:not(.dark) .feed-page .text-muted-foreground {
+  color: #6B7280;
+}
+
+/* Trending — soft pastel gradients only, no neon, no bloom */
+:root:not(.dark) .feed-page .feed-trending {
+  background-image: none !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+:root:not(.dark) .feed-page .feed-trending[data-tint="0"] { background: linear-gradient(135deg, #EDE9FE 0%, #E0E7FF 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="1"] { background: linear-gradient(135deg, #CCFBF1 0%, #CFFAFE 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="2"] { background: linear-gradient(135deg, #FFEDD5 0%, #FEF3C7 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="3"] { background: linear-gradient(135deg, #DBEAFE 0%, #EEF2FF 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="4"] { background: linear-gradient(135deg, #FEF3C7 0%, #FFEDD5 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="5"] { background: linear-gradient(135deg, #FCE7F3 0%, #EDE9FE 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="6"] { background: linear-gradient(135deg, #CFFAFE 0%, #DBEAFE 100%); }
+:root:not(.dark) .feed-page .feed-trending[data-tint="7"] { background: linear-gradient(135deg, #DCFCE7 0%, #CCFBF1 100%); }
+:root:not(.dark) .feed-page .feed-trending:hover {
+  box-shadow: 0 8px 20px -8px rgba(124, 58, 237, 0.18) !important;
+}
+:root:not(.dark) .feed-page .feed-trending .feed-trending-overlay {
+  background: linear-gradient(180deg, transparent 55%, rgba(15, 15, 15, 0.10));
+}
+:root:not(.dark) .feed-page .feed-trending .feed-trending-shine { display: none; }
+:root:not(.dark) .feed-page .feed-trending .feed-trending-title { color: #0F0F0F; text-shadow: none; filter: none; }
+:root:not(.dark) .feed-page .feed-trending .feed-trending-desc { color: #4B5563; }
+:root:not(.dark) .feed-page .feed-trending .feed-trending-pill {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #374151;
+}
+:root:not(.dark) .feed-page .feed-trending .feed-trending-upvote {
+  background: rgba(255, 255, 255, 0.9);
+  color: #0F0F0F;
+  --tw-ring-color: rgba(0, 0, 0, 0.08);
+  box-shadow: none;
+}
+:root:not(.dark) .feed-page .feed-trending .feed-trending-badge {
+  background: rgba(15, 15, 15, 0.65);
+}
+:root:not(.dark) .feed-page .feed-trending .feed-trending-bookmark {
+  background: rgba(15, 15, 15, 0.55);
+}
+
+/* Filter tabs — soft purple pill for active state */
+:root:not(.dark) .feed-page .feed-tab-active {
+  background-color: #F3E8FF !important;
+  color: #7C3AED !important;
+  box-shadow: none !important;
+}
+
+/* Feed card hover — reduce neon glow */
+:root:not(.dark) .feed-page .group\/card:hover {
+  box-shadow: 0 8px 24px -12px rgba(124, 58, 237, 0.18) !important;
+}
+
+/* Stall pattern tag — muted pastel */
+:root:not(.dark) .feed-page .feed-stall-tag {
+  background-color: #FFF7ED !important;
+  border-color: #FED7AA !important;
+  color: #C2410C !important;
+}
+:root:not(.dark) .feed-page .feed-stall-dot {
+  background-color: #F97316;
+}
+
+/* Kill neon shadow on upvote pill in light mode */
+:root:not(.dark) .feed-page .group\/card button.shadow-\[0_0_18px_var\(--feed-glow-rgba-soft\)\] {
+  box-shadow: none !important;
+}
