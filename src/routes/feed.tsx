@@ -503,10 +503,10 @@ function FilterBar({
             <button
               key={t.id}
               onClick={() => onTab(t.id)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-[180ms] ${
+              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-[180ms] ${
                 tab === t.id
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-[#aa3bff] text-white shadow-[0_4px_20px_-6px_rgba(170,59,255,0.55)]"
+                  : "bg-transparent text-muted-foreground hover:bg-[#aa3bff]/10 hover:text-[#aa3bff]"
               }`}
             >
               {t.label}
