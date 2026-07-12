@@ -425,24 +425,28 @@
           drop-shadow(0 0 18px rgba(34, 211, 238, 0.5));
 }
 
-/* Light theme — lavender/periwinkle, softer glow, keeps visibility */
+/* Light theme — intentional lavender design (not inverted from dark).
+   Darker lavender lines on white, soft violet nodes, blurred lavender halo. */
 :root:not(.dark) .project-page {
-  --constellation-line: #a5b4fc;
-  --project-glow-core: rgba(167, 139, 250, 0.35);
-  --project-glow-mid: rgba(167, 139, 250, 0.08);
+  --constellation-line: #A78BFA;
+  --project-glow-core: rgba(196, 181, 253, 0.6);   /* #C4B5FD halo core */
+  --project-glow-mid:  rgba(237, 233, 254, 0.0);   /* fade to transparent */
 }
-:root:not(.dark) .project-page .constellation-edge { opacity: 0.35; }
+:root:not(.dark) .project-page .constellation-edge {
+  opacity: 1;
+  stroke-opacity: 0.42;
+}
 :root:not(.dark) .project-page .constellation-node--small {
-  fill: #a5b4fc;
-  opacity: 0.5;
+  fill: #8B5CF6;
+  opacity: 0.55;
 }
 :root:not(.dark) .project-page .constellation-node--purple {
-  fill: #8b5cf6;
-  filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.65))
-          drop-shadow(0 0 12px rgba(167, 139, 250, 0.4));
+  fill: #7C3AED;
+  filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.75))
+          drop-shadow(0 0 14px rgba(167, 139, 250, 0.55));
 }
 :root:not(.dark) .project-page .constellation-node--cyan {
-  fill: #06b6d4;
-  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.55))
-          drop-shadow(0 0 12px rgba(103, 232, 249, 0.35));
+  fill: #0891B2;
+  filter: drop-shadow(0 0 6px rgba(8, 145, 178, 0.65))
+          drop-shadow(0 0 14px rgba(103, 232, 249, 0.5));
 }
