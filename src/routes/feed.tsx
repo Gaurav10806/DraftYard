@@ -290,7 +290,7 @@ function HeroHeader() {
     { label: "Avg. Revival Rate", value: `${AVG_REVIVAL}%`, trend: "+12%" },
   ];
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8">
+    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f] sm:p-8">
       <div className="pointer-events-none absolute -right-8 top-1/2 hidden -translate-y-1/2 md:block">
         <img
           src={heroCubePlant}
@@ -495,7 +495,7 @@ function FilterBar({
   return (
     <div
       id="feed"
-      className="sticky top-2 z-20 space-y-3 rounded-2xl border border-border/60 bg-card/85 p-3 shadow-sm backdrop-blur-md"
+      className="sticky top-2 z-20 space-y-3 rounded-2xl border border-border/60 bg-card/85 dark:border-[#2a2a3d] dark:bg-[#13131f]/85 p-3 shadow-sm backdrop-blur-md"
     >
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1">
@@ -800,7 +800,7 @@ function InsightsCard() {
     { label: "Avg. Revival Score", value: `71 /100`, trend: "+12%" },
   ];
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 font-display text-sm font-semibold tracking-tight">
           DraftYard Insights <Info className="h-3 w-3 text-muted-foreground" />
@@ -828,7 +828,7 @@ function InsightsCard() {
 
 function StallPatternsCard() {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <h3 className="flex items-center gap-1.5 font-display text-sm font-semibold tracking-tight">
         Top Stall Patterns (ML) <Info className="h-3 w-3 text-muted-foreground" />
       </h3>
@@ -872,7 +872,7 @@ function SpotlightCard() {
     },
   ];
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <h3 className="font-display text-sm font-semibold tracking-tight">Community Spotlight</h3>
       <ul className="mt-4 space-y-3">
         {items.map((i) => (
