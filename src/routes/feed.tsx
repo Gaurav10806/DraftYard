@@ -310,45 +310,64 @@ function FeedTopBar() {
 function HeroNetwork() {
   // Deterministic node positions (viewBox 400x300). Right-side network.
   const nodes = [
-    { x: 60, y: 40, r: 3 },
-    { x: 130, y: 90, r: 2.5 },
-    { x: 200, y: 30, r: 3.5 },
-    { x: 280, y: 80, r: 2.5 },
-    { x: 350, y: 40, r: 3 },
-    { x: 90, y: 170, r: 2.5 },
-    { x: 170, y: 210, r: 3 },
-    { x: 250, y: 160, r: 2.5 },
-    { x: 330, y: 220, r: 3 },
-    { x: 40, y: 250, r: 2.5 },
-    { x: 210, y: 120, r: 4 },
-    { x: 300, y: 260, r: 2.5 },
+    { x: 55, y: 45, r: 3 },
+    { x: 125, y: 85, r: 2.5 },
+    { x: 200, y: 30, r: 3.8 },
+    { x: 280, y: 75, r: 2.5 },
+    { x: 355, y: 45, r: 3 },
+    { x: 85, y: 165, r: 2.5 },
+    { x: 165, y: 210, r: 3.2 },
+    { x: 250, y: 155, r: 2.5 },
+    { x: 335, y: 215, r: 3 },
+    { x: 45, y: 250, r: 2.5 },
+    { x: 210, y: 120, r: 4.2 },
+    { x: 305, y: 255, r: 2.5 },
+    { x: 150, y: 55, r: 2 },
+    { x: 370, y: 140, r: 2.5 },
+    { x: 115, y: 265, r: 2 },
+    { x: 230, y: 260, r: 2.2 },
   ];
-  // Anchor nodes accented with DraftYard purple + gentle pulse in light mode.
   const HIGHLIGHTED = new Set([2, 4, 6, 8, 10]);
-  const edges: Array<[number, number, boolean?]> = [
-    [0, 1], [1, 2], [2, 3, true], [3, 4], [1, 10], [2, 10, true],
-    [3, 10], [10, 6], [5, 6], [6, 7, true], [7, 8], [5, 9],
-    [6, 10], [7, 3], [8, 11, true], [9, 6], [4, 3], [0, 5],
+  const edges: Array<[number, number]> = [
+    [0, 1], [1, 2], [2, 3], [3, 4], [1, 10], [2, 10],
+    [3, 10], [10, 6], [5, 6], [6, 7], [7, 8], [5, 9],
+    [6, 10], [7, 3], [8, 11], [9, 6], [4, 3], [0, 5],
+    [12, 2], [12, 0], [13, 4], [13, 8], [14, 9], [14, 6],
+    [15, 6], [15, 11], [10, 7], [1, 5],
   ];
-  // Signature edge for the slow traveling pulse (nodes 10 → 6).
-  const travelFrom = nodes[10];
-  const travelTo = nodes[6];
+  // Traveling-pulse routes (a→b) — staggered for a living network feel.
+  const routes: Array<{ a: number; b: number; dur: number; delay: number }> = [
+    { a: 10, b: 6, dur: 3.2, delay: 0 },
+    { a: 0, b: 2, dur: 3.6, delay: 0.8 },
+    { a: 4, b: 3, dur: 3.0, delay: 1.6 },
+    { a: 8, b: 11, dur: 3.4, delay: 0.4 },
+    { a: 5, b: 9, dur: 3.8, delay: 2.1 },
+    { a: 2, b: 10, dur: 2.8, delay: 1.2 },
+  ];
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-y-0 right-0 hidden w-[40%] overflow-hidden md:block"
+      className="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] overflow-hidden md:block"
     >
-      {/* Soft lavender radial glow behind the whole network (light mode only) */}
+      {/* Soft lavender radial glow (light mode) */}
       <div className="absolute inset-0 dark:hidden bg-[radial-gradient(ellipse_65%_60%_at_65%_50%,rgba(167,139,250,0.32),transparent_78%)]" />
+      {/* Purple radial glow (dark mode) */}
+      <div className="absolute inset-0 hidden dark:block bg-[radial-gradient(ellipse_65%_60%_at_65%_50%,rgba(139,92,246,0.22),transparent_78%)]" />
       <svg
         viewBox="0 0 400 300"
         preserveAspectRatio="xMidYMid meet"
-        className="absolute inset-0 h-full w-full opacity-[0.55] dark:opacity-[0.15]"
-        style={{ filter: "drop-shadow(0 1px 1.5px rgba(76, 29, 149, 0.10))" }}
+        className="absolute inset-0 h-full w-full opacity-[0.7] dark:opacity-[0.55]"
       >
-        {/* Connection lines — soft lavender in light, indigo in dark */}
-        <g className="text-[#C9B8FF] dark:text-[#a78bfa]">
-          {edges.map(([a, b, pulse], i) => {
+        <defs>
+          <radialGradient id="dy-node-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Connection lines with subtle breathing opacity */}
+        <g className="text-[#B8A5F5] dark:text-[#8b5cf6]">
+          {edges.map(([a, b], i) => {
             const n1 = nodes[a];
             const n2 = nodes[b];
             return (
@@ -361,68 +380,119 @@ function HeroNetwork() {
                 stroke="currentColor"
                 strokeWidth={1}
                 strokeLinecap="round"
+                strokeOpacity={0.55}
               >
-                {pulse && (
-                  <animate
-                    attributeName="stroke-opacity"
-                    values="0.4;1;0.4"
-                    dur={`${3 + (i % 3)}s`}
-                    repeatCount="indefinite"
-                  />
-                )}
+                <animate
+                  attributeName="stroke-opacity"
+                  values="0.35;0.85;0.35"
+                  dur={`${4 + (i % 5)}s`}
+                  begin={`${(i % 6) * 0.4}s`}
+                  repeatCount="indefinite"
+                />
               </line>
             );
           })}
         </g>
-        {/* Neutral nodes */}
-        <g className="text-[#B8BECC] dark:text-[#c4b5fd]">
-          {nodes.map((n, i) =>
-            HIGHLIGHTED.has(i) ? null : (
-              <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor" />
-            )
-          )}
-        </g>
-        {/* Highlighted purple accent nodes — slow synchronized pulse (~7s) */}
-        <g className="text-[#7C3AED] dark:text-[#c4b5fd]">
+
+        {/* Soft halos behind highlighted nodes */}
+        <g>
           {nodes.map((n, i) =>
             HIGHLIGHTED.has(i) ? (
               <circle
-                key={i}
+                key={`halo-${i}`}
                 cx={n.x}
                 cy={n.y}
-                r={n.r + 0.6}
-                fill="currentColor"
+                r={n.r + 8}
+                fill="url(#dy-node-glow)"
               >
                 <animate
-                  attributeName="opacity"
-                  values="0.6;1;0.6"
-                  dur="7s"
+                  attributeName="r"
+                  values={`${n.r + 6};${n.r + 12};${n.r + 6}`}
+                  dur="5s"
+                  begin={`${(i * 0.6) % 3}s`}
                   repeatCount="indefinite"
                 />
                 <animate
-                  attributeName="r"
-                  values={`${n.r + 0.4};${n.r + 1.2};${n.r + 0.4}`}
-                  dur="7s"
+                  attributeName="opacity"
+                  values="0.5;1;0.5"
+                  dur="5s"
+                  begin={`${(i * 0.6) % 3}s`}
                   repeatCount="indefinite"
                 />
               </circle>
             ) : null
           )}
         </g>
-        {/* Slow traveling pulse dot along one signature connection */}
-        <circle r="2.2" fill="#7C3AED" className="dark:fill-[#c4b5fd]" opacity="0.9">
-          <animate
-            attributeName="opacity"
-            values="0;0.9;0"
-            dur="7s"
-            repeatCount="indefinite"
-          />
-          <animateMotion
-            dur="7s"
-            repeatCount="indefinite"
-            path={`M${travelFrom.x},${travelFrom.y} L${travelTo.x},${travelTo.y}`}
-          />
-        </circle>
+
+        {/* Neutral nodes with subtle twinkle */}
+        <g className="text-[#B8BECC] dark:text-[#c4b5fd]">
+          {nodes.map((n, i) =>
+            HIGHLIGHTED.has(i) ? null : (
+              <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor">
+                <animate
+                  attributeName="opacity"
+                  values="0.55;1;0.55"
+                  dur={`${3.5 + (i % 4)}s`}
+                  begin={`${(i * 0.3) % 4}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+            )
+          )}
+        </g>
+
+        {/* Highlighted accent nodes — pulse */}
+        <g className="text-[#7C3AED] dark:text-[#c4b5fd]">
+          {nodes.map((n, i) =>
+            HIGHLIGHTED.has(i) ? (
+              <circle key={i} cx={n.x} cy={n.y} r={n.r + 0.6} fill="currentColor">
+                <animate
+                  attributeName="r"
+                  values={`${n.r + 0.4};${n.r + 1.6};${n.r + 0.4}`}
+                  dur="4s"
+                  begin={`${(i * 0.5) % 2}s`}
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.75;1;0.75"
+                  dur="4s"
+                  begin={`${(i * 0.5) % 2}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+            ) : null
+          )}
+        </g>
+
+        {/* Traveling pulse dots along multiple routes */}
+        {routes.map(({ a, b, dur, delay }, i) => {
+          const n1 = nodes[a];
+          const n2 = nodes[b];
+          return (
+            <circle
+              key={`pulse-${i}`}
+              r="2.4"
+              fill="#7C3AED"
+              className="dark:fill-[#c4b5fd]"
+            >
+              <animate
+                attributeName="opacity"
+                values="0;1;1;0"
+                keyTimes="0;0.15;0.85;1"
+                dur={`${dur}s`}
+                begin={`${delay}s`}
+                repeatCount="indefinite"
+              />
+              <animateMotion
+                dur={`${dur}s`}
+                begin={`${delay}s`}
+                repeatCount="indefinite"
+                path={`M${n1.x},${n1.y} L${n2.x},${n2.y}`}
+              />
+            </circle>
+          );
+        })}
       </svg>
     </div>
   );
