@@ -315,8 +315,8 @@ function RevivalDial({ value }: { value: number }) {
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   return (
-    <div className="relative grid h-24 w-24 place-items-center">
-      <svg viewBox="0 0 80 80" className="absolute inset-0 -rotate-90">
+    <div className="relative grid h-28 w-28 place-items-center">
+      <svg viewBox="0 0 80 80" className="absolute inset-0 -rotate-90 h-full w-full">
         <defs>
           <linearGradient id="revival-grad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#8b5cf6" />
@@ -344,12 +344,12 @@ function RevivalDial({ value }: { value: number }) {
           style={{ filter: "drop-shadow(0 0 6px rgba(139,92,246,0.55))" }}
         />
       </svg>
-      <div className="relative text-center">
-        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="relative flex flex-col items-center justify-center leading-none">
+        <div className="text-[8px] font-medium uppercase tracking-wider text-muted-foreground">
           Revival Score
         </div>
-        <div className="font-display text-2xl font-bold leading-none">{value}</div>
-        <div className="text-[9px] text-muted-foreground">/100</div>
+        <div className="font-display text-[26px] font-bold leading-none mt-0.5">{value}</div>
+        <div className="text-[9px] text-muted-foreground mt-0.5">/100</div>
       </div>
     </div>
   );
