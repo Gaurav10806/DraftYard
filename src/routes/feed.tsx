@@ -711,7 +711,7 @@ function TrendingCard({
           <Flame className="mr-1 h-3 w-3" /> Trending
         </Badge>
         <button
-          onClick={onBookmark}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBookmark(); }}
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
           className="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/60"
         >
