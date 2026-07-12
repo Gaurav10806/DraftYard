@@ -329,12 +329,12 @@ function HeroHeader() {
       <div className="relative max-w-2xl">
         <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:text-[48px]">
           Discover unfinished{" "}
-          <span className="text-[#aa3bff]">
+          <span className="text-[var(--feed-accent)]">
             ideas.
           </span>
           <br />
           <span className="dark:text-white">Revive what </span>
-          <span className="text-[#aa3bff]">
+          <span className="text-[var(--feed-accent)]">
             matters.
           </span>
         </h1>
@@ -444,9 +444,9 @@ function TrendingCard({
   onBookmark: () => void;
 }) {
   return (
-    <div className={`group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[#aa3bff] hover:shadow-[0_18px_40px_-18px_rgba(170,59,255,0.55)] bg-gradient-to-br ${tint}`}>
+    <div className={`group/tc relative snap-start w-72 shrink-0 min-h-[180px] flex flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)] bg-gradient-to-br ${tint}`}>
       {/* purple → pink top gradient border */}
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#aa3bff] to-[#ff6b9d]" />
+      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[var(--feed-accent)] to-[#ff6b9d]" />
       {/* dark gradient overlay for readability */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/75" />
       {/* soft top highlight */}
@@ -530,8 +530,8 @@ function FilterBar({
               onClick={() => onTab(t.id)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-[180ms] ${
                 tab === t.id
-                  ? "bg-[#aa3bff] text-white shadow-[0_4px_20px_-6px_rgba(170,59,255,0.55)]"
-                  : "bg-transparent text-muted-foreground hover:bg-[#aa3bff]/10 hover:text-[#aa3bff]"
+                  ? "bg-[var(--feed-accent)] text-white shadow-[0_4px_20px_-6px_var(--feed-glow-rgba)]"
+                  : "bg-transparent text-muted-foreground hover:bg-[var(--feed-accent)]/10 hover:text-[var(--feed-accent)]"
               }`}
             >
               {t.label}
@@ -698,7 +698,7 @@ function FeedCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
-      className={`group/card relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-card p-5 leading-[1.5] shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[#aa3bff] hover:shadow-[0_18px_40px_-18px_rgba(170,59,255,0.55)] dark:border-[#2a2a3d] dark:bg-[#13131f] ${
+      className={`group/card relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-card p-5 leading-[1.5] shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:border-[var(--feed-accent)] hover:shadow-[0_18px_40px_-18px_var(--feed-glow-rgba)] dark:border-[#2a2a3d] dark:bg-[#13131f] ${
         open ? "dark:border-emerald-500/40" : ""
       }`}
     >
@@ -725,7 +725,7 @@ function FeedCard({
               <button
                 onClick={onBookmark}
                 aria-label="Bookmark"
-                className="mt-0.5 text-muted-foreground transition-colors hover:text-[#aa3bff]"
+                className="mt-0.5 text-muted-foreground transition-colors hover:text-[var(--feed-accent)]"
               >
                 {bookmarked ? (
                   <BookmarkCheck className="h-3.5 w-3.5" />
@@ -769,8 +769,8 @@ function FeedCard({
 
       {/* AI Insight + Revival Score */}
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1 border-l-2 border-[#aa3bff] pl-[10px]">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#aa3bff]">
+        <div className="min-w-0 flex-1 border-l-2 border-[var(--feed-accent)] pl-[10px]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--feed-accent)]">
             <Sparkles className="h-3 w-3" /> AI Insight
           </div>
           <p className="mt-1 line-clamp-2 text-xs italic leading-[1.5] text-muted-foreground">
@@ -786,7 +786,7 @@ function FeedCard({
       </div>
 
       {draft.stallAnalyzed && (
-        <div className="inline-flex w-fit items-center gap-1 rounded-full bg-[#aa3bff]/10 px-2 py-0.5 text-[10px] font-medium text-[#aa3bff]">
+        <div className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--feed-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--feed-accent)]">
           🧬 Stall DNA analyzed
         </div>
       )}
@@ -798,8 +798,8 @@ function FeedCard({
             onClick={onUpvote}
             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition-all duration-[180ms] ${
               upvoted
-                ? "bg-[#aa3bff] text-white shadow-[0_0_18px_rgba(170,59,255,0.45)]"
-                : "bg-[#aa3bff]/10 text-[#aa3bff] hover:bg-[#aa3bff]/20"
+                ? "bg-[var(--feed-accent)] text-white shadow-[0_0_18px_var(--feed-glow-rgba-soft)]"
+                : "bg-[var(--feed-accent)]/10 text-[var(--feed-accent)] hover:bg-[var(--feed-accent)]/20"
             }`}
           >
             ▲ {draft.upvotes + (upvoted ? 1 : 0)} upvotes
@@ -811,7 +811,7 @@ function FeedCard({
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-medium text-emerald-500">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Open for Revival
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#aa3bff] opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--feed-accent)] opacity-0 -translate-x-1 transition-all duration-[220ms] group-hover/card:opacity-100 group-hover/card:translate-x-0">
               View Draft <ArrowRight className="h-3 w-3" />
             </span>
           </div>
