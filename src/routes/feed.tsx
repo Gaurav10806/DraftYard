@@ -480,13 +480,13 @@ function TrendingCard({
           ))}
         </div>
         <div className="flex items-center justify-between pt-1">
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white">
-            <TrendingUp className="h-3 w-3" />
-            {draft.upvotes}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[13px] font-bold text-white ring-1 ring-white/25 backdrop-blur-sm">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {draft.upvotes.toLocaleString()}
           </span>
           {draft.openForRevival && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 px-2 py-0.5 text-[10px] font-medium text-emerald-100 ring-1 ring-emerald-400/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open for Revival
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Open
             </span>
           )}
         </div>
