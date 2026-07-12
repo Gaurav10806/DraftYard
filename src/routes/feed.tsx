@@ -302,14 +302,15 @@ function HeroHeader() {
       </div>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_18%,transparent),transparent_60%)]" />
       <div className="relative max-w-2xl">
-        <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight text-foreground dark:text-white sm:text-[48px]">
           Discover unfinished{" "}
-          <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">
+          <span className="text-[#aa3bff]">
             ideas.
           </span>
           <br />
-          <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">
-            Revive what matters.
+          <span className="dark:text-white">Revive what </span>
+          <span className="text-[#aa3bff]">
+            matters.
           </span>
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
