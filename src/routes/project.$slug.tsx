@@ -221,7 +221,7 @@ function ProjectHero({
   const revivalScore = 78;
   return (
     <section className="project-hero relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
-      <ProjectNodeNetwork />
+      <HeroDotWave />
       <div className="relative z-10 grid gap-6 lg:grid-cols-[auto_1fr_auto_auto]">
         {/* Logo */}
         <div className="project-hero-logo grid h-24 w-24 shrink-0 place-items-center rounded-2xl">
