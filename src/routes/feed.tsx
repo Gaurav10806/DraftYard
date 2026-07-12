@@ -624,7 +624,7 @@ function scoreColor(v: number) {
 
 function RevivalRing({ value }: { value: number }) {
   const c = scoreColor(value);
-  const r = 22;
+  const r = 24;
   const circ = 2 * Math.PI * r;
   const dash = (value / 100) * circ;
   return (
@@ -644,10 +644,7 @@ function RevivalRing({ value }: { value: number }) {
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center leading-none">
-        <div className="text-center">
-          <div className={`font-display text-sm font-bold ${c.text}`}>{value}</div>
-          <div className="text-[8px] text-muted-foreground">/100</div>
-        </div>
+        <div className={`font-display text-[20px] font-bold leading-none ${c.text}`}>{value}</div>
       </div>
     </div>
   );
