@@ -356,33 +356,43 @@ function RevivalDial({ value }: { value: number }) {
 }
 
 // Dotted node network background (matches reference aesthetic)
-function ProjectNodeNetwork() {
+function ProjectNodeNetwork({
+  variant = "hero",
+}: {
+  variant?: "hero" | "page";
+}) {
   const nodes = useMemo(() => {
     const arr: { x: number; y: number; r: number; b?: boolean }[] = [];
     const rand = (seed: number) => {
       const x = Math.sin(seed) * 10000;
       return x - Math.floor(x);
     };
-    for (let i = 0; i < 22; i++) {
+    const count = variant === "page" ? 26 : 14;
+    const height = variant === "page" ? 900 : 260;
+    for (let i = 0; i < count; i++) {
       arr.push({
-        x: 40 + rand(i * 3.1) * 720,
-        y: 20 + rand(i * 7.7) * 220,
-        r: 1.4 + rand(i * 11.3) * 2.4,
-        b: i % 5 === 0,
+        x: 30 + rand(i * 3.1) * 760,
+        y: 20 + rand(i * 7.7) * (height - 40),
+        r: 1.3 + rand(i * 11.3) * 1.8,
+        b: i % 4 === 0,
       });
     }
     return arr;
-  }, []);
+  }, [variant]);
+  const viewH = variant === "page" ? 900 : 260;
   return (
     <svg
-      viewBox="0 0 800 260"
+      viewBox={`0 0 800 ${viewH}`}
       preserveAspectRatio="xMidYMid slice"
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-70"
+      className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden
     >
       <g className="project-node-lines">
         {nodes.slice(0, -1).map((n, i) => {
           const m = nodes[(i + 3) % nodes.length];
+          const dx = m.x - n.x;
+          const dy = m.y - n.y;
+          if (Math.hypot(dx, dy) > 260) return null;
           return (
             <line
               key={i}
@@ -390,8 +400,8 @@ function ProjectNodeNetwork() {
               y1={n.y}
               x2={m.x}
               y2={m.y}
-              strokeDasharray="2 4"
-              strokeWidth="0.8"
+              strokeDasharray="2 5"
+              strokeWidth="0.7"
             />
           );
         })}
@@ -406,12 +416,20 @@ function ProjectNodeNetwork() {
             className={n.b ? "project-node-bright" : ""}
           >
             {n.b && (
-              <animate
-                attributeName="opacity"
-                values="0.4;1;0.4"
-                dur={`${2 + (i % 3)}s`}
-                repeatCount="indefinite"
-              />
+              <>
+                <animate
+                  attributeName="opacity"
+                  values="0.25;1;0.25"
+                  dur={`${4.5 + (i % 4) * 0.8}s`}
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="r"
+                  values={`${n.r};${n.r * 1.9};${n.r}`}
+                  dur={`${4.5 + (i % 4) * 0.8}s`}
+                  repeatCount="indefinite"
+                />
+              </>
             )}
           </circle>
         ))}
