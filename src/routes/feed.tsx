@@ -105,7 +105,31 @@ function aiInsightFor(d: Draft): string {
   return "Strong concept and early traction. Needs product direction and a small revival team.";
 }
 
-const FEED: FeedDraft[] = drafts.map((d, i) => {
+const STALL_PATTERN_POOL = [
+  "Scope Creep",
+  "Solo Burnout",
+  "Lack of Consistency",
+  "Waiting on Data",
+  "Perfectionism Trap",
+  "Lost Motivation",
+  "Team Fell Apart",
+  "Technical Blocker",
+];
+
+function stallPatternFor(d: Draft, h: number): string {
+  const why = d.whyItDied.toLowerCase();
+  if (/scope|feature|kept adding/.test(why)) return "Scope Creep";
+  if (/burnout|burned|alone|solo/.test(why)) return "Solo Burnout";
+  if (/motivation|interest|boring/.test(why)) return "Lost Motivation";
+  if (/team|cofounder|co-founder/.test(why)) return "Team Fell Apart";
+  if (/time|exam|semester|job|internship|deadline/.test(why)) return "Lack of Consistency";
+  if (/data|dataset|accuracy/.test(why)) return "Waiting on Data";
+  if (/api|bug|technical|cost|gpu/.test(why)) return "Technical Blocker";
+  if (/perfect|polish/.test(why)) return "Perfectionism Trap";
+  return STALL_PATTERN_POOL[h % STALL_PATTERN_POOL.length];
+}
+
+const FEED: (FeedDraft & { stallPattern: string })[] = drafts.map((d, i) => {
   const h = hashStr(d.projectName);
   return {
     ...d,
@@ -118,13 +142,14 @@ const FEED: FeedDraft[] = drafts.map((d, i) => {
     revivalScore: 55 + (h % 45),
     stallAnalyzed: h % 3 !== 0,
     stage: stageLabel(d.stageDied),
+    stallPattern: stallPatternFor(d, h),
   };
 });
 
 const TRENDING = [...FEED].sort((a, b) => b.upvotes - a.upvotes).slice(0, 8);
 
 const TOTAL_DRAFTS = 1248;
-const OPEN_FOR_REVIVAL = FEED.filter((d) => d.openForRevival).length * 20;
+const OPEN_FOR_REVIVAL = 392;
 const REVIVED_WEEK = 57;
 const AVG_REVIVAL = 78;
 
