@@ -748,7 +748,7 @@ function FeedCard({
       </div>
 
       {/* Tech pills */}
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {draft.techStack.slice(0, 4).map((t) => (
           <span
             key={t}
@@ -757,6 +757,14 @@ function FeedCard({
             {t}
           </span>
         ))}
+      </div>
+
+      {/* Stall pattern tag */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          Stall Pattern: {(draft as FeedDraft & { stallPattern?: string }).stallPattern ?? "Unknown"}
+        </span>
       </div>
 
       {/* AI Insight + Revival Score */}
