@@ -276,32 +276,32 @@
   box-shadow: 0 14px 34px -14px rgba(124, 58, 237, 0.18) !important;
 }
 
-/* Artwork gradient per variant — light mode (soft, premium) */
+/* Artwork gradient per variant — light mode (softer, lower saturation) */
 :root:not(.dark) .feed-page .feed-trending-art[data-variant="0"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 55%, #A5B4FC 100%);
+  background: linear-gradient(135deg, #6366F1 0%, #7C6FE8 55%, #8B7ED8 100%);
 }
 :root:not(.dark) .feed-page .feed-trending-art[data-variant="1"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #CCFBF1 0%, #99F6E4 55%, #5EEAD4 100%);
+  background: linear-gradient(135deg, #0EA5A5 0%, #1FB6A8 55%, #34C4A8 100%);
 }
 :root:not(.dark) .feed-page .feed-trending-art[data-variant="2"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #FDE8D4 0%, #FBCFB1 55%, #F5A78A 100%);
+  background: linear-gradient(135deg, #E27A5F 0%, #E89579 55%, #ECA88E 100%);
 }
 :root:not(.dark) .feed-page .feed-trending-art[data-variant="3"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #E2E8F0 0%, #CBD5E1 55%, #94A3B8 100%);
+  background: linear-gradient(135deg, #475569 0%, #5B6B82 55%, #6E7E94 100%);
 }
 
-/* Artwork gradient per variant — dark mode (richer, slightly desaturated) */
+/* Artwork gradient per variant — dark mode (richer, higher contrast) */
 .dark .feed-page .feed-trending-art[data-variant="0"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #3b2f7a 0%, #4c3fa3 55%, #6d5fd1 100%);
+  background: linear-gradient(135deg, #4F46E5 0%, #6D5FE8 55%, #8B7EE8 100%);
 }
 .dark .feed-page .feed-trending-art[data-variant="1"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #114b47 0%, #1b6b64 55%, #2a8f86 100%);
+  background: linear-gradient(135deg, #0F766E 0%, #14A093 55%, #2DD4BF 100%);
 }
 .dark .feed-page .feed-trending-art[data-variant="2"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #6b3a26 0%, #8a4a30 55%, #b2603d 100%);
+  background: linear-gradient(135deg, #C2410C 0%, #DB6B3A 55%, #F97316 100%);
 }
 .dark .feed-page .feed-trending-art[data-variant="3"] .feed-trending-art-bg {
-  background: linear-gradient(135deg, #1f2937 0%, #334155 55%, #475569 100%);
+  background: linear-gradient(135deg, #334155 0%, #475569 55%, #64748B 100%);
 }
 
 
