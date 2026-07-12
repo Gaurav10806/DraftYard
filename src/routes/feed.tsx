@@ -624,7 +624,7 @@ function FeedGrid({
   onUpvote: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((d, i) => (
         <FeedCard
           key={d.id}
