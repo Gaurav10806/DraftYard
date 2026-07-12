@@ -150,26 +150,31 @@ function ProjectPage() {
     <SidebarProvider>
       <div className="project-page flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col">
-          <ProjectTopBar />
-          <motion.main
-            className="flex-1 p-4 sm:p-6"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <ProjectHero
-              draft={draft}
-              bookmarked={bookmarked}
-              onBookmark={() => setBookmarked((b) => !b)}
-            />
-            <ProjectTabs tab={tab} onTab={setTab} />
-            <div className="h-6" />
-            {tab === "overview" && <OverviewTab draft={draft} />}
-            {tab === "discussions" && <DiscussionsTab />}
-            {tab === "contributors" && <ContributorsTab />}
-            {tab === "activity" && <ActivityTab />}
-          </motion.main>
+        <SidebarInset className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 z-0 opacity-60">
+            <ProjectNodeNetwork variant="page" />
+          </div>
+          <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+            <ProjectTopBar />
+            <motion.main
+              className="flex-1 p-4 sm:p-6"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <ProjectHero
+                draft={draft}
+                bookmarked={bookmarked}
+                onBookmark={() => setBookmarked((b) => !b)}
+              />
+              <ProjectTabs tab={tab} onTab={setTab} />
+              <div className="h-6" />
+              {tab === "overview" && <OverviewTab draft={draft} />}
+              {tab === "discussions" && <DiscussionsTab />}
+              {tab === "contributors" && <ContributorsTab />}
+              {tab === "activity" && <ActivityTab />}
+            </motion.main>
+          </div>
         </SidebarInset>
       </div>
     </SidebarProvider>
@@ -315,8 +320,8 @@ function RevivalDial({ value }: { value: number }) {
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   return (
-    <div className="relative grid h-24 w-24 place-items-center">
-      <svg viewBox="0 0 80 80" className="absolute inset-0 -rotate-90">
+    <div className="relative grid h-28 w-28 place-items-center">
+      <svg viewBox="0 0 80 80" className="absolute inset-0 -rotate-90 h-full w-full">
         <defs>
           <linearGradient id="revival-grad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#8b5cf6" />
@@ -344,45 +349,55 @@ function RevivalDial({ value }: { value: number }) {
           style={{ filter: "drop-shadow(0 0 6px rgba(139,92,246,0.55))" }}
         />
       </svg>
-      <div className="relative text-center">
-        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="relative flex flex-col items-center justify-center leading-none">
+        <div className="text-[8px] font-medium uppercase tracking-wider text-muted-foreground">
           Revival Score
         </div>
-        <div className="font-display text-2xl font-bold leading-none">{value}</div>
-        <div className="text-[9px] text-muted-foreground">/100</div>
+        <div className="font-display text-[26px] font-bold leading-none mt-0.5">{value}</div>
+        <div className="text-[9px] text-muted-foreground mt-0.5">/100</div>
       </div>
     </div>
   );
 }
 
 // Dotted node network background (matches reference aesthetic)
-function ProjectNodeNetwork() {
+function ProjectNodeNetwork({
+  variant = "hero",
+}: {
+  variant?: "hero" | "page";
+}) {
   const nodes = useMemo(() => {
     const arr: { x: number; y: number; r: number; b?: boolean }[] = [];
     const rand = (seed: number) => {
       const x = Math.sin(seed) * 10000;
       return x - Math.floor(x);
     };
-    for (let i = 0; i < 22; i++) {
+    const count = variant === "page" ? 26 : 14;
+    const height = variant === "page" ? 900 : 260;
+    for (let i = 0; i < count; i++) {
       arr.push({
-        x: 40 + rand(i * 3.1) * 720,
-        y: 20 + rand(i * 7.7) * 220,
-        r: 1.4 + rand(i * 11.3) * 2.4,
-        b: i % 5 === 0,
+        x: 30 + rand(i * 3.1) * 760,
+        y: 20 + rand(i * 7.7) * (height - 40),
+        r: 1.3 + rand(i * 11.3) * 1.8,
+        b: i % 4 === 0,
       });
     }
     return arr;
-  }, []);
+  }, [variant]);
+  const viewH = variant === "page" ? 900 : 260;
   return (
     <svg
-      viewBox="0 0 800 260"
+      viewBox={`0 0 800 ${viewH}`}
       preserveAspectRatio="xMidYMid slice"
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-70"
+      className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden
     >
       <g className="project-node-lines">
         {nodes.slice(0, -1).map((n, i) => {
           const m = nodes[(i + 3) % nodes.length];
+          const dx = m.x - n.x;
+          const dy = m.y - n.y;
+          if (Math.hypot(dx, dy) > 260) return null;
           return (
             <line
               key={i}
@@ -390,8 +405,8 @@ function ProjectNodeNetwork() {
               y1={n.y}
               x2={m.x}
               y2={m.y}
-              strokeDasharray="2 4"
-              strokeWidth="0.8"
+              strokeDasharray="2 5"
+              strokeWidth="0.7"
             />
           );
         })}
@@ -406,12 +421,20 @@ function ProjectNodeNetwork() {
             className={n.b ? "project-node-bright" : ""}
           >
             {n.b && (
-              <animate
-                attributeName="opacity"
-                values="0.4;1;0.4"
-                dur={`${2 + (i % 3)}s`}
-                repeatCount="indefinite"
-              />
+              <>
+                <animate
+                  attributeName="opacity"
+                  values="0.25;1;0.25"
+                  dur={`${4.5 + (i % 4) * 0.8}s`}
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="r"
+                  values={`${n.r};${n.r * 1.9};${n.r}`}
+                  dur={`${4.5 + (i % 4) * 0.8}s`}
+                  repeatCount="indefinite"
+                />
+              </>
             )}
           </circle>
         ))}
@@ -859,40 +882,40 @@ function ContributorsTab() {
             BETA
           </Badge>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           We analyzed your profile and skills.
         </p>
         <div className="mt-4 flex items-center gap-5">
           <CompatibilityRing value={91} />
-          <div className="min-w-0 flex-1 space-y-2 text-xs">
+          <div className="min-w-0 flex-1 space-y-3 text-sm">
             <div>
-              <div className="mb-1 font-semibold">Why you're a great fit</div>
-              <ul className="space-y-1 text-muted-foreground">
-                <li className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-emerald-500" /> Strong in React & TypeScript
+              <div className="mb-1.5 font-semibold text-[13px]">Why you're a great fit</div>
+              <ul className="space-y-1.5 text-[12.5px] text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Strong in React & TypeScript
                 </li>
-                <li className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-emerald-500" /> Experience with Node.js & APIs
+                <li className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Experience with Node.js & APIs
                 </li>
-                <li className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-emerald-500" /> Interest in productivity tools
+                <li className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Interest in productivity tools
                 </li>
               </ul>
             </div>
             <div>
-              <div className="mb-1 font-semibold">Skills you can grow</div>
-              <ul className="space-y-1 text-muted-foreground">
-                <li className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Real-time systems (Socket.io)
+              <div className="mb-1.5 font-semibold text-[13px]">Skills you can grow</div>
+              <ul className="space-y-1.5 text-[12.5px] text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> Real-time systems (Socket.io)
                 </li>
-                <li className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> MongoDB Aggregations
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> MongoDB Aggregations
                 </li>
               </ul>
             </div>
           </div>
         </div>
-        <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--project-accent)]">
+        <button className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-[var(--project-accent)]">
           Update your skills in your profile for better matches →
         </button>
       </Card>
