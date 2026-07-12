@@ -371,11 +371,11 @@
   background: #fafafa;
 }
 :root:not(.dark) .project-page [data-sidebar="inset"] { background: #fafafa; }
-:root:not(.dark) .project-page .project-node-lines line { stroke: rgba(124, 58, 237, 0.22); }
-:root:not(.dark) .project-page .project-node-dots circle { fill: rgba(124, 58, 237, 0.5); }
+:root:not(.dark) .project-page .project-node-lines line { stroke: rgba(124, 58, 237, 0.18); }
+:root:not(.dark) .project-page .project-node-dots circle { fill: rgba(124, 58, 237, 0.4); }
 :root:not(.dark) .project-page .project-node-dots circle.project-node-bright {
   fill: #7c3aed;
-  filter: drop-shadow(0 0 4px rgba(124, 58, 237, 0.55));
+  filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.7)) drop-shadow(0 0 14px rgba(168, 85, 247, 0.4));
 }
 :root:not(.dark) .project-page .project-hero {
   background:
