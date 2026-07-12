@@ -346,11 +346,11 @@
 }
 
 /* Dark: neon node network */
-.dark .project-page .project-node-lines line { stroke: rgba(168, 85, 247, 0.35); }
-.dark .project-page .project-node-dots circle { fill: rgba(190, 160, 255, 0.7); }
+.dark .project-page .project-node-lines line { stroke: rgba(168, 85, 247, 0.28); }
+.dark .project-page .project-node-dots circle { fill: rgba(190, 160, 255, 0.55); }
 .dark .project-page .project-node-dots circle.project-node-bright {
   fill: #22d3ee;
-  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.9));
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.95)) drop-shadow(0 0 18px rgba(168, 85, 247, 0.55));
 }
 .dark .project-page .project-hero {
   background:
