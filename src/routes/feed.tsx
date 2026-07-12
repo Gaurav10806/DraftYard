@@ -184,26 +184,29 @@ function FeedPage() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background text-foreground">
+      <div className="feed-page flex min-h-screen w-full bg-background text-foreground leading-[1.5] dark:bg-[#0d0d14]">
         <AppSidebar />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col">
+        <SidebarInset className="flex min-w-0 flex-1 flex-col dark:bg-[#0d0d14]">
           <FeedTopBar />
 
           <motion.main
-            className="flex-1 space-y-6 p-4 sm:p-6"
+            className="flex-1 p-4 sm:p-6"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
               {/* Left column */}
-              <div className="min-w-0 space-y-6">
+              <div className="min-w-0">
                 <HeroHeader />
+                <div className="h-8" />
                 <TrendingCarousel
                   bookmarks={bookmarks}
                   onBookmark={toggleBookmark}
                 />
+                <div className="h-6" />
                 <FilterBar tab={tab} onTab={setTab} query={query} onQuery={setQuery} />
+                <div className="h-6" />
                 <FeedGrid
                   items={visible}
                   bookmarks={bookmarks}
@@ -211,7 +214,7 @@ function FeedPage() {
                   onBookmark={toggleBookmark}
                   onUpvote={toggleUpvote}
                 />
-                <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between pt-6 text-sm text-muted-foreground">
                   <span>
                     Showing 1 – {visible.length} of {TOTAL_DRAFTS.toLocaleString()} drafts
                   </span>
@@ -221,7 +224,7 @@ function FeedPage() {
               </div>
 
               {/* Right sidebar */}
-              <aside className="space-y-6">
+              <aside className="space-y-4">
                 <InsightsCard />
                 <StallPatternsCard />
                 <SpotlightCard />
