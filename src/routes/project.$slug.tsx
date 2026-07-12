@@ -443,61 +443,157 @@ function ProjectNodeNetwork({
   );
 }
 
-// Wavy dotted line flowing horizontally across the hero (reference look)
+// Premium decorative constellation — top-right 40% of hero
 function HeroDotWave() {
-  const { dots, bright } = useMemo(() => {
-    const arr: { x: number; y: number; r: number }[] = [];
-    const bright: number[] = [];
-    const count = 70;
+  const { nodes, edges } = useMemo(() => {
+    const rand = (seed: number) => {
+      const x = Math.sin(seed * 999.1) * 10000;
+      return x - Math.floor(x);
+    };
+    type N = {
+      x: number;
+      y: number;
+      r: number;
+      kind: "small" | "glow-purple" | "glow-cyan";
+      delay: number;
+      dur: number;
+      dx: number;
+      dy: number;
+    };
+    const list: N[] = [];
+    const count = 22;
+    // Constellation lives in the top-right region: x in [430, 780], y in [15, 220]
     for (let i = 0; i < count; i++) {
-      const t = i / (count - 1);
-      const x = 20 + t * 780;
-      // dual sine for a gentle organic wave
-      const y =
-        130 +
-        Math.sin(t * Math.PI * 2.4) * 46 +
-        Math.sin(t * Math.PI * 5.1 + 1.3) * 10;
-      const r = 1.2 + (i % 7 === 0 ? 1.3 : 0);
-      arr.push({ x, y, r });
-      if (i % 8 === 3) bright.push(i);
+      const x = 430 + rand(i * 1.7) * 350;
+      const y = 15 + rand(i * 3.3 + 0.5) * 205;
+      const roll = rand(i * 5.9 + 7);
+      let kind: N["kind"] = "small";
+      let r = 1.4 + rand(i * 2.1) * 1.4; // 1.4 - 2.8
+      if (i < 4) {
+        kind = roll > 0.5 ? "glow-purple" : "glow-cyan";
+        r = 3.2 + rand(i * 4.1) * 2.6; // 3.2 - 5.8
+      }
+      list.push({
+        x,
+        y,
+        r,
+        kind,
+        delay: rand(i * 8.7) * 4,
+        dur: 5 + rand(i * 11.1) * 4,
+        dx: (rand(i * 13.3) - 0.5) * 6,
+        dy: (rand(i * 17.7) - 0.5) * 6,
+      });
     }
-    return { dots: arr, bright };
+    // Build curved bezier edges between near neighbors (organic, not full mesh)
+    const edges: { a: N; b: N; cx: number; cy: number; key: string }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      // pick 1-2 nearest that aren't already connected too much
+      const dists = list
+        .map((b, j) => ({ b, j, d: Math.hypot(a.x - b.x, a.y - b.y) }))
+        .filter((o) => o.j !== i && o.d < 130)
+        .sort((x, y) => x.d - y.d)
+        .slice(0, 2);
+      for (const o of dists) {
+        const key = i < o.j ? `${i}-${o.j}` : `${o.j}-${i}`;
+        if (edges.find((e) => e.key === key)) continue;
+        const mx = (a.x + o.b.x) / 2;
+        const my = (a.y + o.b.y) / 2;
+        // organic curve offset perpendicular to segment
+        const nx = -(o.b.y - a.y);
+        const ny = o.b.x - a.x;
+        const nl = Math.hypot(nx, ny) || 1;
+        const curve = (rand(i * 19 + o.j) - 0.5) * 40;
+        edges.push({
+          a,
+          b: o.b,
+          cx: mx + (nx / nl) * curve,
+          cy: my + (ny / nl) * curve,
+          key,
+        });
+      }
+    }
+    return { nodes: list, edges };
   }, []);
   return (
     <svg
-      viewBox="0 0 800 260"
+      viewBox="0 0 800 240"
       preserveAspectRatio="xMidYMid slice"
       className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden
     >
-      <g className="project-node-dots">
-        {dots.map((d, i) => {
-          const isBright = bright.includes(i);
+      <defs>
+        <radialGradient id="hero-const-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="var(--project-glow-core, rgba(139,92,246,0.55))" />
+          <stop offset="60%" stopColor="var(--project-glow-mid, rgba(139,92,246,0.12))" />
+          <stop offset="100%" stopColor="rgba(139,92,246,0)" />
+        </radialGradient>
+        <linearGradient id="hero-const-line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="var(--constellation-line, #a78bfa)" stopOpacity="0" />
+          <stop offset="50%" stopColor="var(--constellation-line, #a78bfa)" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="var(--constellation-line, #a78bfa)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Blurred radial glow behind */}
+      <ellipse
+        cx="640"
+        cy="120"
+        rx="230"
+        ry="150"
+        fill="url(#hero-const-glow)"
+        style={{ filter: "blur(24px)" }}
+      />
+
+      {/* Curved bezier edges */}
+      <g fill="none" stroke="url(#hero-const-line)" strokeWidth="1" strokeLinecap="round">
+        {edges.map((e) => (
+          <path
+            key={e.key}
+            d={`M ${e.a.x} ${e.a.y} Q ${e.cx} ${e.cy} ${e.b.x} ${e.b.y}`}
+            className="constellation-edge"
+          />
+        ))}
+      </g>
+
+      {/* Nodes */}
+      <g>
+        {nodes.map((n, i) => {
+          const cls =
+            n.kind === "glow-purple"
+              ? "constellation-node constellation-node--purple"
+              : n.kind === "glow-cyan"
+              ? "constellation-node constellation-node--cyan"
+              : "constellation-node constellation-node--small";
           return (
-            <circle
+            <g
               key={i}
-              cx={d.x}
-              cy={d.y}
-              r={d.r}
-              className={isBright ? "project-node-bright" : ""}
+              style={{
+                transformOrigin: `${n.x}px ${n.y}px`,
+                animation: `constellation-float ${n.dur}s ease-in-out ${n.delay}s infinite alternate`,
+                ["--fx" as string]: `${n.dx}px`,
+                ["--fy" as string]: `${n.dy}px`,
+              }}
             >
-              {isBright && (
-                <>
-                  <animate
-                    attributeName="opacity"
-                    values="0.3;1;0.3"
-                    dur={`${4 + (i % 5) * 0.6}s`}
-                    repeatCount="indefinite"
-                  />
-                  <animate
-                    attributeName="r"
-                    values={`${d.r};${d.r * 2.1};${d.r}`}
-                    dur={`${4 + (i % 5) * 0.6}s`}
-                    repeatCount="indefinite"
-                  />
-                </>
-              )}
-            </circle>
+              <circle cx={n.x} cy={n.y} r={n.r} className={cls}>
+                {n.kind !== "small" && (
+                  <>
+                    <animate
+                      attributeName="opacity"
+                      values="0.55;1;0.55"
+                      dur={`${4 + (i % 4)}s`}
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="r"
+                      values={`${n.r};${n.r * 1.35};${n.r}`}
+                      dur={`${4 + (i % 4)}s`}
+                      repeatCount="indefinite"
+                    />
+                  </>
+                )}
+              </circle>
+            </g>
           );
         })}
       </g>
