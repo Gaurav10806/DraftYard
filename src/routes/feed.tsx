@@ -617,72 +617,158 @@ function TrendingCarousel({
 }
 
 function TrendingArtwork({ tintIndex }: { tintIndex: number }) {
-  // Four low-saturation "cover" variants — abstract editorial artwork,
-  // inspired by GitHub Explore / Vercel Showcase project covers.
+  // Four consistent SaaS product illustration variants. Same flat-line style
+  // across all cards: translucent white UI shapes, thin 1.25px strokes,
+  // 2px accent dots. Inspired by GitHub Explore / Vercel Showcase covers.
   const variant = tintIndex % 4;
+  // Shared class helpers — consistent tone across all 4 illustrations
+  const surface = "fill-white/85 dark:fill-white/90";
+  const surfaceSoft = "fill-white/55 dark:fill-white/25";
+  const stroke = "stroke-white/70 dark:stroke-white/60";
+  const strokeSoft = "stroke-white/40 dark:stroke-white/30";
+  const accent = "fill-white dark:fill-white";
+  const accentDim = "fill-white/60 dark:fill-white/50";
   return (
-    <div className="feed-trending-art relative h-[110px] w-full overflow-hidden" data-variant={variant}>
-      {/* Base gradient (themed via CSS below) */}
+    <div
+      className="feed-trending-art relative h-[110px] w-full overflow-hidden"
+      data-variant={variant}
+    >
       <div className="feed-trending-art-bg absolute inset-0" />
-      {/* Soft radial highlight */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_25%_15%,rgba(255,255,255,0.35),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_25%_15%,rgba(255,255,255,0.08),transparent_60%)]" />
-      {/* Abstract SVG artwork — one shape per variant */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_25%_15%,rgba(255,255,255,0.28),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_25%_15%,rgba(255,255,255,0.10),transparent_60%)]" />
       <svg
         viewBox="0 0 320 120"
         preserveAspectRatio="xMidYMid slice"
         className="absolute inset-0 h-full w-full"
       >
         {variant === 0 && (
-          // Concentric orbits — knowledge / connection
-          <g fill="none" stroke="currentColor" className="text-white/40 dark:text-white/25">
-            <ellipse cx="230" cy="60" rx="90" ry="34" strokeWidth="1" />
-            <ellipse cx="230" cy="60" rx="60" ry="22" strokeWidth="1" />
-            <ellipse cx="230" cy="60" rx="30" ry="11" strokeWidth="1" />
-            <circle cx="230" cy="60" r="4" fill="currentColor" stroke="none" />
-            <circle cx="290" cy="60" r="2.5" fill="currentColor" stroke="none" className="text-white/70" />
-            <circle cx="170" cy="60" r="2" fill="currentColor" stroke="none" className="text-white/70" />
+          // Analytics dashboard — window with bar chart + line + KPI tiles
+          <g>
+            {/* Main window */}
+            <rect x="40" y="18" width="240" height="88" rx="8" className={surface} />
+            {/* Window chrome */}
+            <circle cx="52" cy="30" r="2" className={accentDim} />
+            <circle cx="60" cy="30" r="2" className={accentDim} />
+            <circle cx="68" cy="30" r="2" className={accentDim} />
+            <rect x="80" y="27" width="60" height="6" rx="3" className={surfaceSoft} />
+            {/* Bars */}
+            <g>
+              <rect x="54" y="80" width="10" height="18" rx="2" className={surfaceSoft} />
+              <rect x="70" y="70" width="10" height="28" rx="2" className={surfaceSoft} />
+              <rect x="86" y="58" width="10" height="40" rx="2" className={surfaceSoft} />
+              <rect x="102" y="66" width="10" height="32" rx="2" className={surfaceSoft} />
+              <rect x="118" y="48" width="10" height="50" rx="2" className={accent} />
+              <rect x="134" y="62" width="10" height="36" rx="2" className={surfaceSoft} />
+            </g>
+            {/* Line chart sparkline */}
+            <polyline
+              points="160,80 180,68 200,74 220,54 240,60 260,44"
+              fill="none"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={stroke}
+            />
+            {/* KPI dots */}
+            <circle cx="260" cy="44" r="2.6" className={accent} />
+            <rect x="160" y="46" width="34" height="4" rx="2" className={surfaceSoft} />
           </g>
         )}
         {variant === 1 && (
-          // Overlapping soft circles — collaboration
+          // AI / chat — chat window with message bubbles and sparkle
           <g>
-            <circle cx="90" cy="70" r="46" fill="currentColor" className="text-white/25 dark:text-white/15" />
-            <circle cx="150" cy="45" r="34" fill="currentColor" className="text-white/30 dark:text-white/18" />
-            <circle cx="220" cy="75" r="42" fill="currentColor" className="text-white/22 dark:text-white/12" />
-            <circle cx="280" cy="40" r="24" fill="currentColor" className="text-white/35 dark:text-white/20" />
+            <rect x="40" y="16" width="240" height="88" rx="10" className={surface} />
+            {/* Incoming bubble */}
+            <rect x="56" y="34" width="90" height="18" rx="9" className={surfaceSoft} />
+            <rect x="60" y="40" width="60" height="3" rx="1.5" className={strokeSoft} fill="none" strokeWidth="1" />
+            {/* Outgoing bubble (accent) */}
+            <rect x="150" y="58" width="118" height="20" rx="10" className={accent} opacity="0.85" />
+            {/* Small typing bubble */}
+            <rect x="56" y="82" width="46" height="14" rx="7" className={surfaceSoft} />
+            <circle cx="66" cy="89" r="1.6" className={accentDim} />
+            <circle cx="74" cy="89" r="1.6" className={accentDim} />
+            <circle cx="82" cy="89" r="1.6" className={accentDim} />
+            {/* AI sparkle */}
+            <g transform="translate(258 26)">
+              <path
+                d="M0,-8 L2,-2 L8,0 L2,2 L0,8 L-2,2 L-8,0 L-2,-2 Z"
+                className={accent}
+              />
+              <circle cx="12" cy="-10" r="1.5" className={accent} />
+              <circle cx="-11" cy="10" r="1.2" className={accentDim} />
+            </g>
           </g>
         )}
         {variant === 2 && (
-          // Layered peaks / mountain range — progress
+          // Mobile app — phone frame with content list + a widget
           <g>
-            <path d="M0,110 L60,55 L120,85 L190,35 L260,75 L320,45 L320,120 L0,120 Z"
-              fill="currentColor" className="text-white/25 dark:text-white/15" />
-            <path d="M0,120 L40,80 L110,100 L170,70 L240,95 L320,72 L320,120 Z"
-              fill="currentColor" className="text-white/30 dark:text-white/20" />
-            <circle cx="255" cy="30" r="10" fill="currentColor" className="text-white/60 dark:text-white/40" />
+            {/* Phone */}
+            <rect x="110" y="14" width="72" height="96" rx="10" className={surface} />
+            <rect x="130" y="20" width="32" height="3" rx="1.5" className={accentDim} />
+            {/* Screen content rows */}
+            <rect x="118" y="32" width="56" height="14" rx="4" className={accent} opacity="0.85" />
+            <rect x="118" y="52" width="56" height="8" rx="3" className={surfaceSoft} />
+            <rect x="118" y="64" width="40" height="8" rx="3" className={surfaceSoft} />
+            <rect x="118" y="76" width="56" height="8" rx="3" className={surfaceSoft} />
+            <rect x="118" y="88" width="34" height="8" rx="3" className={surfaceSoft} />
+            {/* Floating widget card left */}
+            <rect x="46" y="42" width="52" height="44" rx="8" className={surface} opacity="0.9" />
+            <rect x="52" y="50" width="30" height="4" rx="2" className={strokeSoft} fill="currentColor" opacity="0.4" />
+            <polyline
+              points="52,74 60,66 68,70 76,60 84,64 92,56"
+              fill="none"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={stroke}
+            />
+            {/* Floating notification right */}
+            <rect x="196" y="30" width="72" height="22" rx="6" className={surface} opacity="0.9" />
+            <circle cx="206" cy="41" r="4" className={accent} />
+            <rect x="216" y="36" width="42" height="3" rx="1.5" className={surfaceSoft} />
+            <rect x="216" y="42" width="30" height="3" rx="1.5" className={surfaceSoft} />
           </g>
         )}
         {variant === 3 && (
-          // Grid + connection nodes — knowledge graph
+          // Collaboration — kanban board with columns, cards, avatars
           <g>
-            <g stroke="currentColor" strokeWidth="1" className="text-white/22 dark:text-white/12">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <line key={`v${i}`} x1={40 + i * 36} y1="0" x2={40 + i * 36} y2="120" />
-              ))}
-              {Array.from({ length: 4 }).map((_, i) => (
-                <line key={`h${i}`} x1="0" y1={20 + i * 28} x2="320" y2={20 + i * 28} />
-              ))}
-            </g>
-            <g fill="currentColor" className="text-white/85">
-              <circle cx="76" cy="48" r="3" />
-              <circle cx="184" cy="76" r="3.5" />
-              <circle cx="256" cy="48" r="3" />
-              <circle cx="220" cy="20" r="2.5" />
-            </g>
-            <g stroke="currentColor" strokeWidth="1.2" className="text-white/55">
-              <line x1="76" y1="48" x2="184" y2="76" />
-              <line x1="184" y1="76" x2="256" y2="48" />
-              <line x1="220" y1="20" x2="256" y2="48" />
+            {/* Three columns */}
+            {[0, 1, 2].map((c) => (
+              <rect
+                key={c}
+                x={44 + c * 78}
+                y="16"
+                width="66"
+                height="88"
+                rx="6"
+                className={surfaceSoft}
+              />
+            ))}
+            {/* Column headers */}
+            {[0, 1, 2].map((c) => (
+              <rect
+                key={`h${c}`}
+                x={50 + c * 78}
+                y="22"
+                width="30"
+                height="4"
+                rx="2"
+                className={strokeSoft}
+                fill="currentColor"
+                opacity="0.5"
+              />
+            ))}
+            {/* Cards */}
+            <rect x="50" y="34" width="54" height="18" rx="4" className={surface} />
+            <rect x="50" y="56" width="54" height="14" rx="4" className={surface} />
+            <rect x="128" y="34" width="54" height="22" rx="4" className={accent} opacity="0.9" />
+            <rect x="128" y="60" width="54" height="14" rx="4" className={surface} />
+            <rect x="128" y="78" width="54" height="14" rx="4" className={surface} />
+            <rect x="206" y="34" width="54" height="16" rx="4" className={surface} />
+            {/* Avatars on top card */}
+            <g>
+              <circle cx="170" cy="46" r="3.4" className={accent} />
+              <circle cx="162" cy="46" r="3.4" className={surfaceSoft} />
+              <circle cx="154" cy="46" r="3.4" className={surfaceSoft} />
             </g>
           </g>
         )}
