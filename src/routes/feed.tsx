@@ -323,6 +323,8 @@ function HeroNetwork() {
     { x: 210, y: 120, r: 4 },
     { x: 300, y: 260, r: 2.5 },
   ];
+  // Anchor nodes accented with DraftYard purple + gentle pulse in light mode.
+  const HIGHLIGHTED = new Set([2, 4, 6, 8, 10]);
   const edges: Array<[number, number, boolean?]> = [
     [0, 1], [1, 2], [2, 3, true], [3, 4], [1, 10], [2, 10, true],
     [3, 10], [10, 6], [5, 6], [6, 7, true], [7, 8], [5, 9],
@@ -333,14 +335,16 @@ function HeroNetwork() {
       aria-hidden
       className="pointer-events-none absolute inset-y-0 right-0 hidden w-[40%] overflow-hidden md:block"
     >
-      {/* Light-mode lavender radial fade */}
-      <div className="absolute inset-0 dark:hidden bg-[radial-gradient(ellipse_at_center_right,rgba(196,181,253,0.18),transparent_70%)]" />
+      {/* Soft lavender radial glow behind the whole network (light mode only) */}
+      <div className="absolute inset-0 dark:hidden bg-[radial-gradient(ellipse_60%_55%_at_65%_50%,rgba(167,139,250,0.22),transparent_75%)]" />
       <svg
         viewBox="0 0 400 300"
         preserveAspectRatio="xMidYMid meet"
-        className="absolute inset-0 h-full w-full opacity-[0.08] dark:opacity-[0.15]"
+        className="absolute inset-0 h-full w-full opacity-[0.22] dark:opacity-[0.15]"
+        style={{ filter: "drop-shadow(0 1px 1px rgba(76, 29, 149, 0.12))" }}
       >
-        <g className="text-slate-400 dark:text-[#a78bfa]">
+        {/* Connection lines — soft lavender-gray in light, indigo in dark */}
+        <g className="text-[#a8a3c8] dark:text-[#a78bfa]">
           {edges.map(([a, b, pulse], i) => {
             const n1 = nodes[a];
             const n2 = nodes[b];
@@ -352,13 +356,13 @@ function HeroNetwork() {
                 x2={n2.x}
                 y2={n2.y}
                 stroke="currentColor"
-                strokeWidth={0.8}
+                strokeWidth={0.9}
                 strokeLinecap="round"
               >
                 {pulse && (
                   <animate
                     attributeName="stroke-opacity"
-                    values="0.3;1;0.3"
+                    values="0.35;1;0.35"
                     dur={`${3 + (i % 3)}s`}
                     repeatCount="indefinite"
                   />
@@ -367,19 +371,28 @@ function HeroNetwork() {
             );
           })}
         </g>
-        <g className="text-[#c4b5fd]">
-          {nodes.map((n, i) => (
-            <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor">
-              {i % 3 === 0 && (
+        {/* Neutral nodes */}
+        <g className="text-[#cbd0dc] dark:text-[#c4b5fd]">
+          {nodes.map((n, i) =>
+            HIGHLIGHTED.has(i) ? null : (
+              <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor" />
+            )
+          )}
+        </g>
+        {/* Highlighted purple accent nodes with gentle pulse */}
+        <g className="text-[#7C3AED] dark:text-[#c4b5fd]">
+          {nodes.map((n, i) =>
+            HIGHLIGHTED.has(i) ? (
+              <circle key={i} cx={n.x} cy={n.y} r={n.r + 0.4} fill="currentColor">
                 <animate
                   attributeName="opacity"
-                  values="0.6;1;0.6"
-                  dur={`${2.5 + (i % 4) * 0.6}s`}
+                  values="0.55;1;0.55"
+                  dur={`${3 + (i % 4) * 0.7}s`}
                   repeatCount="indefinite"
                 />
-              )}
-            </circle>
-          ))}
+              </circle>
+            ) : null
+          )}
         </g>
       </svg>
     </div>
