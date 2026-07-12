@@ -338,10 +338,9 @@ function HeroNetwork() {
       <svg
         viewBox="0 0 400 300"
         preserveAspectRatio="xMidYMid meet"
-        className="absolute inset-0 h-full w-full opacity-[0.15] dark:opacity-[0.15] [&:not(.dark_*)]:opacity-[0.08]"
-        style={{ opacity: undefined }}
+        className="absolute inset-0 h-full w-full opacity-[0.08] dark:opacity-[0.15]"
       >
-        <g className="text-[#a78bfa] dark:text-[#a78bfa] [:root:not(.dark)_&]:text-[#cbd5e1]">
+        <g className="text-slate-400 dark:text-[#a78bfa]">
           {edges.map(([a, b, pulse], i) => {
             const n1 = nodes[a];
             const n2 = nodes[b];
