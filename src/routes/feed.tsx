@@ -367,7 +367,7 @@ function HeroNetwork() {
             );
           })}
         </g>
-        <g className="text-[#c4b5fd] dark:text-[#c4b5fd] [:root:not(.dark)_&]:text-[#c4b5fd]">
+        <g className="text-[#c4b5fd]">
           {nodes.map((n, i) => (
             <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="currentColor">
               {i % 3 === 0 && (
