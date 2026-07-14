@@ -291,51 +291,51 @@ function RevivalBoardPage() {
 function SuccessCard({ s }: { s: Success }) {
   return (
     <div className={`rev-success rev-success--${s.variant}`}>
-      <div className="rev-success-art" aria-hidden>
-        <div className="rev-success-art-bg" />
-        <div className="rev-success-art-glow" />
-        <div className="rev-success-art-icons">
-          <span className="rev-success-art-icon">
-            <FileText className="h-4 w-4" />
+      <div className="rev-success-bar" aria-hidden />
+      <div className="rev-success-glow" aria-hidden />
+      <div className="rev-success-body">
+        <div className="flex items-center justify-between">
+          <span className="rev-success-badge">
+            <span className="rev-success-badge-dot" /> Revived
           </span>
-          <ArrowRight className="h-3.5 w-3.5 rev-success-art-arrow" />
-          <span className="rev-success-art-icon rev-success-art-icon--accent">
-            <Rocket className="h-4 w-4" />
+          <span className="rev-success-upvotes inline-flex items-center gap-1 text-[11px] font-medium">
+            <ThumbsUp className="h-3 w-3" />
+            {s.upvotes}
           </span>
         </div>
-        <span className="rev-success-badge">
-          ✅ Revived
-        </span>
-      </div>
-      <div className="rev-success-body">
-        <h3 className="rev-success-title font-display text-[15px] font-semibold leading-tight">
+        <h3 className="rev-success-title mt-2.5 font-display text-[15px] font-semibold leading-tight">
           {s.name}
         </h3>
-        <p className="rev-success-desc mt-0.5 line-clamp-1 text-[11px]">
+        <p className="rev-success-desc mt-1 line-clamp-1 text-[11.5px]">
           {s.desc}
         </p>
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2.5 flex flex-wrap gap-1">
           {s.stack.map((t) => (
             <span
               key={t}
-              className="rev-success-chip rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+              className="rev-success-chip rounded-md px-1.5 py-0.5 text-[10px] font-medium"
             >
               {t}
             </span>
           ))}
         </div>
-        <div className="rev-success-foot mt-auto pt-2 flex items-center justify-between text-[11px]">
+        <div className="rev-success-foot mt-auto pt-2.5 flex items-center gap-2 text-[11px]">
           <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" /> Shipped in {s.weeks} weeks
+            <FileText className="h-3 w-3" /> Draft
           </span>
-          <span className="inline-flex items-center gap-1">
-            <ThumbsUp className="h-3 w-3" /> {s.upvotes}
+          <ArrowRight className="h-3 w-3 opacity-50" />
+          <span className="inline-flex items-center gap-1 rev-success-foot-accent">
+            <Rocket className="h-3 w-3" /> Shipped
+          </span>
+          <span className="ml-auto inline-flex items-center gap-1 opacity-80">
+            <Clock className="h-3 w-3" /> {s.weeks}w
           </span>
         </div>
       </div>
     </div>
   );
 }
+
 
 
 // ---------------- Revival Card ----------------
