@@ -6,7 +6,7 @@ import {
   TrendingUp,
   Trophy,
   Percent,
-  Rocket,
+  
 
   ArrowRight,
   Bookmark,
