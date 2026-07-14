@@ -450,3 +450,201 @@
   filter: drop-shadow(0 0 6px rgba(8, 145, 178, 0.65))
           drop-shadow(0 0 14px rgba(103, 232, 249, 0.5));
 }
+
+/* ————————————————————————————————————————————————————————————
+ * Revival Board — dark + intentional light theme
+ * ———————————————————————————————————————————————————————————— */
+.revival-page {
+  --rev-accent: #aa3bff;
+  --rev-accent-soft: rgba(170, 59, 255, 0.14);
+}
+
+/* Dark */
+.dark .revival-page { background-color: #0d0d14; }
+.dark .revival-page [data-sidebar="inset"] { background-color: #0d0d14; }
+.dark .revival-page .rev-card {
+  background: #14141d;
+  border: 1px solid rgba(170, 59, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+}
+.dark .revival-page .rev-card.group\/card:hover {
+  border-color: rgba(170, 59, 255, 0.35);
+  box-shadow: 0 0 0 1px rgba(170,59,255,0.18), 0 12px 28px -14px rgba(170, 59, 255, 0.4);
+}
+.dark .revival-page .rev-stat-card {
+  background: #14141d;
+  border: 1px solid rgba(170, 59, 255, 0.14);
+}
+.dark .revival-page .rev-tab {
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.dark .revival-page .rev-tab:hover { color: #fff; border-color: rgba(170,59,255,0.35); }
+.dark .revival-page .rev-tab-active {
+  background: var(--rev-accent);
+  color: #fff;
+  box-shadow: 0 6px 18px -6px rgba(170,59,255,0.55);
+}
+.dark .revival-page .rev-modal {
+  background: rgba(20, 20, 29, 0.92);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(170, 59, 255, 0.25);
+  box-shadow: 0 24px 60px -20px rgba(170, 59, 255, 0.4);
+}
+.dark .revival-page .rev-input {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.1);
+}
+.dark .revival-page .rev-input:focus,
+.dark .revival-page .rev-input:focus-visible {
+  border-color: var(--rev-accent);
+  box-shadow: 0 0 0 3px rgba(170,59,255,0.2);
+}
+
+/* Light */
+:root:not(.dark) .revival-page {
+  --rev-accent: #7C3AED;
+  --rev-accent-soft: rgba(124, 58, 237, 0.10);
+  background-color: #f6f7fb;
+}
+:root:not(.dark) .revival-page [data-sidebar="inset"] { background-color: #f6f7fb; }
+:root:not(.dark) .revival-page .rev-card {
+  background: #ffffff;
+  border: 1px solid #eceaf3;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15,15,30,0.03), 0 6px 16px -10px rgba(124,58,237,0.10);
+  transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+}
+:root:not(.dark) .revival-page .rev-card.group\/card:hover {
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 1px 2px rgba(15,15,30,0.04), 0 14px 30px -14px rgba(124, 58, 237, 0.22);
+}
+:root:not(.dark) .revival-page .rev-stat-card {
+  background: #ffffff;
+  border: 1px solid #eceaf3;
+  box-shadow: 0 1px 2px rgba(15,15,30,0.03);
+}
+:root:not(.dark) .revival-page .rev-tab {
+  background: #ffffff;
+  color: #4b5563;
+  border: 1px solid #eceaf3;
+}
+:root:not(.dark) .revival-page .rev-tab:hover { border-color: rgba(124,58,237,0.35); color: #7C3AED; }
+:root:not(.dark) .revival-page .rev-tab-active {
+  background: #7C3AED;
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(124,58,237,0.4);
+}
+:root:not(.dark) .revival-page .rev-modal {
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid #eceaf3;
+  box-shadow: 0 24px 60px -20px rgba(124, 58, 237, 0.28);
+}
+:root:not(.dark) .revival-page .rev-input {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+:root:not(.dark) .revival-page .rev-input:focus,
+:root:not(.dark) .revival-page .rev-input:focus-visible {
+  border-color: #7C3AED;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+}
+
+/* Shared: stat card layout */
+.revival-page .rev-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+.revival-page .rev-stat-icon {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  width: 34px;
+  border-radius: 10px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.revival-page .rev-stat-icon--purple { background: linear-gradient(135deg,#7c3aed,#a855f7); }
+.revival-page .rev-stat-icon--green  { background: linear-gradient(135deg,#059669,#10b981); }
+.revival-page .rev-stat-icon--amber  { background: linear-gradient(135deg,#d97706,#f59e0b); }
+.revival-page .rev-stat-icon--cyan   { background: linear-gradient(135deg,#0891b2,#06b6d4); }
+
+/* Match pill tones */
+.revival-page .rev-match {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.revival-page .rev-match--green { background: rgba(16,185,129,0.15); color: #10b981; }
+.revival-page .rev-match--amber { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.revival-page .rev-match--red   { background: rgba(239,68,68,0.15);  color: #ef4444; }
+
+/* Raise Hand button */
+.revival-page .rev-raise-btn {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px -4px rgba(124,58,237,0.5);
+}
+.revival-page .rev-raise-btn:hover {
+  background: linear-gradient(135deg, #b366ff 0%, #8b45ff 100%);
+  box-shadow: 0 6px 18px -4px rgba(124,58,237,0.65);
+}
+
+/* View Details reveal on hover */
+.revival-page .rev-view-details {
+  position: absolute;
+  bottom: 3.15rem;
+  right: 1.25rem;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--rev-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none;
+}
+.revival-page .group\/card:hover .rev-view-details {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Success story gradient cards (compact) */
+.revival-page .rev-success {
+  position: relative;
+  border-radius: 12px;
+  padding: 14px;
+  color: #fff;
+  overflow: hidden;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+.revival-page .rev-success::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.14), transparent 60%);
+  pointer-events: none;
+}
+.revival-page .rev-success--purple {
+  background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%);
+}
+.revival-page .rev-success--teal {
+  background: linear-gradient(135deg, #064e3b 0%, #0f766e 50%, #14b8a6 100%);
+}
+.revival-page .rev-success--amber {
+  background: linear-gradient(135deg, #78350f 0%, #b45309 50%, #d97706 100%);
+}
+
