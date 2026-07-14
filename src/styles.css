@@ -620,19 +620,20 @@
   transform: translateY(0);
 }
 
-/* Success story cards — neutral surface with an ambient variant tint
-   in one corner. Premium hover: lift + shadow + soft border glow. */
+/* Success story cards — neutral card surface, category-tinted left rail
+   and a soft corner glow. Base matches the project cards below. */
 .revival-page .rev-success {
   --rev-tint: 139, 92, 246;
   position: relative;
   border-radius: 14px;
-  padding: 14px;
+  padding: 14px 14px 14px 15px;
   overflow: hidden;
   min-height: 208px;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   transform: translateZ(0);
+  border-left: 3px solid rgb(var(--rev-tint));
   transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
 }
 .revival-page .rev-success--purple { --rev-tint: 139, 92, 246; }
@@ -650,108 +651,100 @@
   border: 1px solid transparent;
   transform: translateX(0);
   transition: background .2s ease, color .2s ease, transform .2s ease,
-              border-color .2s ease, box-shadow .2s ease, padding .2s ease;
+              border-color .2s ease, box-shadow .2s ease;
 }
 .revival-page .rev-success:hover .rev-success-view { transform: translateX(2px); }
 
-/* Light — white card, soft pastel ambient tint in the top-right corner */
+/* Light — white card, subtle border, soft category glow in top-right */
 :root:not(.dark) .revival-page .rev-success {
-  background: #ffffff;
-  border: 1px solid #ECEAF3;
-  color: #0F0F0F;
-  box-shadow: 0 1px 2px rgba(15,15,30,0.04), 0 8px 20px -14px rgba(15,15,30,0.10);
+  background: #FFFFFF;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  border-right: 1px solid rgba(0,0,0,0.08);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  color: #141414;
+  box-shadow: 0 1px 2px rgba(15,15,30,0.04), 0 8px 20px -16px rgba(15,15,30,0.08);
 }
 :root:not(.dark) .revival-page .rev-success .rev-success-accent {
-  background:
-    radial-gradient(70% 55% at 100% 0%, rgba(var(--rev-tint), 0.22), transparent 65%),
-    radial-gradient(50% 45% at 0% 100%, rgba(var(--rev-tint), 0.08), transparent 70%);
+  background: radial-gradient(150px 150px at 100% 0%, rgba(var(--rev-tint), 0.08), transparent 70%);
 }
 :root:not(.dark) .revival-page .rev-success:hover {
-  border-color: rgba(var(--rev-tint), 0.35);
+  border-top-color: rgba(var(--rev-tint), 0.28);
+  border-right-color: rgba(var(--rev-tint), 0.28);
+  border-bottom-color: rgba(var(--rev-tint), 0.28);
   box-shadow:
     0 1px 2px rgba(15,15,30,0.05),
-    0 18px 40px -18px rgba(var(--rev-tint), 0.35),
-    0 0 0 1px rgba(var(--rev-tint), 0.10);
+    0 18px 40px -20px rgba(var(--rev-tint), 0.28),
+    0 0 0 1px rgba(var(--rev-tint), 0.08);
 }
-:root:not(.dark) .revival-page .rev-success:hover .rev-success-accent {
-  opacity: 1.15;
-}
+:root:not(.dark) .revival-page .rev-success:hover .rev-success-accent { opacity: 1.25; }
 :root:not(.dark) .revival-page .rev-success-badge {
-  background: rgba(16,185,129,0.10);
-  color: #047857;
-  border: 1px solid rgba(16,185,129,0.22);
+  background: rgba(var(--rev-tint), 0.15);
+  color: rgb(var(--rev-tint));
+  border: 1px solid rgba(var(--rev-tint), 0.25);
 }
-:root:not(.dark) .revival-page .rev-success-upvotes { color: #6B7280; }
-:root:not(.dark) .revival-page .rev-success-desc { color: #6B7280; }
+:root:not(.dark) .revival-page .rev-success-upvotes { color: #6B6B6B; }
+:root:not(.dark) .revival-page .rev-success-desc { color: #6B6B6B; }
 :root:not(.dark) .revival-page .rev-success-foot {
-  color: #6B7280;
-  border-top: 1px solid #F1F0F6;
-}
-:root:not(.dark) .revival-page .rev-success-chip {
-  background: #F6F5FB;
-  color: #4B5563;
-  border: 1px solid #ECEBF3;
+  color: #6B6B6B;
+  border-top: 1px solid rgba(0,0,0,0.06);
 }
 
-/* Dark — dark card, slightly more visible variant tint from a corner */
+/* Dark — dark card, subtle border, slightly stronger category glow */
 .dark .revival-page .rev-success {
-  background: #14141d;
-  border: 1px solid rgba(255,255,255,0.07);
-  color: #f5f5fb;
+  background: #16161F;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-right: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: #F2F2F2;
   box-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
 .dark .revival-page .rev-success .rev-success-accent {
-  background:
-    radial-gradient(70% 55% at 100% 0%, rgba(var(--rev-tint), 0.34), transparent 65%),
-    radial-gradient(55% 45% at 0% 100%, rgba(var(--rev-tint), 0.14), transparent 70%);
+  background: radial-gradient(150px 150px at 100% 0%, rgba(var(--rev-tint), 0.14), transparent 70%);
 }
 .dark .revival-page .rev-success:hover {
-  border-color: rgba(var(--rev-tint), 0.45);
+  border-top-color: rgba(var(--rev-tint), 0.38);
+  border-right-color: rgba(var(--rev-tint), 0.38);
+  border-bottom-color: rgba(var(--rev-tint), 0.38);
   box-shadow:
     0 1px 2px rgba(0,0,0,0.4),
-    0 20px 40px -18px rgba(var(--rev-tint), 0.45),
-    0 0 0 1px rgba(var(--rev-tint), 0.18);
+    0 20px 40px -20px rgba(var(--rev-tint), 0.40),
+    0 0 0 1px rgba(var(--rev-tint), 0.14);
 }
-.dark .revival-page .rev-success:hover .rev-success-accent { opacity: 1.15; }
+.dark .revival-page .rev-success:hover .rev-success-accent { opacity: 1.25; }
 .dark .revival-page .rev-success-badge {
-  background: rgba(16,185,129,0.14);
-  color: #34d399;
-  border: 1px solid rgba(16,185,129,0.28);
+  background: rgba(var(--rev-tint), 0.15);
+  color: rgb(var(--rev-tint));
+  border: 1px solid rgba(var(--rev-tint), 0.30);
 }
-.dark .revival-page .rev-success-upvotes { color: rgba(245,245,251,0.75); }
-.dark .revival-page .rev-success-desc { color: rgba(245,245,251,0.65); }
+.dark .revival-page .rev-success-upvotes { color: #9B9B9B; }
+.dark .revival-page .rev-success-desc { color: #9B9B9B; }
 .dark .revival-page .rev-success-foot {
-  color: rgba(245,245,251,0.68);
-  border-top: 1px solid rgba(255,255,255,0.07);
-}
-.dark .revival-page .rev-success-chip {
-  background: rgba(255,255,255,0.05);
-  color: rgba(245,245,251,0.85);
-  border: 1px solid rgba(255,255,255,0.08);
+  color: #9B9B9B;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
-/* View Details — prominent, variant-tinted on hover */
+/* View Details — variant-tinted on hover */
 :root:not(.dark) .revival-page .rev-success-view {
-  background: #F6F5FB;
+  background: rgba(0,0,0,0.03);
   color: #4B5563;
-  border-color: #ECEBF3;
+  border-color: rgba(0,0,0,0.08);
 }
 :root:not(.dark) .revival-page .rev-success:hover .rev-success-view {
   background: rgba(var(--rev-tint), 0.12);
   color: rgb(var(--rev-tint));
   border-color: rgba(var(--rev-tint), 0.35);
-  box-shadow: 0 4px 12px -6px rgba(var(--rev-tint), 0.35);
+  box-shadow: 0 4px 12px -6px rgba(var(--rev-tint), 0.30);
 }
 .dark .revival-page .rev-success-view {
-  background: rgba(255,255,255,0.06);
-  color: rgba(245,245,251,0.85);
+  background: rgba(255,255,255,0.05);
+  color: #D4D4DA;
   border-color: rgba(255,255,255,0.10);
 }
 .dark .revival-page .rev-success:hover .rev-success-view {
-  background: rgba(var(--rev-tint), 0.22);
+  background: rgba(var(--rev-tint), 0.20);
   color: #ffffff;
-  border-color: rgba(var(--rev-tint), 0.55);
-  box-shadow: 0 6px 16px -8px rgba(var(--rev-tint), 0.55);
+  border-color: rgba(var(--rev-tint), 0.50);
+  box-shadow: 0 6px 16px -8px rgba(var(--rev-tint), 0.50);
 }
 
 
