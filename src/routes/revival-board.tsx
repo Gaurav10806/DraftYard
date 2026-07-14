@@ -318,16 +318,16 @@ function SuccessCard({ s }: { s: Success }) {
       </div>
       <div className="rev-success-foot relative mt-auto pt-2.5 flex items-center gap-2 text-[11px]">
         <span className="inline-flex items-center gap-1">
-          <FileText className="h-3 w-3" /> Draft
+          <Clock className="h-3 w-3" /> Shipped in {s.weeks}w
         </span>
-        <ArrowRight className="h-3 w-3 opacity-60" />
-        <span className="inline-flex items-center gap-1 font-medium">
-          <Rocket className="h-3 w-3" /> Shipped
-        </span>
-        <span className="ml-auto inline-flex items-center gap-1 opacity-85">
-          <Clock className="h-3 w-3" /> {s.weeks}w
-        </span>
+        <button
+          type="button"
+          className="rev-success-view ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium"
+        >
+          View details <ArrowRight className="h-3 w-3" />
+        </button>
       </div>
+
     </div>
   );
 }
