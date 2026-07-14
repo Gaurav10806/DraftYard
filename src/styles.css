@@ -620,63 +620,126 @@
   transform: translateY(0);
 }
 
-/* Success story cards — Feed-style, premium and compact.
-   Light: soft pastel-tinted glow on white. Dark: subdued gradient. */
+/* Success story cards — Feed "Trending" inspired:
+   clean card body + colored artwork header carrying the variant color. */
 .revival-page .rev-success {
   position: relative;
   border-radius: 14px;
-  padding: 14px;
   overflow: hidden;
-  min-height: 200px;
-  max-height: 220px;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
-  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+  transition: box-shadow .22s ease, transform .22s ease, border-color .22s ease;
 }
-.revival-page .rev-success-accent {
+.revival-page .rev-success-art {
+  position: relative;
+  height: 72px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.revival-page .rev-success-art-bg {
   position: absolute;
   inset: 0;
+}
+.revival-page .rev-success-art-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 140%;
+  background: radial-gradient(60% 80% at 30% 20%, rgba(255,255,255,0.35), transparent 60%);
   pointer-events: none;
 }
-.revival-page .rev-success-title { font-size: 14px; }
-.revival-page .rev-success-desc,
-.revival-page .rev-success-meta,
-.revival-page .rev-success-foot { }
+.revival-page .rev-success-art-icons {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+}
+.revival-page .rev-success-art-icon {
+  display: inline-grid;
+  place-items: center;
+  height: 30px;
+  width: 30px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.28);
+  backdrop-filter: blur(6px);
+  color: #fff;
+}
+.revival-page .rev-success-art-icon--accent {
+  background: rgba(255,255,255,0.9);
+  color: #111;
+  border-color: rgba(255,255,255,1);
+  box-shadow: 0 6px 18px -6px rgba(0,0,0,0.35);
+}
+.revival-page .rev-success-art-arrow { color: rgba(255,255,255,0.85); }
+.revival-page .rev-success-badge {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.92);
+  color: #065f46;
+  border: 1px solid rgba(255,255,255,1);
+  box-shadow: 0 2px 8px -2px rgba(0,0,0,0.15);
+}
+.revival-page .rev-success-body {
+  position: relative;
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
 
-/* Light theme — near-white cards with a whisper of pastel in one corner */
+/* Artwork gradients — light mode (editorial, medium saturation) */
+:root:not(.dark) .revival-page .rev-success--purple .rev-success-art-bg {
+  background: linear-gradient(135deg, #7C6FE8 0%, #8B7ED8 55%, #A78BFA 100%);
+}
+:root:not(.dark) .revival-page .rev-success--teal .rev-success-art-bg {
+  background: linear-gradient(135deg, #0EA5A5 0%, #1FB6A8 55%, #34C4A8 100%);
+}
+:root:not(.dark) .revival-page .rev-success--amber .rev-success-art-bg {
+  background: linear-gradient(135deg, #E27A5F 0%, #E89579 55%, #F5B27A 100%);
+}
+
+/* Artwork gradients — dark mode (richer, deeper) */
+.dark .revival-page .rev-success--purple .rev-success-art-bg {
+  background: linear-gradient(135deg, #4F46E5 0%, #6D5FE8 55%, #8B7EE8 100%);
+}
+.dark .revival-page .rev-success--teal .rev-success-art-bg {
+  background: linear-gradient(135deg, #0F766E 0%, #14A093 55%, #2DD4BF 100%);
+}
+.dark .revival-page .rev-success--amber .rev-success-art-bg {
+  background: linear-gradient(135deg, #C2410C 0%, #DB6B3A 55%, #F97316 100%);
+}
+
+/* Light — clean white card body */
 :root:not(.dark) .revival-page .rev-success {
   background: #ffffff;
-  border: 1px solid #eceaf3;
+  border: 1px solid #E5E7EB;
   color: #0F0F0F;
-  box-shadow: 0 1px 2px rgba(15,15,30,0.03), 0 4px 12px -10px rgba(15,15,30,0.06);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.04);
 }
 :root:not(.dark) .revival-page .rev-success:hover {
-  box-shadow: 0 1px 2px rgba(15,15,30,0.04), 0 10px 24px -14px rgba(15,15,30,0.10);
-}
-:root:not(.dark) .revival-page .rev-success--purple .rev-success-accent {
-  background: radial-gradient(60% 45% at 100% 0%, rgba(167,139,250,0.20), transparent 70%);
-}
-:root:not(.dark) .revival-page .rev-success--teal .rev-success-accent {
-  background: radial-gradient(60% 45% at 100% 0%, rgba(45,212,191,0.18), transparent 70%);
-}
-:root:not(.dark) .revival-page .rev-success--amber .rev-success-accent {
-  background: radial-gradient(60% 45% at 100% 0%, rgba(251,191,36,0.20), transparent 70%);
-}
-:root:not(.dark) .revival-page .rev-success-badge {
-  background: rgba(16,185,129,0.08);
-  color: #059669;
-  border: 1px solid rgba(16,185,129,0.18);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 14px 34px -14px rgba(124,58,237,0.18);
 }
 :root:not(.dark) .revival-page .rev-success-desc { color: #6B7280; }
-:root:not(.dark) .revival-page .rev-success-meta { color: #4B5563; }
-:root:not(.dark) .revival-page .rev-success-foot { color: #6B7280; border-top: 1px solid #f1f0f6; }
+:root:not(.dark) .revival-page .rev-success-foot { color: #6B7280; border-top: 1px solid #F1F0F6; }
 :root:not(.dark) .revival-page .rev-success-chip {
-  background: #f6f5fb;
+  background: #F6F5FB;
   color: #4B5563;
-  border: 1px solid #ecebf3;
+  border: 1px solid #ECEBF3;
 }
 
-/* Dark theme — dark card with an ambient tint glowing from one corner */
+/* Dark — clean dark card body */
 .dark .revival-page .rev-success {
   background: #14141d;
   border: 1px solid rgba(255,255,255,0.06);
@@ -685,30 +748,19 @@
 }
 .dark .revival-page .rev-success:hover {
   border-color: rgba(255,255,255,0.10);
-  box-shadow: 0 12px 28px -18px rgba(0,0,0,0.6);
-}
-.dark .revival-page .rev-success--purple .rev-success-accent {
-  background: radial-gradient(55% 45% at 100% 0%, rgba(139,92,246,0.22), transparent 70%);
-}
-.dark .revival-page .rev-success--teal .rev-success-accent {
-  background: radial-gradient(55% 45% at 100% 0%, rgba(45,212,191,0.18), transparent 70%);
-}
-.dark .revival-page .rev-success--amber .rev-success-accent {
-  background: radial-gradient(55% 45% at 100% 0%, rgba(251,191,36,0.18), transparent 70%);
-}
-.dark .revival-page .rev-success-badge {
-  background: rgba(16,185,129,0.12);
-  color: #34d399;
-  border: 1px solid rgba(16,185,129,0.22);
+  box-shadow: 0 16px 34px -18px rgba(0,0,0,0.7);
 }
 .dark .revival-page .rev-success-desc { color: rgba(245,245,251,0.62); }
-.dark .revival-page .rev-success-meta { color: rgba(245,245,251,0.78); }
-.dark .revival-page .rev-success-foot { color: rgba(245,245,251,0.62); border-top: 1px solid rgba(255,255,255,0.06); }
+.dark .revival-page .rev-success-foot {
+  color: rgba(245,245,251,0.62);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
 .dark .revival-page .rev-success-chip {
   background: rgba(255,255,255,0.05);
   color: rgba(245,245,251,0.82);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
 }
+
 
 
 
