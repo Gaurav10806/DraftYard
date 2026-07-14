@@ -620,31 +620,108 @@
   transform: translateY(0);
 }
 
-/* Success story gradient cards (compact) */
+/* Success story cards — Feed-style, premium and compact.
+   Light: soft pastel-tinted glow on white. Dark: subdued gradient. */
 .revival-page .rev-success {
   position: relative;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 14px;
-  color: #fff;
   overflow: hidden;
-  min-height: 180px;
+  min-height: 200px;
+  max-height: 220px;
   display: flex;
   flex-direction: column;
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
 }
-.revival-page .rev-success::after {
-  content: "";
+.revival-page .rev-success-accent {
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.14), transparent 60%);
   pointer-events: none;
 }
-.revival-page .rev-success--purple {
-  background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%);
+.revival-page .rev-success-title { font-size: 14px; }
+.revival-page .rev-success-desc,
+.revival-page .rev-success-meta,
+.revival-page .rev-success-foot { }
+
+/* Light theme — soft pastel → white cards with tinted top glow */
+:root:not(.dark) .revival-page .rev-success {
+  background: #ffffff;
+  border: 1px solid #eceaf3;
+  color: #0F0F0F;
+  box-shadow: 0 1px 2px rgba(15,15,30,0.03), 0 6px 16px -10px rgba(124,58,237,0.10);
 }
-.revival-page .rev-success--teal {
-  background: linear-gradient(135deg, #064e3b 0%, #0f766e 50%, #14b8a6 100%);
+:root:not(.dark) .revival-page .rev-success:hover {
+  box-shadow: 0 1px 2px rgba(15,15,30,0.04), 0 14px 30px -14px rgba(124,58,237,0.18);
 }
-.revival-page .rev-success--amber {
-  background: linear-gradient(135deg, #78350f 0%, #b45309 50%, #d97706 100%);
+:root:not(.dark) .revival-page .rev-success--purple .rev-success-accent {
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgba(196,181,253,0.55), transparent 60%),
+    linear-gradient(180deg, rgba(237,233,254,0.6) 0%, rgba(255,255,255,0) 55%);
 }
+:root:not(.dark) .revival-page .rev-success--teal .rev-success-accent {
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgba(153,246,228,0.5), transparent 60%),
+    linear-gradient(180deg, rgba(204,251,241,0.55) 0%, rgba(255,255,255,0) 55%);
+}
+:root:not(.dark) .revival-page .rev-success--amber .rev-success-accent {
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgba(253,230,138,0.55), transparent 60%),
+    linear-gradient(180deg, rgba(254,243,199,0.55) 0%, rgba(255,255,255,0) 55%);
+}
+:root:not(.dark) .revival-page .rev-success-badge {
+  background: rgba(16,185,129,0.10);
+  color: #059669;
+  border: 1px solid rgba(16,185,129,0.20);
+}
+:root:not(.dark) .revival-page .rev-success-desc { color: #6B7280; }
+:root:not(.dark) .revival-page .rev-success-meta { color: #4B5563; }
+:root:not(.dark) .revival-page .rev-success-foot { color: #6B7280; border-top: 1px solid #f1f0f6; }
+:root:not(.dark) .revival-page .rev-success-chip {
+  background: #f6f5fb;
+  color: #4B5563;
+  border: 1px solid #ecebf3;
+}
+:root:not(.dark) .revival-page .rev-success--purple .rev-success-chip { background: #f5f1ff; color: #6d28d9; border-color: #ece5fb; }
+:root:not(.dark) .revival-page .rev-success--teal   .rev-success-chip { background: #ecfdf5; color: #0f766e; border-color: #d5f5e8; }
+:root:not(.dark) .revival-page .rev-success--amber  .rev-success-chip { background: #fffaf0; color: #b45309; border-color: #fbecc8; }
+
+/* Dark theme — richer but slightly toned-down gradients */
+.dark .revival-page .rev-success {
+  background: #14141d;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #f5f5fb;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.dark .revival-page .rev-success:hover {
+  box-shadow: 0 12px 28px -14px rgba(124,58,237,0.35);
+}
+.dark .revival-page .rev-success--purple .rev-success-accent {
+  background:
+    radial-gradient(130% 80% at 0% 0%, rgba(139,92,246,0.35), transparent 60%),
+    linear-gradient(180deg, rgba(124,58,237,0.18) 0%, rgba(20,20,29,0) 60%);
+}
+.dark .revival-page .rev-success--teal .rev-success-accent {
+  background:
+    radial-gradient(130% 80% at 0% 0%, rgba(20,184,166,0.32), transparent 60%),
+    linear-gradient(180deg, rgba(15,118,110,0.16) 0%, rgba(20,20,29,0) 60%);
+}
+.dark .revival-page .rev-success--amber .rev-success-accent {
+  background:
+    radial-gradient(130% 80% at 0% 0%, rgba(245,158,11,0.32), transparent 60%),
+    linear-gradient(180deg, rgba(180,83,9,0.16) 0%, rgba(20,20,29,0) 60%);
+}
+.dark .revival-page .rev-success-badge {
+  background: rgba(16,185,129,0.14);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.28);
+}
+.dark .revival-page .rev-success-desc { color: rgba(245,245,251,0.65); }
+.dark .revival-page .rev-success-meta { color: rgba(245,245,251,0.80); }
+.dark .revival-page .rev-success-foot { color: rgba(245,245,251,0.65); border-top: 1px solid rgba(255,255,255,0.06); }
+.dark .revival-page .rev-success-chip {
+  background: rgba(255,255,255,0.06);
+  color: rgba(245,245,251,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
 

@@ -169,7 +169,7 @@ function RevivalBoardPage() {
       <div className="revival-page flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
         <SidebarInset className="flex min-w-0 flex-1 flex-col">
-          <TopBar />
+          <TopBar showGreeting={false} />
           <main className="flex-1 space-y-6 p-4 sm:p-6">
             {/* Breadcrumb */}
             <nav className="text-xs text-muted-foreground">
@@ -291,33 +291,38 @@ function RevivalBoardPage() {
 function SuccessCard({ s }: { s: Success }) {
   return (
     <div className={`rev-success rev-success--${s.variant}`}>
-      <div className="flex items-center gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-full bg-black/15 px-2 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm dark:bg-white/10">
+      <div className="rev-success-accent" aria-hidden />
+      <div className="relative flex items-center gap-1.5">
+        <span className="rev-success-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">
           ✅ Successfully Revived
         </span>
       </div>
-      <h3 className="mt-2 font-display text-base font-semibold">{s.name}</h3>
-      <p className="mt-0.5 line-clamp-1 text-[11px] text-white/80">{s.desc}</p>
-      <div className="mt-2 flex items-center gap-2 text-[11px] text-white/90">
-        <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-1.5 py-0.5 backdrop-blur-sm">
+      <h3 className="rev-success-title relative mt-2 font-display text-base font-semibold">
+        {s.name}
+      </h3>
+      <p className="rev-success-desc relative mt-0.5 line-clamp-1 text-[11px]">
+        {s.desc}
+      </p>
+      <div className="rev-success-meta relative mt-2 flex items-center gap-2 text-[11px]">
+        <span className="rev-success-chip inline-flex items-center gap-1 rounded-md px-1.5 py-0.5">
           <FileText className="h-3 w-3" /> Draft
         </span>
-        <ArrowRight className="h-3 w-3 opacity-80" />
-        <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-1.5 py-0.5 backdrop-blur-sm">
+        <ArrowRight className="h-3 w-3 opacity-70" />
+        <span className="rev-success-chip inline-flex items-center gap-1 rounded-md px-1.5 py-0.5">
           <Rocket className="h-3 w-3" /> Revived
         </span>
       </div>
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="relative mt-2 flex flex-wrap gap-1">
         {s.stack.map((t) => (
           <span
             key={t}
-            className="rounded-full bg-white/15 px-1.5 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm"
+            className="rev-success-chip rounded-full px-1.5 py-0.5 text-[10px] font-medium"
           >
             {t}
           </span>
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-white/85">
+      <div className="rev-success-foot relative mt-auto pt-2 flex items-center justify-between text-[11px]">
         <span className="inline-flex items-center gap-1">
           <Clock className="h-3 w-3" /> Shipped in {s.weeks} weeks
         </span>

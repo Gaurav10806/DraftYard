@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export function TopBar() {
+export function TopBar({ showGreeting = true }: { showGreeting?: boolean } = {}) {
   const [greeting, setGreeting] = useState("Good afternoon");
   useEffect(() => {
     const h = new Date().getHours();
@@ -15,13 +15,14 @@ export function TopBar() {
     <header className="flex flex-col gap-4 border-b border-border/60 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
-        <div>
-          <h1 className="font-display text-[26px] font-semibold tracking-tight">
-            {greeting}, Dev_Cosmos! <span className="inline-block">👋</span>
-          </h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">Let's turn your ideas into incredible projects.</p>
-
-        </div>
+        {showGreeting && (
+          <div>
+            <h1 className="font-display text-[26px] font-semibold tracking-tight">
+              {greeting}, Dev_Cosmos! <span className="inline-block">👋</span>
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">Let's turn your ideas into incredible projects.</p>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <div className="group relative w-72 transition-[width] duration-[220ms] ease-out focus-within:w-96 focus-within:max-w-full">
