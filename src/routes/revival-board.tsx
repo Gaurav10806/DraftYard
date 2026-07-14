@@ -310,7 +310,7 @@ function SuccessCard({ s }: { s: Success }) {
         {s.stack.map((t) => (
           <span
             key={t}
-            className="rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+            className="rev-success-chip rounded-md px-1.5 py-0.5 text-[10px] font-medium"
           >
             {t}
           </span>

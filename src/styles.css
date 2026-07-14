@@ -620,25 +620,32 @@
   transform: translateY(0);
 }
 
-/* Success story cards — neutral card surface, category-tinted left rail
-   and a soft corner glow. Base matches the project cards below. */
+/* Success story cards — full category gradient with depth and premium hover. */
 .revival-page .rev-success {
+  --rev-a: #8b5cf6;
+  --rev-b: #6d28d9;
+  --rev-c: #4c1d95;
   --rev-tint: 139, 92, 246;
   position: relative;
   border-radius: 14px;
-  padding: 14px 14px 14px 15px;
+  padding: 14px;
   overflow: hidden;
   min-height: 208px;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   transform: translateZ(0);
-  border-left: 3px solid rgb(var(--rev-tint));
   transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
 }
-.revival-page .rev-success--purple { --rev-tint: 139, 92, 246; }
-.revival-page .rev-success--teal   { --rev-tint: 20, 184, 166; }
-.revival-page .rev-success--amber  { --rev-tint: 245, 158, 11; }
+.revival-page .rev-success--purple {
+  --rev-tint: 139, 92, 246;
+}
+.revival-page .rev-success--teal {
+  --rev-tint: 20, 184, 166;
+}
+.revival-page .rev-success--amber {
+  --rev-tint: 245, 158, 11;
+}
 
 .revival-page .rev-success-accent {
   position: absolute;
@@ -655,96 +662,114 @@
 }
 .revival-page .rev-success:hover .rev-success-view { transform: translateX(2px); }
 
-/* Light — white card, subtle border, soft category glow in top-right */
+/* Light — medium pastel gradient (not too washed out) */
+:root:not(.dark) .revival-page .rev-success--purple {
+  background: linear-gradient(135deg, #EDE4FF 0%, #DCC9FB 60%, #C9B0F7 100%);
+}
+:root:not(.dark) .revival-page .rev-success--teal {
+  background: linear-gradient(135deg, #DAF5EC 0%, #B7EBDB 60%, #93DFC6 100%);
+}
+:root:not(.dark) .revival-page .rev-success--amber {
+  background: linear-gradient(135deg, #FDECD1 0%, #F9D399 60%, #F5B76A 100%);
+}
 :root:not(.dark) .revival-page .rev-success {
-  background: #FFFFFF;
-  border-top: 1px solid rgba(0,0,0,0.08);
-  border-right: 1px solid rgba(0,0,0,0.08);
-  border-bottom: 1px solid rgba(0,0,0,0.08);
-  color: #141414;
-  box-shadow: 0 1px 2px rgba(15,15,30,0.04), 0 8px 20px -16px rgba(15,15,30,0.08);
+  border: 1px solid rgba(255,255,255,0.6);
+  color: #1F1B2E;
+  box-shadow:
+    0 1px 2px rgba(15,15,30,0.06),
+    0 10px 24px -14px rgba(var(--rev-tint), 0.35),
+    inset 0 1px 0 rgba(255,255,255,0.5);
 }
 :root:not(.dark) .revival-page .rev-success .rev-success-accent {
-  background: radial-gradient(150px 150px at 100% 0%, rgba(var(--rev-tint), 0.08), transparent 70%);
+  background:
+    radial-gradient(60% 45% at 100% 0%, rgba(255,255,255,0.55), transparent 65%),
+    radial-gradient(55% 45% at 0% 100%, rgba(var(--rev-tint), 0.25), transparent 70%);
 }
 :root:not(.dark) .revival-page .rev-success:hover {
-  border-top-color: rgba(var(--rev-tint), 0.28);
-  border-right-color: rgba(var(--rev-tint), 0.28);
-  border-bottom-color: rgba(var(--rev-tint), 0.28);
+  border-color: rgba(255,255,255,0.85);
   box-shadow:
-    0 1px 2px rgba(15,15,30,0.05),
-    0 18px 40px -20px rgba(var(--rev-tint), 0.28),
-    0 0 0 1px rgba(var(--rev-tint), 0.08);
+    0 1px 2px rgba(15,15,30,0.06),
+    0 22px 44px -18px rgba(var(--rev-tint), 0.55),
+    0 0 0 1px rgba(var(--rev-tint), 0.20),
+    inset 0 1px 0 rgba(255,255,255,0.55);
 }
-:root:not(.dark) .revival-page .rev-success:hover .rev-success-accent { opacity: 1.25; }
 :root:not(.dark) .revival-page .rev-success-badge {
-  background: rgba(var(--rev-tint), 0.15);
-  color: rgb(var(--rev-tint));
-  border: 1px solid rgba(var(--rev-tint), 0.25);
+  background: rgba(255,255,255,0.75);
+  color: #047857;
+  border: 1px solid rgba(255,255,255,0.9);
 }
-:root:not(.dark) .revival-page .rev-success-upvotes { color: #6B6B6B; }
-:root:not(.dark) .revival-page .rev-success-desc { color: #6B6B6B; }
+:root:not(.dark) .revival-page .rev-success-upvotes { color: rgba(31,27,46,0.75); }
+:root:not(.dark) .revival-page .rev-success-desc { color: rgba(31,27,46,0.72); }
 :root:not(.dark) .revival-page .rev-success-foot {
-  color: #6B6B6B;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  color: rgba(31,27,46,0.72);
+  border-top: 1px solid rgba(255,255,255,0.55);
 }
 
-/* Dark — dark card, subtle border, slightly stronger category glow */
+/* Dark — deep rich category gradient */
+.dark .revival-page .rev-success--purple {
+  background: linear-gradient(135deg, #2a1266 0%, #4c1d95 55%, #6d28d9 100%);
+}
+.dark .revival-page .rev-success--teal {
+  background: linear-gradient(135deg, #0b3b36 0%, #115e59 55%, #0f766e 100%);
+}
+.dark .revival-page .rev-success--amber {
+  background: linear-gradient(135deg, #3a1d06 0%, #7c2d12 55%, #b45309 100%);
+}
 .dark .revival-page .rev-success {
-  background: #16161F;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  border-right: 1px solid rgba(255,255,255,0.08);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  color: #F2F2F2;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
-}
-.dark .revival-page .rev-success .rev-success-accent {
-  background: radial-gradient(150px 150px at 100% 0%, rgba(var(--rev-tint), 0.14), transparent 70%);
-}
-.dark .revival-page .rev-success:hover {
-  border-top-color: rgba(var(--rev-tint), 0.38);
-  border-right-color: rgba(var(--rev-tint), 0.38);
-  border-bottom-color: rgba(var(--rev-tint), 0.38);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: #F5F5FB;
   box-shadow:
     0 1px 2px rgba(0,0,0,0.4),
-    0 20px 40px -20px rgba(var(--rev-tint), 0.40),
-    0 0 0 1px rgba(var(--rev-tint), 0.14);
+    0 14px 32px -18px rgba(var(--rev-tint), 0.45),
+    inset 0 1px 0 rgba(255,255,255,0.06);
 }
-.dark .revival-page .rev-success:hover .rev-success-accent { opacity: 1.25; }
+.dark .revival-page .rev-success .rev-success-accent {
+  background:
+    radial-gradient(65% 50% at 100% 0%, rgba(255,255,255,0.14), transparent 65%),
+    radial-gradient(55% 45% at 0% 100%, rgba(0,0,0,0.35), transparent 70%);
+}
+.dark .revival-page .rev-success:hover {
+  border-color: rgba(255,255,255,0.22);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.4),
+    0 22px 44px -18px rgba(var(--rev-tint), 0.65),
+    0 0 0 1px rgba(var(--rev-tint), 0.25),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
 .dark .revival-page .rev-success-badge {
-  background: rgba(var(--rev-tint), 0.15);
-  color: rgb(var(--rev-tint));
-  border: 1px solid rgba(var(--rev-tint), 0.30);
+  background: rgba(255,255,255,0.14);
+  color: #eafff5;
+  border: 1px solid rgba(255,255,255,0.22);
+  backdrop-filter: blur(6px);
 }
-.dark .revival-page .rev-success-upvotes { color: #9B9B9B; }
-.dark .revival-page .rev-success-desc { color: #9B9B9B; }
+.dark .revival-page .rev-success-upvotes { color: rgba(255,255,255,0.85); }
+.dark .revival-page .rev-success-desc { color: rgba(255,255,255,0.80); }
 .dark .revival-page .rev-success-foot {
-  color: #9B9B9B;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.78);
+  border-top: 1px solid rgba(255,255,255,0.12);
 }
 
-/* View Details — variant-tinted on hover */
+/* View Details button */
 :root:not(.dark) .revival-page .rev-success-view {
-  background: rgba(0,0,0,0.03);
-  color: #4B5563;
-  border-color: rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.65);
+  color: #1F1B2E;
+  border-color: rgba(255,255,255,0.85);
 }
 :root:not(.dark) .revival-page .rev-success:hover .rev-success-view {
-  background: rgba(var(--rev-tint), 0.12);
-  color: rgb(var(--rev-tint));
-  border-color: rgba(var(--rev-tint), 0.35);
-  box-shadow: 0 4px 12px -6px rgba(var(--rev-tint), 0.30);
+  background: rgba(255,255,255,0.9);
+  border-color: #ffffff;
+  box-shadow: 0 6px 14px -6px rgba(var(--rev-tint), 0.45);
 }
 .dark .revival-page .rev-success-view {
-  background: rgba(255,255,255,0.05);
-  color: #D4D4DA;
-  border-color: rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.22);
+  backdrop-filter: blur(6px);
 }
 .dark .revival-page .rev-success:hover .rev-success-view {
-  background: rgba(var(--rev-tint), 0.20);
-  color: #ffffff;
-  border-color: rgba(var(--rev-tint), 0.50);
-  box-shadow: 0 6px 16px -8px rgba(var(--rev-tint), 0.50);
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.4);
+  box-shadow: 0 6px 16px -6px rgba(0,0,0,0.5);
 }
 
 
@@ -754,3 +779,14 @@
 
 
 
+:root:not(.dark) .revival-page .rev-success-chip {
+  background: rgba(255,255,255,0.55);
+  color: rgba(31,27,46,0.85);
+  border: 1px solid rgba(255,255,255,0.75);
+}
+.dark .revival-page .rev-success-chip {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(4px);
+}
