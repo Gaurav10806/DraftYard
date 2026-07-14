@@ -630,13 +630,31 @@
   min-height: 208px;
   display: flex;
   flex-direction: column;
-  transition: box-shadow .22s ease, transform .22s ease, border-color .22s ease;
+  cursor: pointer;
+  transform: translateZ(0);
+  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+}
+.revival-page .rev-success:hover {
+  transform: translateY(-3px);
 }
 .revival-page .rev-success-accent {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  background:
+    radial-gradient(120% 60% at 100% 0%, rgba(255,255,255,0.22), transparent 55%),
+    radial-gradient(80% 60% at 0% 100%, rgba(255,255,255,0.08), transparent 60%);
+  opacity: 0.9;
+  transition: opacity .25s ease;
 }
+.revival-page .rev-success:hover .rev-success-accent { opacity: 1; }
+.revival-page .rev-success-view {
+  border: 1px solid transparent;
+  transition: background .2s ease, color .2s ease, transform .2s ease, border-color .2s ease;
+  transform: translateX(0);
+}
+.revival-page .rev-success:hover .rev-success-view { transform: translateX(2px); }
+
 
 /* Light theme — medium pastel gradients (visible color, not washed out) */
 :root:not(.dark) .revival-page .rev-success {
@@ -712,6 +730,28 @@
   color: #ffffff;
   border: 1px solid rgba(255,255,255,0.18);
 }
+
+/* View details button */
+:root:not(.dark) .revival-page .rev-success-view {
+  background: rgba(255,255,255,0.7);
+  color: #1F1B2E;
+  border-color: rgba(255,255,255,0.9);
+}
+:root:not(.dark) .revival-page .rev-success:hover .rev-success-view {
+  background: #ffffff;
+  box-shadow: 0 4px 12px -6px rgba(15,15,30,0.25);
+}
+.dark .revival-page .rev-success-view {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.22);
+  backdrop-filter: blur(6px);
+}
+.dark .revival-page .rev-success:hover .rev-success-view {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.35);
+}
+
 
 
 
