@@ -291,50 +291,47 @@ function RevivalBoardPage() {
 function SuccessCard({ s }: { s: Success }) {
   return (
     <div className={`rev-success rev-success--${s.variant}`}>
-      <div className="rev-success-bar" aria-hidden />
-      <div className="rev-success-glow" aria-hidden />
-      <div className="rev-success-body">
-        <div className="flex items-center justify-between">
-          <span className="rev-success-badge">
-            <span className="rev-success-badge-dot" /> Revived
+      <div className="rev-success-accent" aria-hidden />
+      <div className="relative flex items-center justify-between">
+        <span className="rev-success-badge inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+          ✅ Revived
+        </span>
+        <span className="rev-success-upvotes inline-flex items-center gap-1 text-[11px] font-medium">
+          <ThumbsUp className="h-3 w-3" /> {s.upvotes}
+        </span>
+      </div>
+      <h3 className="rev-success-title relative mt-2.5 font-display text-[15px] font-semibold leading-tight">
+        {s.name}
+      </h3>
+      <p className="rev-success-desc relative mt-1 line-clamp-1 text-[11.5px]">
+        {s.desc}
+      </p>
+      <div className="relative mt-2.5 flex flex-wrap gap-1">
+        {s.stack.map((t) => (
+          <span
+            key={t}
+            className="rev-success-chip rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+          >
+            {t}
           </span>
-          <span className="rev-success-upvotes inline-flex items-center gap-1 text-[11px] font-medium">
-            <ThumbsUp className="h-3 w-3" />
-            {s.upvotes}
-          </span>
-        </div>
-        <h3 className="rev-success-title mt-2.5 font-display text-[15px] font-semibold leading-tight">
-          {s.name}
-        </h3>
-        <p className="rev-success-desc mt-1 line-clamp-1 text-[11.5px]">
-          {s.desc}
-        </p>
-        <div className="mt-2.5 flex flex-wrap gap-1">
-          {s.stack.map((t) => (
-            <span
-              key={t}
-              className="rev-success-chip rounded-md px-1.5 py-0.5 text-[10px] font-medium"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-        <div className="rev-success-foot mt-auto pt-2.5 flex items-center gap-2 text-[11px]">
-          <span className="inline-flex items-center gap-1">
-            <FileText className="h-3 w-3" /> Draft
-          </span>
-          <ArrowRight className="h-3 w-3 opacity-50" />
-          <span className="inline-flex items-center gap-1 rev-success-foot-accent">
-            <Rocket className="h-3 w-3" /> Shipped
-          </span>
-          <span className="ml-auto inline-flex items-center gap-1 opacity-80">
-            <Clock className="h-3 w-3" /> {s.weeks}w
-          </span>
-        </div>
+        ))}
+      </div>
+      <div className="rev-success-foot relative mt-auto pt-2.5 flex items-center gap-2 text-[11px]">
+        <span className="inline-flex items-center gap-1">
+          <FileText className="h-3 w-3" /> Draft
+        </span>
+        <ArrowRight className="h-3 w-3 opacity-60" />
+        <span className="inline-flex items-center gap-1 font-medium">
+          <Rocket className="h-3 w-3" /> Shipped
+        </span>
+        <span className="ml-auto inline-flex items-center gap-1 opacity-85">
+          <Clock className="h-3 w-3" /> {s.weeks}w
+        </span>
       </div>
     </div>
   );
 }
+
 
 
 
