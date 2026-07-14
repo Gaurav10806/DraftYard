@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { TopBar } from "@/components/dashboard/top-bar";
 import { ActiveDraftCard } from "@/components/dashboard/active-draft-card";
 import { ProjectCompass } from "@/components/dashboard/project-compass";
 import { OpenQuestions } from "@/components/dashboard/open-questions";
 import { DraftShelf } from "@/components/dashboard/draft-shelf";
 import { QuickActions } from "@/components/dashboard/quick-actions";
-import { useDrafts } from "@/hooks/use-drafts";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -32,44 +33,50 @@ const fadeUp = {
 };
 
 function Dashboard() {
-  const { data: drafts = [], isLoading } = useDrafts();
-
-  if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading your drafts…</div>;
-  }
-
   return (
-    <DashboardLayout>
-      <motion.div
-        className="flex-1 space-y-6"
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: {},
-          show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
-        }}
-      >
-        <div className="grid gap-6 lg:grid-cols-3">
-          <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-            <ActiveDraftCard drafts={drafts} />
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background text-foreground">
+        <AppSidebar />
+        <SidebarInset className="flex min-w-0 flex-1 flex-col">
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <TopBar />
           </motion.div>
-          <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-            <ProjectCompass />
-          </motion.div>
-          <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-            <OpenQuestions />
-          </motion.div>
-        </div>
+          <motion.main
+            className="flex-1 space-y-6 p-4 sm:p-6"
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: {},
+              show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
+            }}
+          >
+            <div className="grid gap-6 lg:grid-cols-3">
+              <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
+                <ActiveDraftCard />
+              </motion.div>
+              <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
+                <ProjectCompass />
+              </motion.div>
+              <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
+                <OpenQuestions />
+              </motion.div>
+            </div>
 
-        <motion.div
-          className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]"
-          variants={fadeUp}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <DraftShelf drafts={drafts} />
-          <QuickActions />
-        </motion.div>
-      </motion.div>
-    </DashboardLayout>
+            <motion.div
+              className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]"
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <DraftShelf />
+              <QuickActions />
+            </motion.div>
+          </motion.main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }

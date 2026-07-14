@@ -1,10 +1,9 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { topTechStacks } from "@/lib/drafts-insights";
 import { AXIS, CHART_COLORS } from "./colors";
-import { drafts, type Draft } from "@/data/drafts";
 
-export function TechStackBar({ drafts }: { drafts: Draft[] }) {
-  const data = topTechStacks(drafts);
+export function TechStackBar() {
+  const data = topTechStacks();
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <h3 className="font-display text-sm font-semibold">Most-used tech</h3>

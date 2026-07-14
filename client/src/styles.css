@@ -217,3 +217,236 @@
   );
 }
 
+
+/* ————————————————————————————————————————————————————————————
+ * Feed page — theme tokens + first-class light mode
+ * ———————————————————————————————————————————————————————————— */
+.feed-page {
+  --feed-accent: #aa3bff;
+  --feed-glow-rgba: rgba(170, 59, 255, 0.55);
+  --feed-glow-rgba-soft: rgba(170, 59, 255, 0.45);
+}
+
+:root:not(.dark) .feed-page {
+  /* deeper, calmer purple for light backgrounds */
+  --feed-accent: #7C3AED;
+  --feed-glow-rgba: rgba(124, 58, 237, 0.16);
+  --feed-glow-rgba-soft: rgba(124, 58, 237, 0.12);
+
+  background-color: #FAFAFA;
+  color: #0F0F0F;
+}
+
+:root:not(.dark) .feed-page [data-sidebar="inset"],
+:root:not(.dark) .feed-page > main,
+:root:not(.dark) .feed-page .SidebarInset {
+  background-color: #FAFAFA;
+}
+
+/* Card surfaces: pure white + soft premium shadow, quiet gray border */
+:root:not(.dark) .feed-page .bg-card {
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+:root:not(.dark) .feed-page .border-border\/60,
+:root:not(.dark) .feed-page .border-border {
+  border-color: #E5E7EB;
+}
+
+/* Headings + secondary text tuning */
+:root:not(.dark) .feed-page h1,
+:root:not(.dark) .feed-page h2,
+:root:not(.dark) .feed-page h3 {
+  color: #0F0F0F;
+}
+:root:not(.dark) .feed-page .text-muted-foreground {
+  color: #6B7280;
+}
+
+/* Trending — clean card surface, artwork header carries the color.
+   Low-saturation editorial gradients (lavender, teal, sand, slate). */
+:root:not(.dark) .feed-page .feed-trending {
+  background: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.04) !important;
+}
+:root:not(.dark) .feed-page .feed-trending:hover {
+  box-shadow: 0 14px 34px -14px rgba(124, 58, 237, 0.18) !important;
+}
+
+/* Artwork gradient per variant — light mode (softer, lower saturation) */
+:root:not(.dark) .feed-page .feed-trending-art[data-variant="0"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #6366F1 0%, #7C6FE8 55%, #8B7ED8 100%);
+}
+:root:not(.dark) .feed-page .feed-trending-art[data-variant="1"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #0EA5A5 0%, #1FB6A8 55%, #34C4A8 100%);
+}
+:root:not(.dark) .feed-page .feed-trending-art[data-variant="2"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #E27A5F 0%, #E89579 55%, #ECA88E 100%);
+}
+:root:not(.dark) .feed-page .feed-trending-art[data-variant="3"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #475569 0%, #5B6B82 55%, #6E7E94 100%);
+}
+
+/* Artwork gradient per variant — dark mode (richer, higher contrast) */
+.dark .feed-page .feed-trending-art[data-variant="0"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #4F46E5 0%, #6D5FE8 55%, #8B7EE8 100%);
+}
+.dark .feed-page .feed-trending-art[data-variant="1"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #0F766E 0%, #14A093 55%, #2DD4BF 100%);
+}
+.dark .feed-page .feed-trending-art[data-variant="2"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #C2410C 0%, #DB6B3A 55%, #F97316 100%);
+}
+.dark .feed-page .feed-trending-art[data-variant="3"] .feed-trending-art-bg {
+  background: linear-gradient(135deg, #334155 0%, #475569 55%, #64748B 100%);
+}
+
+
+/* Filter tabs — soft purple pill for active state */
+:root:not(.dark) .feed-page .feed-tab-active {
+  background-color: #F3E8FF !important;
+  color: #7C3AED !important;
+  box-shadow: none !important;
+}
+
+/* Feed card hover — reduce neon glow */
+:root:not(.dark) .feed-page .group\/card:hover {
+  box-shadow: 0 8px 24px -12px rgba(124, 58, 237, 0.18) !important;
+}
+
+/* Stall pattern tag — muted pastel */
+:root:not(.dark) .feed-page .feed-stall-tag {
+  background-color: #FFF7ED !important;
+  border-color: #FED7AA !important;
+  color: #C2410C !important;
+}
+:root:not(.dark) .feed-page .feed-stall-dot {
+  background-color: #F97316;
+}
+
+/* Kill neon shadow on upvote pill in light mode */
+:root:not(.dark) .feed-page .group\/card button.shadow-\[0_0_18px_var\(--feed-glow-rgba-soft\)\] {
+  box-shadow: none !important;
+}
+
+
+/* ————————————————————————————————————————————————————————————
+ * Project details page — light/dark themed, node network, glow
+ * ———————————————————————————————————————————————————————————— */
+.project-page {
+  --project-accent: #a855f7;
+  --project-glow: rgba(168, 85, 247, 0.55);
+}
+.project-page .project-hero-logo {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 100%);
+  box-shadow: 0 12px 40px -12px rgba(139, 92, 246, 0.55);
+}
+
+/* Dark: neon node network */
+.dark .project-page .project-node-lines line { stroke: rgba(168, 85, 247, 0.28); }
+.dark .project-page .project-node-dots circle { fill: rgba(190, 160, 255, 0.55); }
+.dark .project-page .project-node-dots circle.project-node-bright {
+  fill: #22d3ee;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.95)) drop-shadow(0 0 18px rgba(168, 85, 247, 0.55));
+}
+.dark .project-page .project-hero {
+  background:
+    radial-gradient(600px 260px at 90% 0%, rgba(168, 85, 247, 0.18), transparent 65%),
+    radial-gradient(500px 240px at 0% 100%, rgba(34, 211, 238, 0.12), transparent 60%),
+    #13131f;
+  border-color: rgba(168, 85, 247, 0.25);
+}
+.dark .project-page .project-card {
+  background: #13131f;
+  border-color: #2a2a3d;
+}
+
+/* Light: intentional lavender design (not inverted) */
+:root:not(.dark) .project-page {
+  --project-accent: #7c3aed;
+  --project-glow: rgba(124, 58, 237, 0.25);
+  background: #fafafa;
+}
+:root:not(.dark) .project-page [data-sidebar="inset"] { background: #fafafa; }
+:root:not(.dark) .project-page .project-node-lines line { stroke: rgba(124, 58, 237, 0.18); }
+:root:not(.dark) .project-page .project-node-dots circle { fill: rgba(124, 58, 237, 0.4); }
+:root:not(.dark) .project-page .project-node-dots circle.project-node-bright {
+  fill: #7c3aed;
+  filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.7)) drop-shadow(0 0 14px rgba(168, 85, 247, 0.4));
+}
+:root:not(.dark) .project-page .project-hero {
+  background:
+    radial-gradient(700px 300px at 90% -10%, rgba(168, 85, 247, 0.14), transparent 60%),
+    radial-gradient(600px 280px at -10% 110%, rgba(236, 72, 153, 0.08), transparent 60%),
+    #ffffff;
+  border-color: #ece7f7;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.05), 0 12px 32px -18px rgba(124, 58, 237, 0.2);
+}
+:root:not(.dark) .project-page .project-card {
+  background: #ffffff;
+  border-color: #ece7f7;
+  box-shadow: 0 1px 2px rgba(15, 15, 30, 0.04), 0 6px 16px -10px rgba(124, 58, 237, 0.12);
+}
+:root:not(.dark) .project-page .project-card:hover {
+  box-shadow: 0 1px 2px rgba(15, 15, 30, 0.04), 0 14px 30px -14px rgba(124, 58, 237, 0.22);
+}
+
+/* ————————————————————————————————————————————————————————————
+ * Hero constellation network
+ * ———————————————————————————————————————————————————————————— */
+@keyframes constellation-float {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(var(--fx, 3px), var(--fy, 3px)); }
+}
+
+.constellation-edge { opacity: 0.22; }
+
+/* Dark theme */
+.dark .project-page {
+  --constellation-line: #a78bfa;
+  --project-glow-core: rgba(139, 92, 246, 0.55);
+  --project-glow-mid: rgba(139, 92, 246, 0.12);
+}
+.dark .project-page .constellation-node--small {
+  fill: #c4b5fd;
+  opacity: 0.4;
+}
+.dark .project-page .constellation-node--purple {
+  fill: #8b5cf6;
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.95))
+          drop-shadow(0 0 18px rgba(139, 92, 246, 0.55));
+}
+.dark .project-page .constellation-node--cyan {
+  fill: #22d3ee;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.95))
+          drop-shadow(0 0 18px rgba(34, 211, 238, 0.5));
+}
+
+/* Light theme — intentional lavender design (not inverted from dark).
+   Darker lavender lines on white, soft violet nodes, blurred lavender halo. */
+:root:not(.dark) .project-page {
+  --constellation-line: #A78BFA;
+  --project-glow-core: rgba(196, 181, 253, 0.6);   /* #C4B5FD halo core */
+  --project-glow-mid:  rgba(237, 233, 254, 0.0);   /* fade to transparent */
+}
+:root:not(.dark) .project-page .constellation-edge {
+  opacity: 1;
+  stroke-opacity: 0.42;
+}
+:root:not(.dark) .project-page .constellation-node--small {
+  fill: #8B5CF6;
+  opacity: 0.55;
+}
+:root:not(.dark) .project-page .constellation-node--purple {
+  fill: #7C3AED;
+  filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.75))
+          drop-shadow(0 0 14px rgba(167, 139, 250, 0.55));
+}
+:root:not(.dark) .project-page .constellation-node--cyan {
+  fill: #0891B2;
+  filter: drop-shadow(0 0 6px rgba(8, 145, 178, 0.65))
+          drop-shadow(0 0 14px rgba(103, 232, 249, 0.5));
+}

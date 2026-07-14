@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-
+import { toast } from "sonner";
 import {
   Boxes,
   Rss,
@@ -31,15 +31,18 @@ import { Button } from "@/components/ui/button";
 
 const primary = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Workspace", url: "#", icon: Boxes },
-  { title: "DraftYard Feed", url: "#", icon: Rss },
-  { title: "Revival Board", url: "#", icon: RefreshCw },
+  { title: "Workspace", url: "/workspace", icon: Boxes },
+  { title: "DraftYard Feed", url: "/feed", icon: Rss },
+  { title: "Revival Board", url: "/feed", icon: RefreshCw },
   { title: "Insights", url: "/insights", icon: BarChart2 },
-  { title: "Stack Intelligence", url: "#", icon: Layers },
-  { title: "Idea Review", url: "#", icon: ClipboardCheck },
-  { title: "AI Assistant", url: "#", icon: Bot },
-  { title: "Profile", url: "#", icon: UserCircle },
-  { title: "Settings", url: "#", icon: Settings },
+];
+
+const comingSoon = [
+  { title: "Stack Intelligence", icon: Layers },
+  { title: "Idea Review", icon: ClipboardCheck },
+  { title: "AI Assistant", icon: Bot },
+  { title: "Profile", icon: UserCircle },
+  { title: "Settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -82,7 +85,9 @@ export function AppSidebar() {
                             active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50"
                           }`}
                         />
-                        <item.icon className={`h-4 w-4 shrink-0 transition-colors duration-[180ms] ${active ? "text-primary" : "group-hover/link:text-foreground"}`} />
+                        <item.icon
+                          className={`h-4 w-4 shrink-0 transition-colors duration-[180ms] ${active ? "text-primary" : "group-hover/link:text-foreground"}`}
+                        />
                         <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -92,25 +97,59 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
+            Coming Soon
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-0.5">
+              {comingSoon.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    tooltip={`${item.title} — coming soon`}
+                    className="h-9"
+                    onClick={() => toast(`${item.title} is on the roadmap — not built yet`)}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 opacity-70" />
+                    <span className="truncate opacity-70">{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed ? (
           <div className="rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-4">
-            <p className="font-display text-sm font-semibold leading-tight">Big ideas<br/>start here.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Capture today,<br/>build tomorrow.</p>
-            <Link to="/new-draft">
-              <Button size="sm" className="mt-3 w-full rounded-lg">
-                <Plus className="mr-1 h-3.5 w-3.5" /> New Draft
-              </Button>
-            </Link>
+            <p className="font-display text-sm font-semibold leading-tight">
+              Big ideas
+              <br />
+              start here.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Capture today,
+              <br />
+              build tomorrow.
+            </p>
+            <Button
+              size="sm"
+              className="mt-3 w-full rounded-lg"
+              onClick={() => toast("New draft creation is on the roadmap — not built yet")}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> New Draft
+            </Button>
           </div>
         ) : (
-          <Link to="/new-draft">
-            <Button size="icon" className="rounded-lg">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button
+            size="icon"
+            className="rounded-lg"
+            onClick={() => toast("New draft creation is on the roadmap — not built yet")}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         )}
       </SidebarFooter>
     </Sidebar>

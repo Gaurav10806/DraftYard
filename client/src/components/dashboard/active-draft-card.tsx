@@ -1,26 +1,27 @@
 import { ArrowRight, Clock } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { Draft } from "@/data/drafts";
+import { drafts } from "@/data/drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
+import { slugify } from "@/routes/project.$slug";
 
-export function ActiveDraftCard({ drafts }: { drafts: Draft[] }) {
-  if (drafts.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">
-        No drafts yet — bury your first project to see it here.
-      </div>
-    );
-  }
-
+export function ActiveDraftCard() {
+  const navigate = useNavigate();
   const d = drafts[0];
   const progress = stageToProgress(d.stageDied);
   return (
     <div className="group flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Active Draft</span>
-        <button className="text-muted-foreground hover:text-foreground">•••</button>
+        <button
+          onClick={() => toast("More options coming soon")}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          •••
+        </button>
       </div>
 
       <div className="mt-6 flex items-start gap-4">
@@ -72,6 +73,7 @@ export function ActiveDraftCard({ drafts }: { drafts: Draft[] }) {
       </div>
 
       <Button
+        onClick={() => navigate({ to: "/project/$slug", params: { slug: slugify(d.projectName) } })}
         className="mt-7 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-[180ms] hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5 group-hover:shadow-lg"
       >
         Open Draft

@@ -1,10 +1,9 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { whyDiedBuckets } from "@/lib/drafts-insights";
 import { AXIS, CHART_COLORS } from "./colors";
-import { drafts, type Draft } from "@/data/drafts";
 
-export function WhyDiedBar({ drafts }: { drafts: Draft[] }) {
-  const data = whyDiedBuckets(drafts);
+export function WhyDiedBar() {
+  const data = whyDiedBuckets();
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <h3 className="font-display text-sm font-semibold">Why drafts die</h3>

@@ -18,8 +18,7 @@ const burialSchema = new mongoose.Schema({
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   deathCategory: { type: String, default: null },
   upvotes: { type: Number, default: 0 },
-  projectLink: { type: String, default: '' },
-  ownerToken: { type: String, default: null },
+
   // --- Added for the Revival Board (Member C) ---
   // Everyone who has "raised their hand" wanting to revive this project
   raisedHands: {
