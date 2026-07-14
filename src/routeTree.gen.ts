@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as RevivalBoardRouteImport } from './routes/revival-board'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,6 +19,11 @@ import { Route as ProjectSlugRouteImport } from './routes/project.$slug'
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevivalBoardRoute = RevivalBoardRouteImport.update({
+  id: '/revival-board',
+  path: '/revival-board',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedRoute = FeedRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/revival-board': typeof RevivalBoardRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/revival-board': typeof RevivalBoardRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -60,19 +68,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/revival-board': typeof RevivalBoardRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/feed' | '/workspace' | '/project/$slug'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/feed'
+    | '/revival-board'
+    | '/workspace'
+    | '/project/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/feed' | '/workspace' | '/project/$slug'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/feed'
+    | '/revival-board'
+    | '/workspace'
+    | '/project/$slug'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/revival-board'
     | '/workspace'
     | '/project/$slug'
   fileRoutesById: FileRoutesById
@@ -81,6 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
+  RevivalBoardRoute: typeof RevivalBoardRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
 }
@@ -92,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revival-board': {
+      id: '/revival-board'
+      path: '/revival-board'
+      fullPath: '/revival-board'
+      preLoaderRoute: typeof RevivalBoardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feed': {
@@ -129,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
+  RevivalBoardRoute: RevivalBoardRoute,
   WorkspaceRoute: WorkspaceRoute,
   ProjectSlugRoute: ProjectSlugRoute,
 }

@@ -32,7 +32,7 @@ const primary = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Workspace", url: "/workspace", icon: Boxes },
   { title: "DraftYard Feed", url: "/feed", icon: Rss },
-  { title: "Revival Board", url: "#", icon: RefreshCw },
+  { title: "Revival Board", url: "/revival-board", icon: RefreshCw },
   { title: "Insights", url: "#", icon: BarChart2 },
   { title: "Stack Intelligence", url: "#", icon: Layers },
   { title: "Idea Review", url: "#", icon: ClipboardCheck },
