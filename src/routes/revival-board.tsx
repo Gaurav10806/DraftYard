@@ -169,7 +169,7 @@ function RevivalBoardPage() {
       <div className="revival-page flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
         <SidebarInset className="flex min-w-0 flex-1 flex-col">
-          <TopBar />
+          <TopBar showGreeting={false} />
           <main className="flex-1 space-y-6 p-4 sm:p-6">
             {/* Breadcrumb */}
             <nav className="text-xs text-muted-foreground">
