@@ -15,7 +15,10 @@ app.use(cors());
 app.use(express.json());
 
 const burialRoutes = require("./routes/burialRoutes");  // ← add
-app.use("/api", burialRoutes); 
+app.use("/api", burialRoutes);
+
+const authRoutes = require("./routes/authRoutes");
+app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("DraftYard API is running 🚀");

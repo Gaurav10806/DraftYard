@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, type ReactNode } from "react";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -103,9 +104,27 @@ const tasks: {
   priority: Priority;
   assignee: string;
 }[] = [
-  { id: "T-01", title: "Implement Login API", status: "In Progress", priority: "High", assignee: "AV" },
-  { id: "T-02", title: "Connect Frontend to API", status: "In Progress", priority: "Medium", assignee: "AL" },
-  { id: "T-03", title: "Design Dashboard UI", status: "In Progress", priority: "Medium", assignee: "DC" },
+  {
+    id: "T-01",
+    title: "Implement Login API",
+    status: "In Progress",
+    priority: "High",
+    assignee: "AV",
+  },
+  {
+    id: "T-02",
+    title: "Connect Frontend to API",
+    status: "In Progress",
+    priority: "Medium",
+    assignee: "AL",
+  },
+  {
+    id: "T-03",
+    title: "Design Dashboard UI",
+    status: "In Progress",
+    priority: "Medium",
+    assignee: "DC",
+  },
   { id: "T-04", title: "JWT Authentication", status: "Todo", priority: "High", assignee: "AV" },
   { id: "T-05", title: "Protected Routes", status: "Todo", priority: "Medium", assignee: "RP" },
   { id: "T-06", title: "User Profile Page", status: "Todo", priority: "Low", assignee: "AL" },
@@ -134,75 +153,78 @@ function WorkspacePage() {
   const [aiOpen, setAiOpen] = useState(false);
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background text-foreground">
-        <AppSidebar />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col">
-          <WorkspaceTopBar />
+    <ProtectedRoute>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background text-foreground">
+          <AppSidebar />
+          <SidebarInset className="flex min-w-0 flex-1 flex-col">
+            <WorkspaceTopBar />
 
-          <motion.main
-            className="flex-1 space-y-6 p-4 sm:p-6"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <ProjectHeader
-              stage={stage}
-              onStageClick={(s) => setPendingStage(s)}
-              available={available}
-              onAvailableChange={setAvailable}
-            />
-
-            <TabBar tab={tab} onChange={setTab} />
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={tab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {tab === "overview" && <OverviewTab />}
-                {tab === "tasks" && <TasksTab />}
-                {tab === "stall-dna" && <StallDNATab />}
-                {tab === "team" && <TeamTab />}
-              </motion.div>
-            </AnimatePresence>
-          </motion.main>
-        </SidebarInset>
-      </div>
-
-      {/* Stage change dialog */}
-      <Dialog open={!!pendingStage} onOpenChange={(o) => !o && setPendingStage(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Update stage</DialogTitle>
-            <DialogDescription>
-              Move StudyBuddy to <span className="font-medium text-foreground">{pendingStage}</span>.
-              Contributors will be notified.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea placeholder="Add an optional note about this stage change…" rows={3} />
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setPendingStage(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (pendingStage) setStage(pendingStage);
-                setPendingStage(null);
-              }}
+            <motion.main
+              className="flex-1 space-y-6 p-4 sm:p-6"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
-              Update stage
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <ProjectHeader
+                stage={stage}
+                onStageClick={(s) => setPendingStage(s)}
+                available={available}
+                onAvailableChange={setAvailable}
+              />
 
-      {/* Floating AI */}
-      <FloatingAI open={aiOpen} onOpenChange={setAiOpen} />
-    </SidebarProvider>
+              <TabBar tab={tab} onChange={setTab} />
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={tab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {tab === "overview" && <OverviewTab />}
+                  {tab === "tasks" && <TasksTab />}
+                  {tab === "stall-dna" && <StallDNATab />}
+                  {tab === "team" && <TeamTab />}
+                </motion.div>
+              </AnimatePresence>
+            </motion.main>
+          </SidebarInset>
+        </div>
+
+        {/* Stage change dialog */}
+        <Dialog open={!!pendingStage} onOpenChange={(o) => !o && setPendingStage(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update stage</DialogTitle>
+              <DialogDescription>
+                Move StudyBuddy to{" "}
+                <span className="font-medium text-foreground">{pendingStage}</span>. Contributors
+                will be notified.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea placeholder="Add an optional note about this stage change…" rows={3} />
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setPendingStage(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (pendingStage) setStage(pendingStage);
+                  setPendingStage(null);
+                }}
+              >
+                Update stage
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Floating AI */}
+        <FloatingAI open={aiOpen} onOpenChange={setAiOpen} />
+      </SidebarProvider>
+    </ProtectedRoute>
   );
 }
 
@@ -224,7 +246,9 @@ function WorkspaceTopBar() {
       <div className="flex items-center gap-2">
         <ThemeToggle />
         <Avatar className="h-9 w-9 ring-2 ring-border">
-          <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">DC</AvatarFallback>
+          <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+            DC
+          </AvatarFallback>
         </Avatar>
       </div>
     </header>
@@ -372,7 +396,9 @@ function StageTracker({ current, onSelect }: { current: Stage; onSelect: (s: Sta
     <div>
       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         <span>Stage Tracker</span>
-        <span className="tracking-normal text-muted-foreground/80 normal-case">Click to update</span>
+        <span className="tracking-normal text-muted-foreground/80 normal-case">
+          Click to update
+        </span>
       </div>
       <div className="mt-3 flex items-center">
         {STAGES.map((s, i) => {
@@ -389,8 +415,8 @@ function StageTracker({ current, onSelect }: { current: Stage; onSelect: (s: Sta
                     active
                       ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_15%,transparent)]"
                       : done
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground group-hover:border-primary/50 group-hover:text-foreground"
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground group-hover:border-primary/50 group-hover:text-foreground"
                   }`}
                 >
                   {done ? (
@@ -564,7 +590,9 @@ function OverviewTab() {
                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {m.label}
                 </div>
-                <div className="mt-1 font-display text-xl font-semibold leading-none">{m.value}</div>
+                <div className="mt-1 font-display text-xl font-semibold leading-none">
+                  {m.value}
+                </div>
                 {m.sub && <div className="mt-1 text-[11px] text-muted-foreground">{m.sub}</div>}
               </div>
             ))}
@@ -584,11 +612,36 @@ function OverviewTab() {
         >
           <ul className="divide-y divide-border/60">
             {[
-              { icon: CheckCircle2, tone: "text-[color:var(--revive)]", what: "Stage updated to Building by Ansh", when: "2h ago" },
-              { icon: GitPullRequest, tone: "text-primary", what: "Aditya pushed 3 commits", when: "5h ago" },
-              { icon: UserPlus, tone: "text-primary", what: "Gaurav joined as contributor", when: "1d ago" },
-              { icon: Circle, tone: "text-muted-foreground", what: "Login API task marked in progress", when: "1d ago" },
-              { icon: Circle, tone: "text-muted-foreground", what: "Database schema added", when: "2d ago" },
+              {
+                icon: CheckCircle2,
+                tone: "text-[color:var(--revive)]",
+                what: "Stage updated to Building by Ansh",
+                when: "2h ago",
+              },
+              {
+                icon: GitPullRequest,
+                tone: "text-primary",
+                what: "Aditya pushed 3 commits",
+                when: "5h ago",
+              },
+              {
+                icon: UserPlus,
+                tone: "text-primary",
+                what: "Gaurav joined as contributor",
+                when: "1d ago",
+              },
+              {
+                icon: Circle,
+                tone: "text-muted-foreground",
+                what: "Login API task marked in progress",
+                when: "1d ago",
+              },
+              {
+                icon: Circle,
+                tone: "text-muted-foreground",
+                what: "Database schema added",
+                when: "2d ago",
+              },
             ].map((a, i) => (
               <li key={i} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                 <a.icon className={`h-3.5 w-3.5 shrink-0 ${a.tone}`} />
@@ -671,7 +724,18 @@ function DraftCompassMini() {
         ))}
         {axes.map((_, i) => {
           const [x, y] = pt(i, 100);
-          return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--border)" strokeWidth={1} opacity={0.5} />;
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={x}
+              y2={y}
+              stroke="var(--border)"
+              strokeWidth={1}
+              opacity={0.5}
+            />
+          );
         })}
         <polygon
           points={poly}
@@ -698,8 +762,6 @@ function DraftCompassMini() {
   );
 }
 
-
-
 // ————————————————————————————————————————————————————————————————
 // TASKS
 // ————————————————————————————————————————————————————————————————
@@ -714,14 +776,18 @@ function TasksTab() {
       {/* LEFT — task list */}
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between px-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Tasks</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+            Tasks
+          </h2>
           <div className="flex items-center gap-1 rounded-full border border-border bg-background p-0.5 text-[11px]">
             {(["list", "board"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={`rounded-full px-2.5 py-1 font-medium capitalize transition-colors duration-[180ms] ${
-                  view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  view === v
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {v}
@@ -747,9 +813,7 @@ function TasksTab() {
                         <button
                           onClick={() => setSelectedId(t.id)}
                           className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all duration-[180ms] ${
-                            active
-                              ? "bg-primary/8 ring-1 ring-primary/30"
-                              : "hover:bg-muted/60"
+                            active ? "bg-primary/8 ring-1 ring-primary/30" : "hover:bg-muted/60"
                           }`}
                         >
                           <span
@@ -757,8 +821,8 @@ function TasksTab() {
                               t.status === "Done"
                                 ? "border-[color:var(--revive)] bg-[color:var(--revive)] text-white"
                                 : t.status === "In Progress"
-                                ? "border-primary text-primary"
-                                : "border-border"
+                                  ? "border-primary text-primary"
+                                  : "border-border"
                             }`}
                           >
                             {t.status === "Done" ? (
@@ -808,10 +872,12 @@ function PriorityChip({ p }: { p: Priority }) {
     p === "High"
       ? "bg-destructive/10 text-destructive"
       : p === "Medium"
-      ? "bg-tint-peach text-foreground"
-      : "bg-muted text-muted-foreground";
+        ? "bg-tint-peach text-foreground"
+        : "bg-muted text-muted-foreground";
   return (
-    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${cls}`}>
+    <span
+      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${cls}`}
+    >
       {p}
     </span>
   );
@@ -851,9 +917,7 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
               {task.status}
             </Badge>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {task.id} · Due 20 May · Backend
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{task.id} · Due 20 May · Backend</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="rounded-full">
@@ -874,8 +938,8 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
               Description
             </div>
             <p className="mt-2 text-sm leading-relaxed text-foreground">
-              Build a secure login API using email and password. Use bcrypt for hashing and generate a
-              JWT token on successful login.
+              Build a secure login API using email and password. Use bcrypt for hashing and generate
+              a JWT token on successful login.
             </p>
           </section>
 
@@ -905,9 +969,7 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
                       >
                         {on && <CheckCircle2 className="h-3 w-3" />}
                       </span>
-                      <span
-                        className={`text-sm ${on ? "text-muted-foreground line-through" : ""}`}
-                      >
+                      <span className={`text-sm ${on ? "text-muted-foreground line-through" : ""}`}>
                         {c.label}
                       </span>
                     </button>
@@ -964,15 +1026,22 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
           </MetaRow>
           <MetaRow label="Labels">
             <div className="flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="rounded-full text-[10px]">Backend</Badge>
-              <Badge variant="secondary" className="rounded-full text-[10px]">Auth</Badge>
+              <Badge variant="secondary" className="rounded-full text-[10px]">
+                Backend
+              </Badge>
+              <Badge variant="secondary" className="rounded-full text-[10px]">
+                Auth
+              </Badge>
             </div>
           </MetaRow>
           <MetaRow label="Due">
             <span className="text-sm">20 May 2026</span>
           </MetaRow>
           <MetaRow label="Linked PR">
-            <a className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline" href="#">
+            <a
+              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+              href="#"
+            >
               <GitPullRequest className="h-3.5 w-3.5" /> #45 Implement login API
             </a>
           </MetaRow>
@@ -1338,4 +1407,3 @@ function FloatingAI({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
     </>
   );
 }
-

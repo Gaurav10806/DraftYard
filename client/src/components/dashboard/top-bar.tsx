@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { drafts } from "@/data/drafts";
 import { slugify } from "@/routes/project.$slug";
+import { useAuth } from "@/lib/auth-context";
 
 const NOTIFICATIONS = [
   {
@@ -41,11 +42,22 @@ const NOTIFICATIONS = [
 
 export function TopBar() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [greeting, setGreeting] = useState("Good afternoon");
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [unread, setUnread] = useState(NOTIFICATIONS.length);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const displayName = user?.name || "there";
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "DY";
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -93,7 +105,7 @@ export function TopBar() {
         <SidebarTrigger />
         <div>
           <h1 className="font-display text-[26px] font-semibold tracking-tight">
-            {greeting}, Dev_Cosmos! <span className="inline-block">👋</span>
+            {greeting}, {displayName}! <span className="inline-block">👋</span>
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Let's turn your ideas into incredible projects.
@@ -182,13 +194,13 @@ export function TopBar() {
             <button>
               <Avatar className="h-9 w-9 ring-2 ring-border transition-shadow hover:ring-primary/50">
                 <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
-                  DY
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>Dev_Cosmos</DropdownMenuLabel>
+            <DropdownMenuLabel className="truncate">{user?.name || "Account"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => toast("Profile page is on the roadmap — not built yet")}
@@ -202,7 +214,11 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => toast("Signed out (demo only — no auth wired up yet)")}
+              onClick={() => {
+                logout();
+                toast("Signed out");
+                navigate({ to: "/login" });
+              }}
             >
               <LogOut className="mr-2 h-4 w-4" /> Log out
             </DropdownMenuItem>

@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as NewDraftRouteImport } from './routes/new-draft'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -22,9 +24,19 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewDraftRoute = NewDraftRouteImport.update({
   id: '/new-draft',
   path: '/new-draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InsightsRoute = InsightsRouteImport.update({
@@ -58,7 +70,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
+  '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -67,7 +81,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
+  '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -77,7 +93,9 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/insights': typeof InsightsRoute
+  '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
+  '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -88,7 +106,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/insights'
+    | '/login'
     | '/new-draft'
+    | '/signup'
     | '/workspace'
     | '/project/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -97,7 +117,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/insights'
+    | '/login'
     | '/new-draft'
+    | '/signup'
     | '/workspace'
     | '/project/$slug'
   id:
@@ -106,7 +128,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/insights'
+    | '/login'
     | '/new-draft'
+    | '/signup'
     | '/workspace'
     | '/project/$slug'
   fileRoutesById: FileRoutesById
@@ -116,7 +140,9 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
   InsightsRoute: typeof InsightsRoute
+  LoginRoute: typeof LoginRoute
   NewDraftRoute: typeof NewDraftRoute
+  SignupRoute: typeof SignupRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
 }
@@ -130,11 +156,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/new-draft': {
       id: '/new-draft'
       path: '/new-draft'
       fullPath: '/new-draft'
       preLoaderRoute: typeof NewDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/insights': {
@@ -180,7 +220,9 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
   InsightsRoute: InsightsRoute,
+  LoginRoute: LoginRoute,
   NewDraftRoute: NewDraftRoute,
+  SignupRoute: SignupRoute,
   WorkspaceRoute: WorkspaceRoute,
   ProjectSlugRoute: ProjectSlugRoute,
 }
