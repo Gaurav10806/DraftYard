@@ -7,7 +7,7 @@ import {
   Trophy,
   Percent,
   Rocket,
-  FileText,
+
   ArrowRight,
   Bookmark,
   Clock,
