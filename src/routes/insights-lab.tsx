@@ -518,6 +518,155 @@ function MetricPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+/* ---- Rotating AI hero + micro insight cards ---- */
+
+const HERO_INSIGHTS = [
+  {
+    label: "Hidden Pattern",
+    number: "#42",
+    headline: (
+      <>
+        Projects with 3+ contributors are{" "}
+        <span className="text-primary">2.4× more likely</span> to be revived than solo projects.
+      </>
+    ),
+    detail:
+      "Based on 12,840 projects analyzed across the last 90 days. Collaboration boosts completion, but only when documentation is present in the first two weeks.",
+  },
+  {
+    label: "Biggest Discovery",
+    number: "#118",
+    headline: (
+      <>
+        Drafts that ship a working prototype in <span className="text-primary">14 days</span> reach production 3.1× more often.
+      </>
+    ),
+    detail:
+      "The 14-day prototype window is the strongest single predictor of shipping. Momentum, not scope, is what carries a project across the line.",
+  },
+  {
+    label: "AI Insight",
+    number: "#24",
+    headline: (
+      <>
+        <span className="text-primary">Scope Creep</span> silently causes 34% of Build-stage stalls — more than burnout and technical debt combined.
+      </>
+    ),
+    detail:
+      "Teams that lock scope at kickoff and enforce a 5-day feature timebox reduce stall risk by 48%. It's the highest-leverage intervention we've measured.",
+  },
+  {
+    label: "Emerging Signal",
+    number: "#77",
+    headline: (
+      <>
+        TypeScript projects overtook JavaScript in <span className="text-primary">survival rate</span> for the first time.
+      </>
+    ),
+    detail:
+      "Adoption crossed 74% in June and correlates with an 18% reduction in production regressions across matched projects.",
+  },
+];
+
+function RotatingAIHero() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((v) => (v + 1) % HERO_INSIGHTS.length), 6000);
+    return () => clearInterval(t);
+  }, []);
+  const item = HERO_INSIGHTS[i];
+  return (
+    <Card glow className="!p-0">
+      <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+        <div className="flex items-start gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white shadow-lg shadow-primary/40">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+              {item.label} <span className="text-muted-foreground/70">·</span> <span className="text-muted-foreground/80">{item.number}</span>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <h2 className="mt-1 font-display text-xl font-semibold leading-tight md:text-2xl">
+                  {item.headline}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{item.detail}</p>
+              </motion.div>
+            </AnimatePresence>
+            <div className="mt-4 flex items-center gap-1.5">
+              {HERO_INSIGHTS.map((_, idx) => (
+                <button
+                  key={idx}
+                  aria-label={`Insight ${idx + 1}`}
+                  onClick={() => setI(idx)}
+                  className={`h-1.5 rounded-full transition-all ${idx === i ? "w-8 bg-primary" : "w-3 bg-border hover:bg-muted-foreground/40"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <Button className="shrink-0 rounded-full bg-primary hover:bg-primary/90">
+          See analysis <ArrowRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function AIMicroInsight({
+  tag,
+  icon: Icon,
+  tone,
+  title,
+  desc,
+}: {
+  tag: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div
+      className="ins-card group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-5 transition-all duration-[220ms] hover:-translate-y-0.5"
+      style={{ boxShadow: `inset 0 1px 0 0 ${tone}22` }}
+    >
+      <div
+        className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full opacity-40 blur-2xl transition-opacity duration-300 group-hover:opacity-70"
+        style={{ background: `radial-gradient(circle, ${tone}44, transparent 70%)` }}
+        aria-hidden
+      />
+      <div className="relative flex items-center gap-2">
+        <span
+          className="grid h-8 w-8 place-items-center rounded-lg"
+          style={{ background: `${tone}1a`, color: tone }}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+          style={{ background: `${tone}1a`, color: tone }}
+        >
+          {tag}
+        </span>
+      </div>
+      <div className="relative mt-3 font-display text-sm font-semibold leading-snug">{title}</div>
+      <p className="relative mt-1.5 text-xs text-muted-foreground">{desc}</p>
+    </div>
+  );
+}
+
 /* ================== TECHNOLOGY ================== */
 
 function TechnologyTab() {
