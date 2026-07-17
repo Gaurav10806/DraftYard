@@ -810,20 +810,26 @@
   background: radial-gradient(60% 100% at 100% 0%, rgba(170, 59, 255, 0.08), transparent 60%),
     radial-gradient(80% 100% at 0% 100%, rgba(124, 92, 255, 0.05), transparent 55%);
 }
-.insights-page .dna-galaxy-bg {
+.insights-page .dna-net {
+  --dna-edge: rgba(170, 130, 255, 0.35);
+}
+.insights-page .dna-net-bg {
   background:
-    radial-gradient(circle at 50% 50%, rgba(170, 59, 255, 0.22), transparent 60%),
-    radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.10), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.10), transparent 55%);
+    radial-gradient(60% 60% at 50% 50%, rgba(124, 92, 255, 0.10), transparent 65%),
+    radial-gradient(40% 40% at 20% 30%, rgba(59, 130, 246, 0.06), transparent 60%);
 }
-:root:not(.dark) .insights-page .dna-galaxy-bg {
+:root:not(.dark) .insights-page .dna-net {
+  --dna-edge: rgba(120, 90, 200, 0.28);
+}
+:root:not(.dark) .insights-page .dna-net-bg {
   background:
-    radial-gradient(circle at 50% 50%, rgba(170, 59, 255, 0.12), transparent 60%),
-    radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.06), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.06), transparent 55%);
+    radial-gradient(70% 70% at 50% 50%, rgba(148, 163, 184, 0.10), transparent 70%);
 }
-.insights-page .dna-orb {
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  transition: transform 0.24s ease;
+.insights-page .dna-net-label {
+  fill: hsl(var(--muted-foreground));
 }
+@keyframes dna-edge-flow {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -20; }
+}
+
