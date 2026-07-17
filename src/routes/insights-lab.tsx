@@ -280,32 +280,33 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      {/* Hero AI Insight */}
-      <Card glow className="!p-0">
-        <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
-          <div className="flex items-start gap-4">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white shadow-lg shadow-primary/40">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
-                AI Insight of the Week
-              </div>
-              <h2 className="mt-1 font-display text-xl font-semibold leading-tight md:text-2xl">
-                Projects with 3+ contributors are{" "}
-                <span className="text-primary">2.4× more likely</span> to be revived than solo projects.
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Based on 12,840 projects analyzed across the last 90 days. Collaboration boosts
-                completion, but only when documentation is present in the first two weeks.
-              </p>
-            </div>
-          </div>
-          <Button className="shrink-0 rounded-full bg-primary hover:bg-primary/90">
-            See analysis <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
-      </Card>
+      {/* Rotating AI Hero */}
+      <RotatingAIHero />
+
+      {/* Compact AI insight cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <AIMicroInsight
+          tag="Hidden Opportunity"
+          icon={Sparkles}
+          tone={EMERALD}
+          title="AI + Developer Tools is undervalued"
+          desc="Projects mixing these domains ship 46% faster than average, but only 6% of new drafts pursue it."
+        />
+        <AIMicroInsight
+          tag="Risk Alert"
+          icon={AlertTriangle}
+          tone={AMBER}
+          title="Build stage is stalling faster"
+          desc="Median time-to-stall in the Build phase dropped from 34 → 22 days over the last quarter."
+        />
+        <AIMicroInsight
+          tag="Emerging Trend"
+          icon={TrendingUp}
+          tone={CYAN}
+          title="TypeScript adoption crossed 74%"
+          desc="TS projects now overtake JS in survival rate for the first time — a signal shift, not noise."
+        />
+      </div>
 
       {/* Funnel + Community Health */}
       <div className="grid gap-6 lg:grid-cols-3">
