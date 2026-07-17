@@ -1139,6 +1139,8 @@ function StallDNATab() {
 
 type SimNode = {
   id: string;
+  kind: "cluster" | "satellite";
+  clusterId: string;
   x: number;
   y: number;
   vx: number;
@@ -1148,7 +1150,20 @@ type SimNode = {
 };
 
 const GRAPH_W = 1400;
-const GRAPH_H = 560;
+const GRAPH_H = 620;
+const SATELLITE_TOTAL = 42;
+
+// Simple deterministic PRNG for stable initial placement.
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 function StallNetworkGraph({
   patterns,
@@ -1165,6 +1180,17 @@ function StallNetworkGraph({
   onHover: (id: string | null) => void;
   onSelect: (id: string) => void;
 }) {
+  // Use the top 6 patterns by count as cluster centers.
+  const clusters = useMemo(
+    () => [...patterns].sort((a, b) => b.count - a.count).slice(0, 6),
+    [patterns],
+  );
+  const clusterIds = useMemo(() => new Set(clusters.map((c) => c.id)), [clusters]);
+  const clusterEdges = useMemo(
+    () => edges.filter(([a, b]) => clusterIds.has(a) && clusterIds.has(b)),
+    [edges, clusterIds],
+  );
+
   const nodesRef = useRef<SimNode[]>([]);
   const [, force] = useState(0);
   const rafRef = useRef<number | null>(null);
@@ -1175,35 +1201,75 @@ function StallNetworkGraph({
   if (nodesRef.current.length === 0) {
     const cx = GRAPH_W / 2;
     const cy = GRAPH_H / 2;
-    nodesRef.current = patterns.map((p, i) => {
-      const angle = (i / patterns.length) * Math.PI * 2;
-      const radius = i === 0 ? 0 : 150;
+    const rand = mulberry32(9137);
+    const totalCount = clusters.reduce((s, c) => s + c.count, 0);
+
+    const clusterNodes: SimNode[] = clusters.map((p, i) => {
+      const angle = (i / clusters.length) * Math.PI * 2 - Math.PI / 2;
+      const radius = 200;
       return {
         id: p.id,
+        kind: "cluster",
+        clusterId: p.id,
         x: cx + Math.cos(angle) * radius,
         y: cy + Math.sin(angle) * radius,
         vx: 0,
         vy: 0,
-        r: 22 + Math.sqrt(p.count) * 1.6,
+        r: 28 + Math.sqrt(p.count) * 1.4,
         ref: p,
       };
     });
+
+    // Distribute satellites proportional to count, guarantee >= 3 per cluster.
+    const rawAlloc = clusters.map((c) => (c.count / totalCount) * SATELLITE_TOTAL);
+    const alloc = rawAlloc.map((v) => Math.max(3, Math.round(v)));
+    const satNodes: SimNode[] = [];
+    clusters.forEach((c, i) => {
+      const center = clusterNodes[i];
+      for (let k = 0; k < alloc[i]; k++) {
+        const a = rand() * Math.PI * 2;
+        const rr = 55 + rand() * 55;
+        satNodes.push({
+          id: `${c.id}-sat-${k}`,
+          kind: "satellite",
+          clusterId: c.id,
+          x: center.x + Math.cos(a) * rr,
+          y: center.y + Math.sin(a) * rr,
+          vx: 0,
+          vy: 0,
+          r: 4 + rand() * 3,
+          ref: c,
+        });
+      }
+    });
+
+    nodesRef.current = [...clusterNodes, ...satNodes];
   }
 
   useEffect(() => {
-    const edgeMap = edges.map(([a, b, s]) => {
-      const na = nodesRef.current.findIndex((n) => n.id === a);
-      const nb = nodesRef.current.findIndex((n) => n.id === b);
-      return { a: na, b: nb, s };
+    const nodes = nodesRef.current;
+    const clusterIdxById = new Map<string, number>();
+    nodes.forEach((n, i) => {
+      if (n.kind === "cluster") clusterIdxById.set(n.id, i);
     });
+
+    const edgeMap = clusterEdges.map(([a, b, s]) => ({
+      a: clusterIdxById.get(a)!,
+      b: clusterIdxById.get(b)!,
+      s,
+    }));
+
+    // For each satellite, cache its cluster index.
+    const satToCluster = nodes.map((n) =>
+      n.kind === "satellite" ? clusterIdxById.get(n.clusterId)! : -1,
+    );
 
     let alpha = 1;
     const tick = () => {
-      const nodes = nodesRef.current;
       const cx = GRAPH_W / 2;
       const cy = GRAPH_H / 2;
 
-      // Repulsion
+      // Pairwise repulsion (weaker for satellites)
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i], b = nodes[j];
@@ -1211,31 +1277,49 @@ function StallNetworkGraph({
           let d2 = dx * dx + dy * dy;
           if (d2 < 1) d2 = 1;
           const d = Math.sqrt(d2);
-          const force = (5600 / d2) * alpha;
-          const fx = (dx / d) * force;
-          const fy = (dy / d) * force;
+          const bothCluster = a.kind === "cluster" && b.kind === "cluster";
+          const anyCluster = a.kind === "cluster" || b.kind === "cluster";
+          const strength = bothCluster ? 6800 : anyCluster ? 900 : 260;
+          const f = (strength / d2) * alpha;
+          const fx = (dx / d) * f;
+          const fy = (dy / d) * f;
           a.vx -= fx; a.vy -= fy;
           b.vx += fx; b.vy += fy;
         }
       }
 
-      // Springs
+      // Cluster-cluster springs
       edgeMap.forEach(({ a, b, s }) => {
         const na = nodes[a], nb = nodes[b];
         const dx = nb.x - na.x, dy = nb.y - na.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const rest = 220 - s * 130; // similar -> closer
-        const k = 0.02;
+        const rest = 320 - s * 140;
+        const k = 0.018;
         const f = (d - rest) * k * alpha;
         const fx = (dx / d) * f, fy = (dy / d) * f;
         na.vx += fx; na.vy += fy;
         nb.vx -= fx; nb.vy -= fy;
       });
 
+      // Satellite → cluster tether (strong short spring)
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.kind !== "satellite") continue;
+        const c = nodes[satToCluster[i]];
+        const dx = c.x - n.x, dy = c.y - n.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const rest = 72;
+        const k = 0.05;
+        const f = (d - rest) * k * alpha;
+        n.vx += (dx / d) * f;
+        n.vy += (dy / d) * f;
+      }
+
       // Gentle centering
       nodes.forEach((n) => {
-        n.vx += (cx - n.x) * 0.004 * alpha;
-        n.vy += (cy - n.y) * 0.004 * alpha;
+        const c = n.kind === "cluster" ? 0.004 : 0.0015;
+        n.vx += (cx - n.x) * c * alpha;
+        n.vy += (cy - n.y) * c * alpha;
       });
 
       // Damping + integrate
@@ -1244,15 +1328,12 @@ function StallNetworkGraph({
         n.vy *= 0.82;
         n.x += n.vx;
         n.y += n.vy;
-        // Soft bounds
         const pad = n.r + 8;
         n.x = Math.max(pad, Math.min(GRAPH_W - pad, n.x));
         n.y = Math.max(pad, Math.min(GRAPH_H - pad, n.y));
       });
 
-      // Alpha keeps ambient life
       alpha = Math.max(0.05, alpha * 0.995);
-
       force((v) => (v + 1) % 1000000);
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -1267,150 +1348,213 @@ function StallNetworkGraph({
   const neighborSet = useMemo(() => {
     const s = new Set<string>();
     if (!active) return s;
-    edges.forEach(([a, b]) => {
+    clusterEdges.forEach(([a, b]) => {
       if (a === active) s.add(b);
       if (b === active) s.add(a);
     });
     return s;
-  }, [active, edges]);
+  }, [active, clusterEdges]);
 
   const nodes = nodesRef.current;
-  const activeNode = active ? nodes.find((n) => n.id === active) : null;
+  const activeNode = active ? nodes.find((n) => n.id === active && n.kind === "cluster") : null;
+
+  const isDimmed = (n: SimNode) => {
+    if (!active) return false;
+    if (n.kind === "cluster") return n.id !== active && !neighborSet.has(n.id);
+    return n.clusterId !== active;
+  };
 
   return (
-    <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: GRAPH_H }}>
-      <div className="dna-net-bg absolute inset-0" aria-hidden />
-      <svg
-        viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`}
-        preserveAspectRatio="xMidYMid meet"
-        className="relative h-full w-full"
-        onMouseLeave={() => { onHover(null); setTooltipPos(null); }}
-      >
-        <defs>
-          {patterns.map((p) => (
-            <radialGradient key={p.id} id={`dna-fill-${p.id}`} cx="35%" cy="30%" r="75%">
-              <stop offset="0%" stopColor={p.color} stopOpacity="0.95" />
-              <stop offset="60%" stopColor={p.color} stopOpacity="0.5" />
-              <stop offset="100%" stopColor={p.color} stopOpacity="0.15" />
-            </radialGradient>
-          ))}
-        </defs>
+    <div>
+      <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: GRAPH_H * 0.5 }}>
+        <div className="dna-net-bg absolute inset-0" aria-hidden />
+        <svg
+          viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="relative h-full w-full"
+          onMouseLeave={() => { onHover(null); setTooltipPos(null); }}
+        >
+          <defs>
+            {clusters.map((p) => (
+              <radialGradient key={p.id} id={`dna-fill-${p.id}`} cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor={p.color} stopOpacity="0.95" />
+                <stop offset="60%" stopColor={p.color} stopOpacity="0.5" />
+                <stop offset="100%" stopColor={p.color} stopOpacity="0.15" />
+              </radialGradient>
+            ))}
+          </defs>
 
-        {/* Edges */}
-        <g>
-          {edges.map(([a, b, s], i) => {
-            const na = nodes.find((n) => n.id === a)!;
-            const nb = nodes.find((n) => n.id === b)!;
-            const highlighted = active && (a === active || b === active);
-            const dimmed = active && !highlighted;
-            const stroke = highlighted ? (na.ref.color) : "var(--dna-edge)";
-            return (
-              <line
-                key={i}
-                x1={na.x}
-                y1={na.y}
-                x2={nb.x}
-                y2={nb.y}
-                stroke={stroke}
-                strokeWidth={highlighted ? 1.8 : 1}
-                strokeOpacity={dimmed ? 0.06 : highlighted ? 0.9 : 0.22 + s * 0.15}
-                strokeDasharray={highlighted ? "6 4" : "0"}
-                style={{
-                  transition: "stroke-opacity 200ms ease, stroke-width 200ms ease",
-                  animation: highlighted ? "dna-edge-flow 1.6s linear infinite" : undefined,
-                }}
-              />
-            );
-          })}
-        </g>
+          {/* Cluster-to-cluster edges */}
+          <g>
+            {clusterEdges.map(([a, b, s], i) => {
+              const na = nodes.find((n) => n.id === a && n.kind === "cluster")!;
+              const nb = nodes.find((n) => n.id === b && n.kind === "cluster")!;
+              const highlighted = !!active && (a === active || b === active);
+              const dimmed = !!active && !highlighted;
+              const stroke = highlighted ? na.ref.color : "var(--dna-edge)";
+              return (
+                <line
+                  key={i}
+                  x1={na.x} y1={na.y} x2={nb.x} y2={nb.y}
+                  stroke={stroke}
+                  strokeWidth={highlighted ? 1.6 : 0.9}
+                  strokeOpacity={dimmed ? 0.05 : highlighted ? 0.85 : 0.2 + s * 0.15}
+                  style={{
+                    transition: "stroke-opacity 200ms ease, stroke-width 200ms ease",
+                    animation: highlighted ? "dna-edge-flow 1.6s linear infinite" : undefined,
+                  }}
+                />
+              );
+            })}
+          </g>
 
-        {/* Nodes */}
-        <g>
-          {nodes.map((n) => {
-            const isActive = active === n.id;
-            const dimmed = active && !isActive && !neighborSet.has(n.id);
-            const r = n.r * (isActive ? 1.12 : 1);
-            return (
-              <g
-                key={n.id}
-                style={{
-                  cursor: "pointer",
-                  opacity: dimmed ? 0.28 : 1,
-                  transition: "opacity 200ms ease",
-                }}
-                onMouseEnter={(e) => {
-                  onHover(n.id);
-                  const rect = containerRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    // convert svg coords to px
-                    const scaleX = rect.width / GRAPH_W;
-                    const scaleY = rect.height / GRAPH_H;
-                    setTooltipPos({ x: n.x * scaleX, y: n.y * scaleY - r * scaleY - 12 });
-                  }
-                }}
-                onMouseLeave={() => setTooltipPos(null)}
-                onClick={() => onSelect(n.id)}
-              >
-                {isActive && (
+          {/* Satellite tethers */}
+          <g>
+            {nodes.map((n) => {
+              if (n.kind !== "satellite") return null;
+              const c = nodes.find((m) => m.kind === "cluster" && m.id === n.clusterId)!;
+              const highlighted = active === n.clusterId;
+              const dimmed = !!active && !highlighted;
+              return (
+                <line
+                  key={`t-${n.id}`}
+                  x1={c.x} y1={c.y} x2={n.x} y2={n.y}
+                  stroke={highlighted ? c.ref.color : "var(--dna-edge)"}
+                  strokeWidth={0.7}
+                  strokeOpacity={dimmed ? 0.04 : highlighted ? 0.55 : 0.16}
+                  style={{ transition: "stroke-opacity 200ms ease" }}
+                />
+              );
+            })}
+          </g>
+
+          {/* Satellite nodes */}
+          <g>
+            {nodes.map((n) => {
+              if (n.kind !== "satellite") return null;
+              const highlighted = active === n.clusterId;
+              const dimmed = !!active && !highlighted;
+              return (
+                <circle
+                  key={n.id}
+                  cx={n.x}
+                  cy={n.y}
+                  r={n.r * (highlighted ? 1.25 : 1)}
+                  fill={n.ref.color}
+                  fillOpacity={dimmed ? 0.18 : highlighted ? 0.95 : 0.7}
+                  stroke={n.ref.color}
+                  strokeOpacity={dimmed ? 0.15 : 0.6}
+                  strokeWidth={0.6}
+                  style={{ transition: "r 200ms ease, fill-opacity 200ms ease" }}
+                />
+              );
+            })}
+          </g>
+
+          {/* Cluster nodes */}
+          <g>
+            {nodes.map((n) => {
+              if (n.kind !== "cluster") return null;
+              const isActive = active === n.id;
+              const dimmed = isDimmed(n);
+              const r = n.r * (isActive ? 1.12 : 1);
+              return (
+                <g
+                  key={n.id}
+                  style={{
+                    cursor: "pointer",
+                    opacity: dimmed ? 0.3 : 1,
+                    transition: "opacity 200ms ease",
+                  }}
+                  onMouseEnter={() => {
+                    onHover(n.id);
+                    const rect = containerRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      const scaleX = rect.width / GRAPH_W;
+                      const scaleY = rect.height / GRAPH_H;
+                      setTooltipPos({ x: n.x * scaleX, y: n.y * scaleY - r * scaleY - 12 });
+                    }
+                  }}
+                  onMouseLeave={() => setTooltipPos(null)}
+                  onClick={() => onSelect(n.id)}
+                >
+                  {isActive && (
+                    <circle cx={n.x} cy={n.y} r={r + 16} fill={n.ref.color} opacity={0.15} />
+                  )}
                   <circle
                     cx={n.x}
                     cy={n.y}
-                    r={r + 14}
-                    fill={n.ref.color}
-                    opacity={0.15}
+                    r={r}
+                    fill={`url(#dna-fill-${n.id})`}
+                    stroke={n.ref.color}
+                    strokeOpacity={isActive ? 0.9 : 0.55}
+                    strokeWidth={isActive ? 1.6 : 1}
+                    style={{ transition: "r 200ms ease" }}
                   />
-                )}
-                <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={r}
-                  fill={`url(#dna-fill-${n.id})`}
-                  stroke={n.ref.color}
-                  strokeOpacity={isActive ? 0.9 : 0.5}
-                  strokeWidth={isActive ? 1.5 : 1}
-                  style={{ transition: "r 200ms ease" }}
-                />
-                <text
-                  x={n.x}
-                  y={n.y + r + 16}
-                  textAnchor="middle"
-                  className="dna-net-label"
-                  style={{ fontSize: 11, fontWeight: 600, pointerEvents: "none" }}
-                >
-                  {n.ref.name}
-                </text>
-                <text
-                  x={n.x}
-                  y={n.y + 4}
-                  textAnchor="middle"
-                  fill="#fff"
-                  style={{ fontSize: r > 34 ? 15 : 12, fontWeight: 700, pointerEvents: "none" }}
-                >
-                  {n.ref.pct}%
-                </text>
-              </g>
-            );
-          })}
-        </g>
-      </svg>
+                  <text
+                    x={n.x}
+                    y={n.y + r + 18}
+                    textAnchor="middle"
+                    className="dna-net-label"
+                    style={{ fontSize: 12, fontWeight: 600, pointerEvents: "none" }}
+                  >
+                    {n.ref.name}
+                  </text>
+                  <text
+                    x={n.x}
+                    y={n.y + 5}
+                    textAnchor="middle"
+                    fill="#fff"
+                    style={{ fontSize: r > 40 ? 16 : 13, fontWeight: 700, pointerEvents: "none" }}
+                  >
+                    {n.ref.count}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
 
-      {/* Tooltip */}
-      {activeNode && tooltipPos && (
-        <div
-          className="dna-net-tooltip pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-xl border border-border/60 bg-popover/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
-          style={{ left: tooltipPos.x, top: tooltipPos.y }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: activeNode.ref.color }} />
-            <span className="font-display font-semibold">{activeNode.ref.name}</span>
+        {activeNode && tooltipPos && (
+          <div
+            className="dna-net-tooltip pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-xl border border-border/60 bg-popover/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
+            style={{ left: tooltipPos.x, top: tooltipPos.y }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ background: activeNode.ref.color }} />
+              <span className="font-display font-semibold">{activeNode.ref.name}</span>
+            </div>
+            <div className="mt-1 grid grid-cols-3 gap-3 text-[11px] text-muted-foreground">
+              <div><div className="text-foreground font-semibold">{activeNode.ref.count}</div>projects</div>
+              <div><div className="text-foreground font-semibold">{activeNode.ref.revival}%</div>avg revival</div>
+              <div><div className="text-foreground font-semibold">~{activeNode.ref.fix}w</div>avg fix</div>
+            </div>
           </div>
-          <div className="mt-1 grid grid-cols-3 gap-3 text-[11px] text-muted-foreground">
-            <div><div className="text-foreground font-semibold">{activeNode.ref.pct}%</div>of projects</div>
-            <div><div className="text-foreground font-semibold">{activeNode.ref.revival}%</div>avg revival</div>
-            <div><div className="text-foreground font-semibold">~{activeNode.ref.fix}w</div>avg fix</div>
-          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border/60 px-5 py-3 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {clusters.map((c) => (
+            <button
+              key={c.id}
+              onMouseEnter={() => onHover(c.id)}
+              onMouseLeave={() => onHover(null)}
+              onClick={() => onSelect(c.id)}
+              className="flex items-center gap-1.5 transition hover:text-foreground"
+            >
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: c.color }} />
+              <span className="font-medium">{c.name}</span>
+            </button>
+          ))}
         </div>
-      )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span>◦ Node size = project count</span>
+          <span>— Distance = similarity</span>
+          <span>● Color = stall category</span>
+        </div>
+      </div>
     </div>
   );
 }
