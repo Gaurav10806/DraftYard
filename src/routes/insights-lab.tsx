@@ -1447,11 +1447,41 @@ function RevivalTab() {
 
   return (
     <div className="space-y-6">
-      <Card glow>
+      {/* 1. Hero Insight */}
+      <Card glow className="!p-0">
+        <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+          <div className="flex items-start gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white shadow-lg shadow-primary/40">
+              <Rocket className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
+                Revival Hero Insight
+              </div>
+              <h2 className="mt-1 font-display text-xl font-semibold leading-tight md:text-2xl">
+                <span className="text-primary">1,412 drafts</span> were revived this quarter — the fastest{" "}
+                <span className="text-primary">1 in 6</span> shipped in under 10 days.
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Momentum, not scope, is the strongest predictor of revival. Small teams claiming clearly-scoped
+                drafts consistently outperform larger takeovers.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 md:min-w-[280px]">
+            <SummaryStat value="1,412" label="Revived" tone={ACCENT} />
+            <SummaryStat value="78%" label="Score" tone={EMERALD} />
+            <SummaryStat value="26.4d" label="Time" tone={CYAN} />
+          </div>
+        </div>
+      </Card>
+
+      {/* 2. Revival Probability */}
+      <Card>
         <SectionTitle
           icon={TrendingUp}
-          title="Revival Probability Trend"
-          subtitle="Some stall patterns are much easier to revive than others."
+          title="Revival Probability"
+          subtitle="How likely each stall pattern is to be revived once claimed."
           badge="Key Insight"
         />
         <div className="h-80">
@@ -1479,26 +1509,59 @@ function RevivalTab() {
         </div>
       </Card>
 
+      {/* 3. Revival Trend */}
+      <Card>
+        <SectionTitle icon={Activity} title="Revival Trend" subtitle="Cumulative revivals over the last 7 months" />
+        <div className="h-72">
+          <ResponsiveContainer>
+            <AreaChart data={overTime}>
+              <defs>
+                <linearGradient id="rov" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={ACCENT} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="var(--ins-grid)" vertical={false} />
+              <XAxis dataKey="m" stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <YAxis stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Area type="monotone" dataKey="v" stroke={ACCENT} strokeWidth={2.5} fill="url(#rov)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* 4. Fastest Revived Domains + 5. Average Revival Time */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <SectionTitle icon={Activity} title="Projects Revived Over Time" subtitle="Cumulative revivals" />
-          <div className="h-64">
-            <ResponsiveContainer>
-              <AreaChart data={overTime}>
-                <defs>
-                  <linearGradient id="rov" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={ACCENT} stopOpacity={0.5} />
-                    <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--ins-grid)" vertical={false} />
-                <XAxis dataKey="m" stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <YAxis stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Area type="monotone" dataKey="v" stroke={ACCENT} strokeWidth={2.5} fill="url(#rov)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <SectionTitle icon={Layers} title="Fastest Revived Domains" subtitle="Ranked by share of revivals shipped fastest" />
+          <ul className="mt-2 space-y-3">
+            {domains.map((d, i) => (
+              <li key={d.name} className="flex items-center gap-3">
+                <span
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-xs font-semibold"
+                  style={{ background: `${PALETTE[i % PALETTE.length]}1a`, color: PALETTE[i % PALETTE.length] }}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium">{d.name}</span>
+                    <span className="font-display font-semibold">{d.value}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${d.value * 2.5}%`,
+                        background: `linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}66)`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
 
         <Card>
@@ -1515,56 +1578,18 @@ function RevivalTab() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <SectionTitle icon={Layers} title="Most Revived Domains" subtitle="By share of revivals" />
-          <ul className="mt-2 space-y-3">
-            {domains.map((d, i) => (
-              <li key={d.name}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="font-medium">{d.name}</span>
-                  <span className="font-display font-semibold">{d.value}%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${d.value * 2.5}%`,
-                      background: `linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}66)`,
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card>
-          <SectionTitle icon={Users} title="Contributor Growth" subtitle="Net new contributors" />
-          <div className="grid place-items-center py-2">
-            <div className="font-display text-5xl font-semibold text-emerald-500">+31%</div>
-            <div className="mt-1 text-xs text-muted-foreground">contributors joining revived projects</div>
-          </div>
-          <div className="mt-4 h-32">
-            <ResponsiveContainer>
-              <LineChart data={overTime}>
-                <Line type="monotone" dataKey="v" stroke={EMERALD} strokeWidth={2.5} dot={false} />
-                <XAxis dataKey="m" hide />
-                <YAxis hide />
-                <Tooltip contentStyle={tooltipStyle} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <SectionTitle icon={Trophy} title="Revival Success Summary" subtitle="This quarter's headline numbers" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <SummaryStat value="1,412" label="Total revived" tone={ACCENT} />
-          <SummaryStat value="78%" label="Avg revival score" tone={EMERALD} />
-          <SummaryStat value="26.4d" label="Avg time to ship" tone={CYAN} />
-          <SummaryStat value="+31%" label="Contributor growth" tone={AMBER} />
+      {/* 6. Key Takeaways */}
+      <Card glow>
+        <SectionTitle
+          icon={Lightbulb}
+          title="Key Takeaways"
+          subtitle="What the model surfaced from this quarter's revivals"
+        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <RecCard title="Claim narrow, ship fast" desc="Drafts with a 2-week scope lock revive 2.9× more often than open-ended ones." />
+          <RecCard title="Web + AI is the fastest lane" desc="Combined-domain revivals ship 41% faster than single-domain claims." />
+          <RecCard title="Momentum beats team size" desc="Solo revivers who post weekly progress outperform silent 3-person teams." />
+          <RecCard title="Technical Debt is the sweet spot" desc="72% revival rate — the highest of any stall pattern once claimed." />
         </div>
       </Card>
     </div>
