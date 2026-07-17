@@ -33,7 +33,7 @@ const primary = [
   { title: "Workspace", url: "/workspace", icon: Boxes },
   { title: "DraftYard Feed", url: "/feed", icon: Rss },
   { title: "Revival Board", url: "/revival-board", icon: RefreshCw },
-  { title: "Insights", url: "#", icon: BarChart2 },
+  { title: "Insights", url: "/insights-lab", icon: BarChart2 },
   { title: "Stack Intelligence", url: "#", icon: Layers },
   { title: "Idea Review", url: "#", icon: ClipboardCheck },
   { title: "AI Assistant", url: "#", icon: Bot },

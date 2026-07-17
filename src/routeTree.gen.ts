@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
+import { Route as InsightsLabRouteImport } from './routes/insights-lab'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,6 +25,11 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
 const RevivalBoardRoute = RevivalBoardRouteImport.update({
   id: '/revival-board',
   path: '/revival-board',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsLabRoute = InsightsLabRouteImport.update({
+  id: '/insights-lab',
+  path: '/insights-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedRoute = FeedRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/insights-lab'
     | '/revival-board'
     | '/workspace'
     | '/project/$slug'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/insights-lab'
     | '/revival-board'
     | '/workspace'
     | '/project/$slug'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/insights-lab'
     | '/revival-board'
     | '/workspace'
     | '/project/$slug'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
+  InsightsLabRoute: typeof InsightsLabRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/revival-board'
       fullPath: '/revival-board'
       preLoaderRoute: typeof RevivalBoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights-lab': {
+      id: '/insights-lab'
+      path: '/insights-lab'
+      fullPath: '/insights-lab'
+      preLoaderRoute: typeof InsightsLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feed': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
+  InsightsLabRoute: InsightsLabRoute,
   RevivalBoardRoute: RevivalBoardRoute,
   WorkspaceRoute: WorkspaceRoute,
   ProjectSlugRoute: ProjectSlugRoute,
@@ -166,13 +187,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
