@@ -710,15 +710,58 @@ function RecItem({ children }: { children: React.ReactNode }) {
 
 /* ================== STALL DNA ================== */
 
+type StallPattern = {
+  id: string;
+  name: string;
+  pct: number;
+  count: number;
+  revival: number; // %
+  fix: number; // weeks
+  color: string;
+};
+
+const STALL_PATTERNS: StallPattern[] = [
+  { id: "scope",     name: "Scope Creep",         pct: 34, count: 412, revival: 41, fix: 4, color: ACCENT },
+  { id: "burnout",   name: "Solo Burnout",        pct: 28, count: 338, revival: 33, fix: 5, color: PINK },
+  { id: "data",      name: "Waiting on Data",     pct: 12, count: 146, revival: 58, fix: 2, color: CYAN },
+  { id: "motiv",     name: "Lack of Motivation",  pct: 9,  count: 108, revival: 22, fix: 6, color: AMBER },
+  { id: "tech",      name: "Technical Debt",      pct: 8,  count:  96, revival: 47, fix: 3, color: BLUE },
+  { id: "market",    name: "No Market Fit",       pct: 6,  count:  72, revival: 51, fix: 2, color: EMERALD },
+  { id: "team",      name: "Team Fell Apart",     pct: 3,  count:  38, revival: 19, fix: 7, color: VIOLET },
+];
+
+// Similarity (0..1) drives spring rest length: higher = closer.
+const STALL_EDGES: Array<[string, string, number]> = [
+  ["scope",   "burnout", 0.82],
+  ["scope",   "tech",    0.68],
+  ["scope",   "motiv",   0.55],
+  ["burnout", "motiv",   0.78],
+  ["burnout", "team",    0.7],
+  ["data",    "tech",    0.62],
+  ["motiv",   "market",  0.5],
+  ["market",  "data",    0.45],
+  ["tech",    "burnout", 0.4],
+  ["team",    "motiv",   0.5],
+];
+
 function StallDNATab() {
-  const patterns = [
-    { name: "Scope Creep", pct: 34, color: ACCENT },
-    { name: "Solo Burnout", pct: 28, color: PINK },
-    { name: "Waiting on Data", pct: 12, color: CYAN },
-    { name: "Lack of Motivation", pct: 9, color: AMBER },
-    { name: "Technical Roadblocks", pct: 8, color: BLUE },
-    { name: "No Market Fit", pct: 6, color: EMERALD },
-  ];
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const active = hoverId ?? selectedId;
+  const selected = STALL_PATTERNS.find((p) => p.id === selectedId) ?? null;
+
+  const neighbors = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    STALL_PATTERNS.forEach((p) => (map[p.id] = new Set()));
+    STALL_EDGES.forEach(([a, b]) => {
+      map[a].add(b);
+      map[b].add(a);
+    });
+    return map;
+  }, []);
+
+  const isDim = (id: string) => active !== null && active !== id && !neighbors[active]?.has(id);
 
   const dangerZone = [
     { stage: "Idea", risk: 8 },
@@ -728,43 +771,54 @@ function StallDNATab() {
     { stage: "Shipped", risk: 4 },
   ];
 
-  const fixes = [
+  const fixesByPattern: Record<string, string[]> = {
+    scope:   ["Freeze scope at kickoff; use a milestone lock", "Cut features aggressively — ship the 20% users need", "Timebox each feature to ≤ 5 days"],
+    burnout: ["Add at least one collaborator — solo burnout drops 62%", "Enforce a weekly cadence, not daily grind", "Publish progress publicly for accountability"],
+    data:    ["Ship a stub dataset first, refine later", "Buy or synthesize data instead of waiting", "Move to a dependency-free MVP path"],
+    motiv:   ["Validate with 5 users before more code", "Attach a small deadline (demo day)", "Rewrite the elevator pitch — is it still exciting?"],
+    tech:    ["Refactor the smallest painful path first", "Delete abandoned branches to reduce weight", "Introduce tests only around the change surface"],
+    market:  ["Interview 10 potential users this week", "Reframe as a feature, not a product", "Pivot audience before pivoting product"],
+    team:    ["Split ownership by module, not by task", "Weekly 15-min sync — nothing longer", "Define who ships the final build"],
+  };
+
+  const genericFixes = [
     "Break features into smaller milestones",
     "Add collaborators early — solo burnout drops 62%",
-    "Build a working prototype in 2 weeks",
+    "Ship a working prototype in 2 weeks",
     "Validate the idea with 5 real users before coding",
-    "Ship an MVP under 4 weeks to lock momentum",
+    "Lock the MVP under 4 weeks to preserve momentum",
   ];
+
+  const displayedFixes = selected ? fixesByPattern[selected.id] : genericFixes;
 
   return (
     <div className="space-y-6">
-      {/* Galaxy hero */}
+      {/* Force-directed hero */}
       <Card glow className="!p-0">
-        <div className="border-b border-border/60 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-5">
           <SectionTitle
             icon={Sparkles}
-            title="Stall DNA Galaxy"
-            subtitle="AI discovers hidden patterns behind project abandonment. Larger = more common."
+            title="Stall DNA · Cluster Map"
+            subtitle="Force-directed clustering of stall patterns. Node size = projects, distance = similarity."
             badge="Interactive"
           />
+          {selected && (
+            <button
+              onClick={() => setSelectedId(null)}
+              className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-foreground"
+            >
+              Filtered: <span style={{ color: selected.color }}>{selected.name}</span> · clear ×
+            </button>
+          )}
         </div>
-        <div className="relative h-[440px] overflow-hidden">
-          {/* Galaxy backdrop */}
-          <div className="absolute inset-0 dna-galaxy-bg" aria-hidden />
-          {/* Central node */}
-          <StallOrb
-            pattern={patterns[0]}
-            size={180}
-            style={{ left: "50%", top: "50%", transform: "translate(-50%,-50%)" }}
-            main
-          />
-          {/* Orbit patterns */}
-          <StallOrb pattern={patterns[1]} size={130} style={{ left: "20%", top: "26%" }} />
-          <StallOrb pattern={patterns[2]} size={100} style={{ left: "16%", top: "62%" }} />
-          <StallOrb pattern={patterns[3]} size={92} style={{ left: "78%", top: "22%" }} />
-          <StallOrb pattern={patterns[4]} size={100} style={{ left: "80%", top: "60%" }} />
-          <StallOrb pattern={patterns[5]} size={82} style={{ left: "48%", top: "82%" }} />
-        </div>
+        <StallNetworkGraph
+          patterns={STALL_PATTERNS}
+          edges={STALL_EDGES}
+          hoverId={hoverId}
+          selectedId={selectedId}
+          onHover={setHoverId}
+          onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
+        />
       </Card>
 
       {/* Top patterns + Danger zone */}
@@ -772,25 +826,37 @@ function StallDNATab() {
         <Card>
           <SectionTitle icon={Flame} title="Top Stall Patterns" subtitle="Ranked by frequency" />
           <ul className="space-y-3">
-            {patterns.map((p) => (
-              <li key={p.name}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="font-medium">{p.name}</span>
-                  <span className="font-display font-semibold" style={{ color: p.color }}>
-                    {p.pct}%
-                  </span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${p.pct * 2.8}%` }}
-                    transition={{ duration: 0.9, ease: "easeOut" }}
-                    className="h-full rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${p.color}, ${p.color}80)` }}
-                  />
-                </div>
-              </li>
-            ))}
+            {STALL_PATTERNS.slice(0, 6).map((p) => {
+              const dim = isDim(p.id);
+              const highlighted = active === p.id || selectedId === p.id;
+              return (
+                <li
+                  key={p.id}
+                  onMouseEnter={() => setHoverId(p.id)}
+                  onMouseLeave={() => setHoverId(null)}
+                  onClick={() => setSelectedId((prev) => (prev === p.id ? null : p.id))}
+                  className="cursor-pointer transition-opacity duration-200"
+                  style={{ opacity: dim ? 0.35 : 1 }}
+                >
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-2 font-medium">
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color, boxShadow: highlighted ? `0 0 0 3px ${p.color}33` : "none" }} />
+                      {p.name}
+                    </span>
+                    <span className="font-display font-semibold" style={{ color: p.color }}>{p.pct}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${p.pct * 2.8}%` }}
+                      transition={{ duration: 0.9, ease: "easeOut" }}
+                      className="h-full rounded-full"
+                      style={{ background: `linear-gradient(90deg, ${p.color}, ${p.color}80)` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </Card>
 
@@ -819,14 +885,21 @@ function StallDNATab() {
       {/* Fixes + breakdown */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <SectionTitle icon={Lightbulb} title="AI Fix Suggestions" subtitle="Proven interventions" />
+          <SectionTitle
+            icon={Lightbulb}
+            title="AI Fix Suggestions"
+            subtitle={selected ? `Tailored to ${selected.name}` : "Proven interventions across all clusters"}
+          />
           <ul className="space-y-2.5">
-            {fixes.map((f, i) => (
+            {displayedFixes.map((f, i) => (
               <li
                 key={f}
                 className="flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-3"
               >
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                <span
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white"
+                  style={{ background: (selected?.color ?? EMERALD) + "22", color: selected?.color ?? EMERALD }}
+                >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 </span>
                 <div className="text-sm">
@@ -839,27 +912,34 @@ function StallDNATab() {
         </Card>
 
         <Card>
-          <SectionTitle icon={Target} title="Pattern Breakdown" subtitle="Avg revival rate by pattern" />
+          <SectionTitle icon={Target} title="Pattern Breakdown" subtitle="Revival rate & avg fix time per cluster" />
           <ul className="space-y-2.5">
-            {patterns.slice(0, 4).map((p) => (
-              <li
-                key={p.name}
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/40 p-3"
-              >
-                <span
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white"
-                  style={{ background: `linear-gradient(135deg, ${p.color}, ${p.color}80)` }}
+            {STALL_PATTERNS.slice(0, 5).map((p) => {
+              const dim = isDim(p.id);
+              return (
+                <li
+                  key={p.id}
+                  onMouseEnter={() => setHoverId(p.id)}
+                  onMouseLeave={() => setHoverId(null)}
+                  onClick={() => setSelectedId((prev) => (prev === p.id ? null : p.id))}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/50 bg-background/40 p-3 transition-opacity duration-200"
+                  style={{ opacity: dim ? 0.35 : 1 }}
                 >
-                  <span className="text-xs font-semibold">{p.pct}%</span>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{p.name}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Avg revival: {Math.max(20, 60 - p.pct)}% · Fix time ~{2 + Math.round(p.pct / 20)} wks
+                  <span
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white"
+                    style={{ background: `linear-gradient(135deg, ${p.color}, ${p.color}80)` }}
+                  >
+                    <span className="text-xs font-semibold">{p.pct}%</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium">{p.name}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Revival {p.revival}% · Avg fix ~{p.fix} wks · {p.count} projects
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </Card>
       </div>
@@ -882,44 +962,286 @@ function StallDNATab() {
   );
 }
 
-function StallOrb({
-  pattern,
-  size,
-  style,
-  main,
+/* ---------- Force-directed graph ---------- */
+
+type SimNode = {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  ref: StallPattern;
+};
+
+const GRAPH_W = 900;
+const GRAPH_H = 440;
+
+function StallNetworkGraph({
+  patterns,
+  edges,
+  hoverId,
+  selectedId,
+  onHover,
+  onSelect,
 }: {
-  pattern: { name: string; pct: number; color: string };
-  size: number;
-  style: React.CSSProperties;
-  main?: boolean;
+  patterns: StallPattern[];
+  edges: Array<[string, string, number]>;
+  hoverId: string | null;
+  selectedId: string | null;
+  onHover: (id: string | null) => void;
+  onSelect: (id: string) => void;
 }) {
+  const nodesRef = useRef<SimNode[]>([]);
+  const [, force] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Initialize once
+  if (nodesRef.current.length === 0) {
+    const cx = GRAPH_W / 2;
+    const cy = GRAPH_H / 2;
+    nodesRef.current = patterns.map((p, i) => {
+      const angle = (i / patterns.length) * Math.PI * 2;
+      const radius = i === 0 ? 0 : 150;
+      return {
+        id: p.id,
+        x: cx + Math.cos(angle) * radius,
+        y: cy + Math.sin(angle) * radius,
+        vx: 0,
+        vy: 0,
+        r: 22 + Math.sqrt(p.count) * 1.6,
+        ref: p,
+      };
+    });
+  }
+
+  useEffect(() => {
+    const edgeMap = edges.map(([a, b, s]) => {
+      const na = nodesRef.current.findIndex((n) => n.id === a);
+      const nb = nodesRef.current.findIndex((n) => n.id === b);
+      return { a: na, b: nb, s };
+    });
+
+    let alpha = 1;
+    const tick = () => {
+      const nodes = nodesRef.current;
+      const cx = GRAPH_W / 2;
+      const cy = GRAPH_H / 2;
+
+      // Repulsion
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          let dx = b.x - a.x, dy = b.y - a.y;
+          let d2 = dx * dx + dy * dy;
+          if (d2 < 1) d2 = 1;
+          const d = Math.sqrt(d2);
+          const force = (4200 / d2) * alpha;
+          const fx = (dx / d) * force;
+          const fy = (dy / d) * force;
+          a.vx -= fx; a.vy -= fy;
+          b.vx += fx; b.vy += fy;
+        }
+      }
+
+      // Springs
+      edgeMap.forEach(({ a, b, s }) => {
+        const na = nodes[a], nb = nodes[b];
+        const dx = nb.x - na.x, dy = nb.y - na.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const rest = 260 - s * 160; // similar -> closer
+        const k = 0.02;
+        const f = (d - rest) * k * alpha;
+        const fx = (dx / d) * f, fy = (dy / d) * f;
+        na.vx += fx; na.vy += fy;
+        nb.vx -= fx; nb.vy -= fy;
+      });
+
+      // Gentle centering
+      nodes.forEach((n) => {
+        n.vx += (cx - n.x) * 0.004 * alpha;
+        n.vy += (cy - n.y) * 0.004 * alpha;
+      });
+
+      // Damping + integrate
+      nodes.forEach((n) => {
+        n.vx *= 0.82;
+        n.vy *= 0.82;
+        n.x += n.vx;
+        n.y += n.vy;
+        // Soft bounds
+        const pad = n.r + 8;
+        n.x = Math.max(pad, Math.min(GRAPH_W - pad, n.x));
+        n.y = Math.max(pad, Math.min(GRAPH_H - pad, n.y));
+      });
+
+      // Alpha keeps ambient life
+      alpha = Math.max(0.05, alpha * 0.995);
+
+      force((v) => (v + 1) % 1000000);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const active = hoverId ?? selectedId;
+  const neighborSet = useMemo(() => {
+    const s = new Set<string>();
+    if (!active) return s;
+    edges.forEach(([a, b]) => {
+      if (a === active) s.add(b);
+      if (b === active) s.add(a);
+    });
+    return s;
+  }, [active, edges]);
+
+  const nodes = nodesRef.current;
+  const activeNode = active ? nodes.find((n) => n.id === active) : null;
+
   return (
-    <motion.div
-      className="dna-orb absolute grid place-items-center rounded-full text-center"
-      style={{
-        width: size,
-        height: size,
-        background: `radial-gradient(circle at 30% 30%, ${pattern.color}55, ${pattern.color}12 60%, transparent 75%)`,
-        border: `1px solid ${pattern.color}55`,
-        boxShadow: `0 0 40px -8px ${pattern.color}66`,
-        ...style,
-      }}
-      animate={{ y: [0, main ? -6 : -4, 0] }}
-      transition={{ duration: main ? 5 : 4 + Math.random(), repeat: Infinity, ease: "easeInOut" }}
-      whileHover={{ scale: 1.06 }}
-    >
-      <div>
+    <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: GRAPH_H }}>
+      <div className="dna-net-bg absolute inset-0" aria-hidden />
+      <svg
+        viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="relative h-full w-full"
+        onMouseLeave={() => { onHover(null); setTooltipPos(null); }}
+      >
+        <defs>
+          {patterns.map((p) => (
+            <radialGradient key={p.id} id={`dna-fill-${p.id}`} cx="35%" cy="30%" r="75%">
+              <stop offset="0%" stopColor={p.color} stopOpacity="0.95" />
+              <stop offset="60%" stopColor={p.color} stopOpacity="0.5" />
+              <stop offset="100%" stopColor={p.color} stopOpacity="0.15" />
+            </radialGradient>
+          ))}
+        </defs>
+
+        {/* Edges */}
+        <g>
+          {edges.map(([a, b, s], i) => {
+            const na = nodes.find((n) => n.id === a)!;
+            const nb = nodes.find((n) => n.id === b)!;
+            const highlighted = active && (a === active || b === active);
+            const dimmed = active && !highlighted;
+            const stroke = highlighted ? (na.ref.color) : "var(--dna-edge)";
+            return (
+              <line
+                key={i}
+                x1={na.x}
+                y1={na.y}
+                x2={nb.x}
+                y2={nb.y}
+                stroke={stroke}
+                strokeWidth={highlighted ? 1.8 : 1}
+                strokeOpacity={dimmed ? 0.06 : highlighted ? 0.9 : 0.22 + s * 0.15}
+                strokeDasharray={highlighted ? "6 4" : "0"}
+                style={{
+                  transition: "stroke-opacity 200ms ease, stroke-width 200ms ease",
+                  animation: highlighted ? "dna-edge-flow 1.6s linear infinite" : undefined,
+                }}
+              />
+            );
+          })}
+        </g>
+
+        {/* Nodes */}
+        <g>
+          {nodes.map((n) => {
+            const isActive = active === n.id;
+            const dimmed = active && !isActive && !neighborSet.has(n.id);
+            const r = n.r * (isActive ? 1.12 : 1);
+            return (
+              <g
+                key={n.id}
+                style={{
+                  cursor: "pointer",
+                  opacity: dimmed ? 0.28 : 1,
+                  transition: "opacity 200ms ease",
+                }}
+                onMouseEnter={(e) => {
+                  onHover(n.id);
+                  const rect = containerRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    // convert svg coords to px
+                    const scaleX = rect.width / GRAPH_W;
+                    const scaleY = rect.height / GRAPH_H;
+                    setTooltipPos({ x: n.x * scaleX, y: n.y * scaleY - r * scaleY - 12 });
+                  }
+                }}
+                onMouseLeave={() => setTooltipPos(null)}
+                onClick={() => onSelect(n.id)}
+              >
+                {isActive && (
+                  <circle
+                    cx={n.x}
+                    cy={n.y}
+                    r={r + 14}
+                    fill={n.ref.color}
+                    opacity={0.15}
+                  />
+                )}
+                <circle
+                  cx={n.x}
+                  cy={n.y}
+                  r={r}
+                  fill={`url(#dna-fill-${n.id})`}
+                  stroke={n.ref.color}
+                  strokeOpacity={isActive ? 0.9 : 0.5}
+                  strokeWidth={isActive ? 1.5 : 1}
+                  style={{ transition: "r 200ms ease" }}
+                />
+                <text
+                  x={n.x}
+                  y={n.y + r + 16}
+                  textAnchor="middle"
+                  className="dna-net-label"
+                  style={{ fontSize: 11, fontWeight: 600, pointerEvents: "none" }}
+                >
+                  {n.ref.name}
+                </text>
+                <text
+                  x={n.x}
+                  y={n.y + 4}
+                  textAnchor="middle"
+                  fill="#fff"
+                  style={{ fontSize: r > 34 ? 15 : 12, fontWeight: 700, pointerEvents: "none" }}
+                >
+                  {n.ref.pct}%
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+
+      {/* Tooltip */}
+      {activeNode && tooltipPos && (
         <div
-          className="font-display font-semibold"
-          style={{ color: pattern.color, fontSize: main ? 28 : 18 }}
+          className="dna-net-tooltip pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-xl border border-border/60 bg-popover/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
+          style={{ left: tooltipPos.x, top: tooltipPos.y }}
         >
-          {pattern.pct}%
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: activeNode.ref.color }} />
+            <span className="font-display font-semibold">{activeNode.ref.name}</span>
+          </div>
+          <div className="mt-1 grid grid-cols-3 gap-3 text-[11px] text-muted-foreground">
+            <div><div className="text-foreground font-semibold">{activeNode.ref.pct}%</div>of projects</div>
+            <div><div className="text-foreground font-semibold">{activeNode.ref.revival}%</div>avg revival</div>
+            <div><div className="text-foreground font-semibold">~{activeNode.ref.fix}w</div>avg fix</div>
+          </div>
         </div>
-        <div className="mt-0.5 px-3 text-[11px] font-medium leading-tight text-foreground">{pattern.name}</div>
-      </div>
-    </motion.div>
+      )}
+    </div>
   );
 }
+
 
 /* ================== REVIVAL ANALYTICS ================== */
 
