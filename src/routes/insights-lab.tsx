@@ -762,32 +762,33 @@ function TechnologyTab() {
         </Card>
 
         <Card>
-          <SectionTitle icon={Database} title="Database Usage" subtitle="Distribution across all projects" />
-          <div className="flex items-center gap-6">
-            <div className="h-56 w-56 shrink-0">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${v}%`} />
-                  <Pie data={databases} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                    {databases.map((_, i) => (
-                      <Cell key={i} fill={PALETTE[i % PALETTE.length]} stroke="transparent" />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <ul className="flex-1 space-y-2 text-xs">
-              {databases.map((d, i) => (
-                <li key={d.name} className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />
-                    <span className="text-foreground">{d.name}</span>
-                  </span>
-                  <span className="font-display font-semibold">{d.value}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SectionTitle icon={Database} title="Database Usage" subtitle="Ranked by share across all projects" />
+          <ul className="space-y-2.5">
+            {databases.map((d, i) => (
+              <li
+                key={d.name}
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/40 p-3"
+              >
+                <span
+                  className="grid h-7 w-7 place-items-center rounded-full font-display text-xs font-semibold"
+                  style={{ background: `${PALETTE[i % PALETTE.length]}1a`, color: PALETTE[i % PALETTE.length] }}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.name}</span>
+                <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${(d.value / 40) * 100}%`,
+                      background: `linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}80)`,
+                    }}
+                  />
+                </div>
+                <span className="w-10 text-right font-display text-sm font-semibold">{d.value}%</span>
+              </li>
+            ))}
+          </ul>
         </Card>
       </div>
 
