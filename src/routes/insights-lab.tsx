@@ -1147,8 +1147,8 @@ type SimNode = {
   ref: StallPattern;
 };
 
-const GRAPH_W = 900;
-const GRAPH_H = 440;
+const GRAPH_W = 1400;
+const GRAPH_H = 560;
 
 function StallNetworkGraph({
   patterns,
@@ -1211,7 +1211,7 @@ function StallNetworkGraph({
           let d2 = dx * dx + dy * dy;
           if (d2 < 1) d2 = 1;
           const d = Math.sqrt(d2);
-          const force = (4200 / d2) * alpha;
+          const force = (5600 / d2) * alpha;
           const fx = (dx / d) * force;
           const fy = (dy / d) * force;
           a.vx -= fx; a.vy -= fy;
@@ -1224,7 +1224,7 @@ function StallNetworkGraph({
         const na = nodes[a], nb = nodes[b];
         const dx = nb.x - na.x, dy = nb.y - na.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const rest = 260 - s * 160; // similar -> closer
+        const rest = 220 - s * 130; // similar -> closer
         const k = 0.02;
         const f = (d - rest) * k * alpha;
         const fx = (dx / d) * f, fy = (dy / d) * f;
