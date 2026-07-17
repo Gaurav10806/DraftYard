@@ -280,32 +280,33 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      {/* Hero AI Insight */}
-      <Card glow className="!p-0">
-        <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
-          <div className="flex items-start gap-4">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white shadow-lg shadow-primary/40">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
-                AI Insight of the Week
-              </div>
-              <h2 className="mt-1 font-display text-xl font-semibold leading-tight md:text-2xl">
-                Projects with 3+ contributors are{" "}
-                <span className="text-primary">2.4× more likely</span> to be revived than solo projects.
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Based on 12,840 projects analyzed across the last 90 days. Collaboration boosts
-                completion, but only when documentation is present in the first two weeks.
-              </p>
-            </div>
-          </div>
-          <Button className="shrink-0 rounded-full bg-primary hover:bg-primary/90">
-            See analysis <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
-      </Card>
+      {/* Rotating AI Hero */}
+      <RotatingAIHero />
+
+      {/* Compact AI insight cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <AIMicroInsight
+          tag="Hidden Opportunity"
+          icon={Sparkles}
+          tone={EMERALD}
+          title="AI + Developer Tools is undervalued"
+          desc="Projects mixing these domains ship 46% faster than average, but only 6% of new drafts pursue it."
+        />
+        <AIMicroInsight
+          tag="Risk Alert"
+          icon={AlertTriangle}
+          tone={AMBER}
+          title="Build stage is stalling faster"
+          desc="Median time-to-stall in the Build phase dropped from 34 → 22 days over the last quarter."
+        />
+        <AIMicroInsight
+          tag="Emerging Trend"
+          icon={TrendingUp}
+          tone={CYAN}
+          title="TypeScript adoption crossed 74%"
+          desc="TS projects now overtake JS in survival rate for the first time — a signal shift, not noise."
+        />
+      </div>
 
       {/* Funnel + Community Health */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -517,6 +518,155 @@ function MetricPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+/* ---- Rotating AI hero + micro insight cards ---- */
+
+const HERO_INSIGHTS = [
+  {
+    label: "Hidden Pattern",
+    number: "#42",
+    headline: (
+      <>
+        Projects with 3+ contributors are{" "}
+        <span className="text-primary">2.4× more likely</span> to be revived than solo projects.
+      </>
+    ),
+    detail:
+      "Based on 12,840 projects analyzed across the last 90 days. Collaboration boosts completion, but only when documentation is present in the first two weeks.",
+  },
+  {
+    label: "Biggest Discovery",
+    number: "#118",
+    headline: (
+      <>
+        Drafts that ship a working prototype in <span className="text-primary">14 days</span> reach production 3.1× more often.
+      </>
+    ),
+    detail:
+      "The 14-day prototype window is the strongest single predictor of shipping. Momentum, not scope, is what carries a project across the line.",
+  },
+  {
+    label: "AI Insight",
+    number: "#24",
+    headline: (
+      <>
+        <span className="text-primary">Scope Creep</span> silently causes 34% of Build-stage stalls — more than burnout and technical debt combined.
+      </>
+    ),
+    detail:
+      "Teams that lock scope at kickoff and enforce a 5-day feature timebox reduce stall risk by 48%. It's the highest-leverage intervention we've measured.",
+  },
+  {
+    label: "Emerging Signal",
+    number: "#77",
+    headline: (
+      <>
+        TypeScript projects overtook JavaScript in <span className="text-primary">survival rate</span> for the first time.
+      </>
+    ),
+    detail:
+      "Adoption crossed 74% in June and correlates with an 18% reduction in production regressions across matched projects.",
+  },
+];
+
+function RotatingAIHero() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((v) => (v + 1) % HERO_INSIGHTS.length), 6000);
+    return () => clearInterval(t);
+  }, []);
+  const item = HERO_INSIGHTS[i];
+  return (
+    <Card glow className="!p-0">
+      <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+        <div className="flex items-start gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white shadow-lg shadow-primary/40">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+              {item.label} <span className="text-muted-foreground/70">·</span> <span className="text-muted-foreground/80">{item.number}</span>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <h2 className="mt-1 font-display text-xl font-semibold leading-tight md:text-2xl">
+                  {item.headline}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{item.detail}</p>
+              </motion.div>
+            </AnimatePresence>
+            <div className="mt-4 flex items-center gap-1.5">
+              {HERO_INSIGHTS.map((_, idx) => (
+                <button
+                  key={idx}
+                  aria-label={`Insight ${idx + 1}`}
+                  onClick={() => setI(idx)}
+                  className={`h-1.5 rounded-full transition-all ${idx === i ? "w-8 bg-primary" : "w-3 bg-border hover:bg-muted-foreground/40"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <Button className="shrink-0 rounded-full bg-primary hover:bg-primary/90">
+          See analysis <ArrowRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function AIMicroInsight({
+  tag,
+  icon: Icon,
+  tone,
+  title,
+  desc,
+}: {
+  tag: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div
+      className="ins-card group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-5 transition-all duration-[220ms] hover:-translate-y-0.5"
+      style={{ boxShadow: `inset 0 1px 0 0 ${tone}22` }}
+    >
+      <div
+        className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full opacity-40 blur-2xl transition-opacity duration-300 group-hover:opacity-70"
+        style={{ background: `radial-gradient(circle, ${tone}44, transparent 70%)` }}
+        aria-hidden
+      />
+      <div className="relative flex items-center gap-2">
+        <span
+          className="grid h-8 w-8 place-items-center rounded-lg"
+          style={{ background: `${tone}1a`, color: tone }}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+          style={{ background: `${tone}1a`, color: tone }}
+        >
+          {tag}
+        </span>
+      </div>
+      <div className="relative mt-3 font-display text-sm font-semibold leading-snug">{title}</div>
+      <p className="relative mt-1.5 text-xs text-muted-foreground">{desc}</p>
+    </div>
+  );
+}
+
 /* ================== TECHNOLOGY ================== */
 
 function TechnologyTab() {
@@ -612,32 +762,33 @@ function TechnologyTab() {
         </Card>
 
         <Card>
-          <SectionTitle icon={Database} title="Database Usage" subtitle="Distribution across all projects" />
-          <div className="flex items-center gap-6">
-            <div className="h-56 w-56 shrink-0">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${v}%`} />
-                  <Pie data={databases} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                    {databases.map((_, i) => (
-                      <Cell key={i} fill={PALETTE[i % PALETTE.length]} stroke="transparent" />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <ul className="flex-1 space-y-2 text-xs">
-              {databases.map((d, i) => (
-                <li key={d.name} className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />
-                    <span className="text-foreground">{d.name}</span>
-                  </span>
-                  <span className="font-display font-semibold">{d.value}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SectionTitle icon={Database} title="Database Usage" subtitle="Ranked by share across all projects" />
+          <ul className="space-y-2.5">
+            {databases.map((d, i) => (
+              <li
+                key={d.name}
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/40 p-3"
+              >
+                <span
+                  className="grid h-7 w-7 place-items-center rounded-full font-display text-xs font-semibold"
+                  style={{ background: `${PALETTE[i % PALETTE.length]}1a`, color: PALETTE[i % PALETTE.length] }}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.name}</span>
+                <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${(d.value / 40) * 100}%`,
+                      background: `linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}80)`,
+                    }}
+                  />
+                </div>
+                <span className="w-10 text-right font-display text-sm font-semibold">{d.value}%</span>
+              </li>
+            ))}
+          </ul>
         </Card>
       </div>
 
@@ -721,27 +872,49 @@ type StallPattern = {
 };
 
 const STALL_PATTERNS: StallPattern[] = [
-  { id: "scope",     name: "Scope Creep",         pct: 34, count: 412, revival: 41, fix: 4, color: ACCENT },
-  { id: "burnout",   name: "Solo Burnout",        pct: 28, count: 338, revival: 33, fix: 5, color: PINK },
-  { id: "data",      name: "Waiting on Data",     pct: 12, count: 146, revival: 58, fix: 2, color: CYAN },
-  { id: "motiv",     name: "Lack of Motivation",  pct: 9,  count: 108, revival: 22, fix: 6, color: AMBER },
-  { id: "tech",      name: "Technical Debt",      pct: 8,  count:  96, revival: 47, fix: 3, color: BLUE },
+  { id: "scope",     name: "Scope Creep",         pct: 26, count: 412, revival: 41, fix: 4, color: ACCENT },
+  { id: "burnout",   name: "Solo Burnout",        pct: 21, count: 338, revival: 33, fix: 5, color: PINK },
+  { id: "data",      name: "Waiting on Data",     pct: 9,  count: 146, revival: 58, fix: 2, color: CYAN },
+  { id: "motiv",     name: "Lack of Motivation",  pct: 8,  count: 108, revival: 22, fix: 6, color: AMBER },
+  { id: "tech",      name: "Technical Debt",      pct: 7,  count:  96, revival: 47, fix: 3, color: BLUE },
   { id: "market",    name: "No Market Fit",       pct: 6,  count:  72, revival: 51, fix: 2, color: EMERALD },
   { id: "team",      name: "Team Fell Apart",     pct: 3,  count:  38, revival: 19, fix: 7, color: VIOLET },
+  { id: "perfect",   name: "Perfectionism",       pct: 6,  count:  74, revival: 44, fix: 3, color: "#f472b6" },
+  { id: "cost",      name: "Cost / Funding",      pct: 5,  count:  62, revival: 36, fix: 4, color: "#22c55e" },
+  { id: "distract",  name: "Distraction",         pct: 4,  count:  54, revival: 30, fix: 3, color: "#eab308" },
+  { id: "paralysis", name: "Analysis Paralysis",  pct: 3,  count:  42, revival: 39, fix: 3, color: "#38bdf8" },
+  { id: "platform",  name: "Platform Change",     pct: 2,  count:  28, revival: 55, fix: 2, color: "#a855f7" },
 ];
 
 // Similarity (0..1) drives spring rest length: higher = closer.
 const STALL_EDGES: Array<[string, string, number]> = [
-  ["scope",   "burnout", 0.82],
-  ["scope",   "tech",    0.68],
-  ["scope",   "motiv",   0.55],
-  ["burnout", "motiv",   0.78],
-  ["burnout", "team",    0.7],
-  ["data",    "tech",    0.62],
-  ["motiv",   "market",  0.5],
-  ["market",  "data",    0.45],
-  ["tech",    "burnout", 0.4],
-  ["team",    "motiv",   0.5],
+  ["scope",     "burnout",   0.82],
+  ["scope",     "tech",      0.68],
+  ["scope",     "motiv",     0.55],
+  ["scope",     "perfect",   0.72],
+  ["scope",     "paralysis", 0.6],
+  ["burnout",   "motiv",     0.78],
+  ["burnout",   "team",      0.7],
+  ["burnout",   "distract",  0.55],
+  ["burnout",   "cost",      0.42],
+  ["data",      "tech",      0.62],
+  ["data",      "paralysis", 0.5],
+  ["data",      "platform",  0.55],
+  ["motiv",     "market",    0.5],
+  ["motiv",     "distract",  0.6],
+  ["motiv",     "cost",      0.48],
+  ["market",    "data",      0.45],
+  ["market",    "cost",      0.62],
+  ["market",    "platform",  0.5],
+  ["tech",      "burnout",   0.4],
+  ["tech",      "perfect",   0.58],
+  ["tech",      "platform",  0.6],
+  ["team",      "motiv",     0.5],
+  ["team",      "cost",      0.5],
+  ["perfect",   "paralysis", 0.75],
+  ["perfect",   "motiv",     0.5],
+  ["distract",  "paralysis", 0.55],
+  ["cost",      "platform",  0.48],
 ];
 
 function StallDNATab() {
@@ -974,8 +1147,8 @@ type SimNode = {
   ref: StallPattern;
 };
 
-const GRAPH_W = 900;
-const GRAPH_H = 440;
+const GRAPH_W = 1400;
+const GRAPH_H = 560;
 
 function StallNetworkGraph({
   patterns,
@@ -1038,7 +1211,7 @@ function StallNetworkGraph({
           let d2 = dx * dx + dy * dy;
           if (d2 < 1) d2 = 1;
           const d = Math.sqrt(d2);
-          const force = (4200 / d2) * alpha;
+          const force = (5600 / d2) * alpha;
           const fx = (dx / d) * force;
           const fy = (dy / d) * force;
           a.vx -= fx; a.vy -= fy;
@@ -1051,7 +1224,7 @@ function StallNetworkGraph({
         const na = nodes[a], nb = nodes[b];
         const dx = nb.x - na.x, dy = nb.y - na.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const rest = 260 - s * 160; // similar -> closer
+        const rest = 220 - s * 130; // similar -> closer
         const k = 0.02;
         const f = (d - rest) * k * alpha;
         const fx = (dx / d) * f, fy = (dy / d) * f;
@@ -1274,11 +1447,41 @@ function RevivalTab() {
 
   return (
     <div className="space-y-6">
-      <Card glow>
+      {/* 1. Hero Insight */}
+      <Card glow className="!p-0">
+        <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+          <div className="flex items-start gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white shadow-lg shadow-primary/40">
+              <Rocket className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
+                Revival Hero Insight
+              </div>
+              <h2 className="mt-1 font-display text-xl font-semibold leading-tight md:text-2xl">
+                <span className="text-primary">1,412 drafts</span> were revived this quarter — the fastest{" "}
+                <span className="text-primary">1 in 6</span> shipped in under 10 days.
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Momentum, not scope, is the strongest predictor of revival. Small teams claiming clearly-scoped
+                drafts consistently outperform larger takeovers.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 md:min-w-[280px]">
+            <SummaryStat value="1,412" label="Revived" tone={ACCENT} />
+            <SummaryStat value="78%" label="Score" tone={EMERALD} />
+            <SummaryStat value="26.4d" label="Time" tone={CYAN} />
+          </div>
+        </div>
+      </Card>
+
+      {/* 2. Revival Probability */}
+      <Card>
         <SectionTitle
           icon={TrendingUp}
-          title="Revival Probability Trend"
-          subtitle="Some stall patterns are much easier to revive than others."
+          title="Revival Probability"
+          subtitle="How likely each stall pattern is to be revived once claimed."
           badge="Key Insight"
         />
         <div className="h-80">
@@ -1306,26 +1509,59 @@ function RevivalTab() {
         </div>
       </Card>
 
+      {/* 3. Revival Trend */}
+      <Card>
+        <SectionTitle icon={Activity} title="Revival Trend" subtitle="Cumulative revivals over the last 7 months" />
+        <div className="h-72">
+          <ResponsiveContainer>
+            <AreaChart data={overTime}>
+              <defs>
+                <linearGradient id="rov" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={ACCENT} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="var(--ins-grid)" vertical={false} />
+              <XAxis dataKey="m" stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <YAxis stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Area type="monotone" dataKey="v" stroke={ACCENT} strokeWidth={2.5} fill="url(#rov)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* 4. Fastest Revived Domains + 5. Average Revival Time */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <SectionTitle icon={Activity} title="Projects Revived Over Time" subtitle="Cumulative revivals" />
-          <div className="h-64">
-            <ResponsiveContainer>
-              <AreaChart data={overTime}>
-                <defs>
-                  <linearGradient id="rov" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={ACCENT} stopOpacity={0.5} />
-                    <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--ins-grid)" vertical={false} />
-                <XAxis dataKey="m" stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <YAxis stroke="var(--ins-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Area type="monotone" dataKey="v" stroke={ACCENT} strokeWidth={2.5} fill="url(#rov)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <SectionTitle icon={Layers} title="Fastest Revived Domains" subtitle="Ranked by share of revivals shipped fastest" />
+          <ul className="mt-2 space-y-3">
+            {domains.map((d, i) => (
+              <li key={d.name} className="flex items-center gap-3">
+                <span
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-xs font-semibold"
+                  style={{ background: `${PALETTE[i % PALETTE.length]}1a`, color: PALETTE[i % PALETTE.length] }}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium">{d.name}</span>
+                    <span className="font-display font-semibold">{d.value}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${d.value * 2.5}%`,
+                        background: `linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}66)`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
 
         <Card>
@@ -1342,56 +1578,18 @@ function RevivalTab() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <SectionTitle icon={Layers} title="Most Revived Domains" subtitle="By share of revivals" />
-          <ul className="mt-2 space-y-3">
-            {domains.map((d, i) => (
-              <li key={d.name}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="font-medium">{d.name}</span>
-                  <span className="font-display font-semibold">{d.value}%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${d.value * 2.5}%`,
-                      background: `linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}66)`,
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card>
-          <SectionTitle icon={Users} title="Contributor Growth" subtitle="Net new contributors" />
-          <div className="grid place-items-center py-2">
-            <div className="font-display text-5xl font-semibold text-emerald-500">+31%</div>
-            <div className="mt-1 text-xs text-muted-foreground">contributors joining revived projects</div>
-          </div>
-          <div className="mt-4 h-32">
-            <ResponsiveContainer>
-              <LineChart data={overTime}>
-                <Line type="monotone" dataKey="v" stroke={EMERALD} strokeWidth={2.5} dot={false} />
-                <XAxis dataKey="m" hide />
-                <YAxis hide />
-                <Tooltip contentStyle={tooltipStyle} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <SectionTitle icon={Trophy} title="Revival Success Summary" subtitle="This quarter's headline numbers" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <SummaryStat value="1,412" label="Total revived" tone={ACCENT} />
-          <SummaryStat value="78%" label="Avg revival score" tone={EMERALD} />
-          <SummaryStat value="26.4d" label="Avg time to ship" tone={CYAN} />
-          <SummaryStat value="+31%" label="Contributor growth" tone={AMBER} />
+      {/* 6. Key Takeaways */}
+      <Card glow>
+        <SectionTitle
+          icon={Lightbulb}
+          title="Key Takeaways"
+          subtitle="What the model surfaced from this quarter's revivals"
+        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <RecCard title="Claim narrow, ship fast" desc="Drafts with a 2-week scope lock revive 2.9× more often than open-ended ones." />
+          <RecCard title="Web + AI is the fastest lane" desc="Combined-domain revivals ship 41% faster than single-domain claims." />
+          <RecCard title="Momentum beats team size" desc="Solo revivers who post weekly progress outperform silent 3-person teams." />
+          <RecCard title="Technical Debt is the sweet spot" desc="72% revival rate — the highest of any stall pattern once claimed." />
         </div>
       </Card>
     </div>
