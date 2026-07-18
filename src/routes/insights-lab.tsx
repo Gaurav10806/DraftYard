@@ -1150,8 +1150,9 @@ type SimNode = {
 };
 
 const GRAPH_W = 1400;
-const GRAPH_H = 620;
-const SATELLITE_TOTAL = 42;
+const GRAPH_H = 780;
+const SAT_MIN = 15;
+const SAT_MAX = 25;
 
 // Simple deterministic PRNG for stable initial placement.
 function mulberry32(seed: number) {
@@ -1202,33 +1203,30 @@ function StallNetworkGraph({
     const cx = GRAPH_W / 2;
     const cy = GRAPH_H / 2;
     const rand = mulberry32(9137);
-    const totalCount = clusters.reduce((s, c) => s + c.count, 0);
 
-    const clusterNodes: SimNode[] = clusters.map((p, i) => {
-      const angle = (i / clusters.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = 200;
+    // Randomized (non-symmetric) initial cluster placement across canvas.
+    const clusterNodes: SimNode[] = clusters.map((p) => {
       return {
         id: p.id,
         kind: "cluster",
         clusterId: p.id,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
+        x: cx + (rand() - 0.5) * GRAPH_W * 0.7,
+        y: cy + (rand() - 0.5) * GRAPH_H * 0.7,
         vx: 0,
         vy: 0,
-        r: 28 + Math.sqrt(p.count) * 1.4,
+        r: 26 + Math.sqrt(p.count) * 1.35,
         ref: p,
       };
     });
 
-    // Distribute satellites proportional to count, guarantee >= 3 per cluster.
-    const rawAlloc = clusters.map((c) => (c.count / totalCount) * SATELLITE_TOTAL);
-    const alloc = rawAlloc.map((v) => Math.max(3, Math.round(v)));
+    // 15-25 satellites per cluster (deterministic).
     const satNodes: SimNode[] = [];
     clusters.forEach((c, i) => {
       const center = clusterNodes[i];
-      for (let k = 0; k < alloc[i]; k++) {
+      const count = SAT_MIN + Math.floor(rand() * (SAT_MAX - SAT_MIN + 1));
+      for (let k = 0; k < count; k++) {
         const a = rand() * Math.PI * 2;
-        const rr = 55 + rand() * 55;
+        const rr = 50 + rand() * 90;
         satNodes.push({
           id: `${c.id}-sat-${k}`,
           kind: "satellite",
@@ -1237,7 +1235,7 @@ function StallNetworkGraph({
           y: center.y + Math.sin(a) * rr,
           vx: 0,
           vy: 0,
-          r: 4 + rand() * 3,
+          r: 3.2 + rand() * 3.2,
           ref: c,
         });
       }
@@ -1366,7 +1364,7 @@ function StallNetworkGraph({
 
   return (
     <div>
-      <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: GRAPH_H * 0.5 }}>
+      <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: 640 }}>
         <div className="dna-net-bg absolute inset-0" aria-hidden />
         <svg
           viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`}
@@ -1374,17 +1372,7 @@ function StallNetworkGraph({
           className="relative h-full w-full"
           onMouseLeave={() => { onHover(null); setTooltipPos(null); }}
         >
-          <defs>
-            {clusters.map((p) => (
-              <radialGradient key={p.id} id={`dna-fill-${p.id}`} cx="35%" cy="30%" r="75%">
-                <stop offset="0%" stopColor={p.color} stopOpacity="0.95" />
-                <stop offset="60%" stopColor={p.color} stopOpacity="0.5" />
-                <stop offset="100%" stopColor={p.color} stopOpacity="0.15" />
-              </radialGradient>
-            ))}
-          </defs>
-
-          {/* Cluster-to-cluster edges */}
+          {/* Cluster-to-cluster edges (thickness = similarity) */}
           <g>
             {clusterEdges.map(([a, b, s], i) => {
               const na = nodes.find((n) => n.id === a && n.kind === "cluster")!;
@@ -1392,21 +1380,21 @@ function StallNetworkGraph({
               const highlighted = !!active && (a === active || b === active);
               const dimmed = !!active && !highlighted;
               const stroke = highlighted ? na.ref.color : "var(--dna-edge)";
+              const w = 0.6 + s * 2.6;
               return (
                 <line
                   key={i}
                   x1={na.x} y1={na.y} x2={nb.x} y2={nb.y}
                   stroke={stroke}
-                  strokeWidth={highlighted ? 1.6 : 0.9}
-                  strokeOpacity={dimmed ? 0.05 : highlighted ? 0.85 : 0.2 + s * 0.15}
-                  style={{
-                    transition: "stroke-opacity 200ms ease, stroke-width 200ms ease",
-                    animation: highlighted ? "dna-edge-flow 1.6s linear infinite" : undefined,
-                  }}
+                  strokeWidth={highlighted ? w + 0.8 : w}
+                  strokeOpacity={dimmed ? 0.04 : highlighted ? 0.85 : 0.22 + s * 0.18}
+                  strokeLinecap="round"
+                  style={{ transition: "stroke-opacity 200ms ease, stroke-width 200ms ease" }}
                 />
               );
             })}
           </g>
+
 
           {/* Satellite tethers */}
           <g>
@@ -1485,11 +1473,12 @@ function StallNetworkGraph({
                     cx={n.x}
                     cy={n.y}
                     r={r}
-                    fill={`url(#dna-fill-${n.id})`}
+                    fill={n.ref.color}
+                    fillOpacity={isActive ? 1 : 0.92}
                     stroke={n.ref.color}
                     strokeOpacity={isActive ? 0.9 : 0.55}
                     strokeWidth={isActive ? 1.6 : 1}
-                    style={{ transition: "r 200ms ease" }}
+                    style={{ transition: "r 200ms ease", filter: isActive ? `drop-shadow(0 0 10px ${n.ref.color}90)` : undefined }}
                   />
                   <text
                     x={n.x}
