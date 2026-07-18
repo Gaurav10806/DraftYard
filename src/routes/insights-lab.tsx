@@ -1364,7 +1364,7 @@ function StallNetworkGraph({
 
   return (
     <div>
-      <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: GRAPH_H * 0.5 }}>
+      <div ref={containerRef} className="dna-net relative overflow-hidden" style={{ height: 640 }}>
         <div className="dna-net-bg absolute inset-0" aria-hidden />
         <svg
           viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`}
@@ -1372,17 +1372,7 @@ function StallNetworkGraph({
           className="relative h-full w-full"
           onMouseLeave={() => { onHover(null); setTooltipPos(null); }}
         >
-          <defs>
-            {clusters.map((p) => (
-              <radialGradient key={p.id} id={`dna-fill-${p.id}`} cx="35%" cy="30%" r="75%">
-                <stop offset="0%" stopColor={p.color} stopOpacity="0.95" />
-                <stop offset="60%" stopColor={p.color} stopOpacity="0.5" />
-                <stop offset="100%" stopColor={p.color} stopOpacity="0.15" />
-              </radialGradient>
-            ))}
-          </defs>
-
-          {/* Cluster-to-cluster edges */}
+          {/* Cluster-to-cluster edges (thickness = similarity) */}
           <g>
             {clusterEdges.map(([a, b, s], i) => {
               const na = nodes.find((n) => n.id === a && n.kind === "cluster")!;
@@ -1390,21 +1380,21 @@ function StallNetworkGraph({
               const highlighted = !!active && (a === active || b === active);
               const dimmed = !!active && !highlighted;
               const stroke = highlighted ? na.ref.color : "var(--dna-edge)";
+              const w = 0.6 + s * 2.6;
               return (
                 <line
                   key={i}
                   x1={na.x} y1={na.y} x2={nb.x} y2={nb.y}
                   stroke={stroke}
-                  strokeWidth={highlighted ? 1.6 : 0.9}
-                  strokeOpacity={dimmed ? 0.05 : highlighted ? 0.85 : 0.2 + s * 0.15}
-                  style={{
-                    transition: "stroke-opacity 200ms ease, stroke-width 200ms ease",
-                    animation: highlighted ? "dna-edge-flow 1.6s linear infinite" : undefined,
-                  }}
+                  strokeWidth={highlighted ? w + 0.8 : w}
+                  strokeOpacity={dimmed ? 0.04 : highlighted ? 0.85 : 0.22 + s * 0.18}
+                  strokeLinecap="round"
+                  style={{ transition: "stroke-opacity 200ms ease, stroke-width 200ms ease" }}
                 />
               );
             })}
           </g>
+
 
           {/* Satellite tethers */}
           <g>
