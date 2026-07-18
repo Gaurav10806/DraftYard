@@ -1473,11 +1473,12 @@ function StallNetworkGraph({
                     cx={n.x}
                     cy={n.y}
                     r={r}
-                    fill={`url(#dna-fill-${n.id})`}
+                    fill={n.ref.color}
+                    fillOpacity={isActive ? 1 : 0.92}
                     stroke={n.ref.color}
                     strokeOpacity={isActive ? 0.9 : 0.55}
                     strokeWidth={isActive ? 1.6 : 1}
-                    style={{ transition: "r 200ms ease" }}
+                    style={{ transition: "r 200ms ease", filter: isActive ? `drop-shadow(0 0 10px ${n.ref.color}90)` : undefined }}
                   />
                   <text
                     x={n.x}
