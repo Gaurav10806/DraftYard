@@ -1203,33 +1203,30 @@ function StallNetworkGraph({
     const cx = GRAPH_W / 2;
     const cy = GRAPH_H / 2;
     const rand = mulberry32(9137);
-    const totalCount = clusters.reduce((s, c) => s + c.count, 0);
 
-    const clusterNodes: SimNode[] = clusters.map((p, i) => {
-      const angle = (i / clusters.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = 200;
+    // Randomized (non-symmetric) initial cluster placement across canvas.
+    const clusterNodes: SimNode[] = clusters.map((p) => {
       return {
         id: p.id,
         kind: "cluster",
         clusterId: p.id,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
+        x: cx + (rand() - 0.5) * GRAPH_W * 0.7,
+        y: cy + (rand() - 0.5) * GRAPH_H * 0.7,
         vx: 0,
         vy: 0,
-        r: 28 + Math.sqrt(p.count) * 1.4,
+        r: 26 + Math.sqrt(p.count) * 1.35,
         ref: p,
       };
     });
 
-    // Distribute satellites proportional to count, guarantee >= 3 per cluster.
-    const rawAlloc = clusters.map((c) => (c.count / totalCount) * SATELLITE_TOTAL);
-    const alloc = rawAlloc.map((v) => Math.max(3, Math.round(v)));
+    // 15-25 satellites per cluster (deterministic).
     const satNodes: SimNode[] = [];
     clusters.forEach((c, i) => {
       const center = clusterNodes[i];
-      for (let k = 0; k < alloc[i]; k++) {
+      const count = SAT_MIN + Math.floor(rand() * (SAT_MAX - SAT_MIN + 1));
+      for (let k = 0; k < count; k++) {
         const a = rand() * Math.PI * 2;
-        const rr = 55 + rand() * 55;
+        const rr = 50 + rand() * 90;
         satNodes.push({
           id: `${c.id}-sat-${k}`,
           kind: "satellite",
@@ -1238,7 +1235,7 @@ function StallNetworkGraph({
           y: center.y + Math.sin(a) * rr,
           vx: 0,
           vy: 0,
-          r: 4 + rand() * 3,
+          r: 3.2 + rand() * 3.2,
           ref: c,
         });
       }
