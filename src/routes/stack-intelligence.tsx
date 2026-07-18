@@ -63,8 +63,8 @@ type Tech = {
   growth: number; // trending %
   avgRevivalDays: number;
   summary: string;
-  bestFor: string[];
-  failureReasons: string[];
+  bestFor?: string[];
+  failureReasons?: string[];
   challenges: string[];
   recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor?: string[] };
   survival: { stage: string; pct: number }[];
