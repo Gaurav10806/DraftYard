@@ -815,57 +815,38 @@ function TechnologyDetail({
       {/* Similar tech + AI recommendation */}
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
         <div className="stack-card rounded-2xl border border-border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-base font-semibold">Similar Technologies</h3>
-            <span className="text-xs text-muted-foreground">Click to compare</span>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-display text-base font-semibold">Explore More Technologies</h3>
+              <p className="text-xs text-muted-foreground">Explore related and popular technologies</p>
+            </div>
+            <span className="text-xs text-muted-foreground">Click to open</span>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(() => {
-              const linked = tech.similar
-                .map((s) => TECHS.find((t) => t.slug === s.slug))
-                .filter((t): t is Tech => Boolean(t));
-              const fallback = TECHS.filter(
-                (t) => t.slug !== tech.slug && t.category === tech.category,
-              ).slice(0, 6);
-              const list = (linked.length ? linked : fallback).slice(0, 6);
-              return list.map((s) => (
-                <button
-                  key={s.slug}
-                  onClick={() => onOpen(s.slug)}
-                  className="stack-card group flex flex-col rounded-xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-base">
-                      {s.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate font-display text-sm font-semibold">{s.name}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">{s.category}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-end justify-between">
-                    <div>
-                      <div className="font-display text-base font-semibold tabular-nums text-primary">
-                        {s.completion}%
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Completion
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-display text-base font-semibold tabular-nums">
-                        {s.projects.toLocaleString()}
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Projects
-                      </div>
-                    </div>
-                  </div>
-                </button>
+              const seen = new Set<string>([tech.slug]);
+              const picks: Tech[] = [];
+              const push = (t?: Tech) => {
+                if (!t || seen.has(t.slug) || picks.length >= 6) return;
+                seen.add(t.slug);
+                picks.push(t);
+              };
+              // 1) Similar
+              for (const s of tech.similar) push(TECHS.find((t) => t.slug === s.slug));
+              // 2) Same category
+              for (const t of TECHS) if (t.category === tech.category) push(t);
+              // 3) Trending / popular fallback
+              for (const slug of TRENDING) push(TECHS.find((t) => t.slug === slug));
+              for (const slug of FASTEST_GROWING) push(TECHS.find((t) => t.slug === slug));
+              for (const slug of HIGHEST_SUCCESS) push(TECHS.find((t) => t.slug === slug));
+              for (const t of TECHS) push(t);
+              return picks.slice(0, 6).map((s) => (
+                <TechCard key={s.slug} tech={s} onOpen={onOpen} />
               ));
             })()}
           </div>
         </div>
+
 
         <div className="stack-card relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
           <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/25 blur-3xl" />
