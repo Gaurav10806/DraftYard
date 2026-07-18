@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
 import { Route as NewDraftRouteImport } from './routes/new-draft'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InsightsLabRouteImport } from './routes/insights-lab'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -23,6 +25,11 @@ import { Route as ProjectSlugRouteImport } from './routes/project.$slug'
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StackIntelligenceRoute = StackIntelligenceRouteImport.update({
+  id: '/stack-intelligence',
+  path: '/stack-intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -43,6 +50,11 @@ const NewDraftRoute = NewDraftRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsLabRoute = InsightsLabRouteImport.update({
+  id: '/insights-lab',
+  path: '/insights-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InsightsRoute = InsightsRouteImport.update({
@@ -76,10 +88,12 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/insights': typeof InsightsRoute
+  '/insights-lab': typeof InsightsLabRoute
   '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
   '/revival-board': typeof RevivalBoardRoute
   '/signup': typeof SignupRoute
+  '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -88,10 +102,12 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/insights': typeof InsightsRoute
+  '/insights-lab': typeof InsightsLabRoute
   '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
   '/revival-board': typeof RevivalBoardRoute
   '/signup': typeof SignupRoute
+  '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -101,10 +117,12 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/insights': typeof InsightsRoute
+  '/insights-lab': typeof InsightsLabRoute
   '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
   '/revival-board': typeof RevivalBoardRoute
   '/signup': typeof SignupRoute
+  '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -115,10 +133,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/insights'
+    | '/insights-lab'
     | '/login'
     | '/new-draft'
     | '/revival-board'
     | '/signup'
+    | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -127,10 +147,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/insights'
+    | '/insights-lab'
     | '/login'
     | '/new-draft'
     | '/revival-board'
     | '/signup'
+    | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
   id:
@@ -139,10 +161,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/insights'
+    | '/insights-lab'
     | '/login'
     | '/new-draft'
     | '/revival-board'
     | '/signup'
+    | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
   fileRoutesById: FileRoutesById
@@ -152,10 +176,12 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
   InsightsRoute: typeof InsightsRoute
+  InsightsLabRoute: typeof InsightsLabRoute
   LoginRoute: typeof LoginRoute
   NewDraftRoute: typeof NewDraftRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
   SignupRoute: typeof SignupRoute
+  StackIntelligenceRoute: typeof StackIntelligenceRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
 }
@@ -167,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stack-intelligence': {
+      id: '/stack-intelligence'
+      path: '/stack-intelligence'
+      fullPath: '/stack-intelligence'
+      preLoaderRoute: typeof StackIntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -195,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights-lab': {
+      id: '/insights-lab'
+      path: '/insights-lab'
+      fullPath: '/insights-lab'
+      preLoaderRoute: typeof InsightsLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/insights': {
@@ -240,10 +280,12 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
   InsightsRoute: InsightsRoute,
+  InsightsLabRoute: InsightsLabRoute,
   LoginRoute: LoginRoute,
   NewDraftRoute: NewDraftRoute,
   RevivalBoardRoute: RevivalBoardRoute,
   SignupRoute: SignupRoute,
+  StackIntelligenceRoute: StackIntelligenceRoute,
   WorkspaceRoute: WorkspaceRoute,
   ProjectSlugRoute: ProjectSlugRoute,
 }

@@ -34,11 +34,11 @@ const primary = [
   { title: "Workspace", url: "/workspace", icon: Boxes },
   { title: "DraftYard Feed", url: "/feed", icon: Rss },
   { title: "Revival Board", url: "/revival-board", icon: RefreshCw },
-  { title: "Insights", url: "/insights", icon: BarChart2 },
+  { title: "Insights", url: "/insights-lab", icon: BarChart2 },
+  { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
 ];
 
 const comingSoon = [
-  { title: "Stack Intelligence", icon: Layers },
   { title: "Idea Review", icon: ClipboardCheck },
   { title: "AI Assistant", icon: Bot },
   { title: "Profile", icon: UserCircle },
