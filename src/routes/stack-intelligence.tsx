@@ -63,8 +63,10 @@ type Tech = {
   growth: number; // trending %
   avgRevivalDays: number;
   summary: string;
+  bestFor?: string[];
+  failureReasons?: string[];
   challenges: string[];
-  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string };
+  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor?: string[] };
   survival: { stage: string; pct: number }[];
   similar: { name: string; slug: string; survival: number; trend: number[] }[];
   projectsUsing: {
@@ -75,6 +77,17 @@ type Tech = {
     updated: string;
   }[];
 };
+
+/** Provide safe defaults so every tech has actionable AI content. */
+function withDefaults(t: Partial<Tech> & Pick<Tech, "slug" | "name" | "icon" | "category" | "projects" | "completion" | "revived" | "rating" | "growth" | "avgRevivalDays" | "summary" | "challenges" | "recommendation" | "survival">): Tech {
+  return {
+    bestFor: ["General-purpose product work", "Small to mid-size teams", "Rapid iteration"],
+    failureReasons: ["Weak documentation", "Scope creep", "Poor architecture planning"],
+    similar: [],
+    projectsUsing: [],
+    ...t,
+  } as Tech;
+}
 
 const SURVIVAL = (a: number, b: number, c: number, d: number) => [
   { stage: "Idea", pct: 100 },
@@ -274,10 +287,73 @@ const TECHS: Tech[] = [
   { slug: "java", name: "Java", icon: "☕", category: "Language", projects: 1620, completion: 71, revived: 14, rating: 4.0, growth: 1, avgRevivalDays: 24, summary: "Enterprise backend workhorse.", challenges: ["Verbosity", "Startup time"], recommendation: { name: "Kotlin", slug: "kotlin", delta: 5, domain: "Enterprise", reasons: ["Modern syntax", "Interop with Java", "Coroutines", "Growing ecosystem"] }, survival: SURVIVAL(72, 50, 28, 14), similar: [], projectsUsing: [] },
 ];
 
-const HIGHEST_COMPLETION = ["react", "nextjs", "typescript", "postgres", "django", "flutter"];
-const TRENDING = ["nextjs", "react", "fastapi", "typescript", "postgres", "nodejs"];
+const TRENDING = [...TECHS].sort((a, b) => b.projects - a.projects).slice(0, 6).map((t) => t.slug);
+const HIGHEST_SUCCESS = [...TECHS].sort((a, b) => b.completion - a.completion).slice(0, 6).map((t) => t.slug);
+const FASTEST_GROWING = [...TECHS].sort((a, b) => b.growth - a.growth).slice(0, 6).map((t) => t.slug);
 
-/* ------------------------------ Page ------------------------------ */
+/** Curated AI insight overrides per technology (falls back to sensible defaults). */
+const AI_INSIGHTS: Record<string, { bestFor: string[]; failureReasons: string[]; considerFor?: string[] }> = {
+  react: {
+    bestFor: ["Interactive product UIs", "Component-driven dashboards", "Solo & small-team builds"],
+    failureReasons: ["State sprawl", "Prop drilling in mid-size apps", "Tooling fatigue"],
+    considerFor: ["Content-heavy sites", "SEO-critical marketing", "Server-rendered SaaS"],
+  },
+  nextjs: {
+    bestFor: ["Full-stack SaaS", "SEO-critical marketing sites", "Content-heavy apps"],
+    failureReasons: ["Caching confusion", "Deploy env drift", "Overuse of server components"],
+    considerFor: ["Pure client SPAs", "Static docs sites"],
+  },
+  django: {
+    bestFor: ["Content-heavy backends", "Admin-driven enterprise apps", "Rapid CRUD MVPs"],
+    failureReasons: ["Scope creep", "Async workflows outgrow WSGI", "ORM performance tuning"],
+    considerFor: ["AI / ML APIs", "Async-first backends", "High-performance edge APIs"],
+  },
+  fastapi: {
+    bestFor: ["AI / ML inference APIs", "High-performance async services", "Type-first Python teams"],
+    failureReasons: ["Auth boilerplate", "ORM choice fatigue", "Missing admin UI"],
+    considerFor: ["Content-heavy CRUD apps", "Teams needing batteries-included admin"],
+  },
+  express: {
+    bestFor: ["REST APIs", "Lightweight backend services", "Rapid MVPs & small teams"],
+    failureReasons: ["Weak documentation", "Poor architecture planning", "Callback / error handling drift"],
+    considerFor: ["AI / ML projects", "High-performance async APIs", "Type-first backends"],
+  },
+  nodejs: {
+    bestFor: ["JavaScript-first backends", "Realtime services", "Shared TypeScript across stack"],
+    failureReasons: ["Async error handling", "Package sprawl", "Runtime version drift"],
+    considerFor: ["Edge-native APIs", "Secure-by-default runtimes"],
+  },
+  postgres: {
+    bestFor: ["Transactional SaaS", "Analytics-heavy products", "Long-lived data models"],
+    failureReasons: ["Migration discipline", "Index tuning", "N+1 query patterns"],
+    considerFor: ["Managed Postgres with auth & realtime out of the box"],
+  },
+  mongodb: {
+    bestFor: ["Early prototypes", "Flexible schemas", "Event / log stores"],
+    failureReasons: ["Schema drift", "Complex joins", "Consistency edge cases"],
+    considerFor: ["Relational workloads that need SQL & strong consistency"],
+  },
+  typescript: {
+    bestFor: ["Long-lived codebases", "Cross-stack shared types", "Team-scale projects"],
+    failureReasons: ["Type gymnastics", "Config sprawl", "Slow feedback loops"],
+    considerFor: ["Throwaway scripts & prototypes"],
+  },
+  python: {
+    bestFor: ["Data & ML pipelines", "Scripting & automation", "AI-first backends"],
+    failureReasons: ["Env management", "Slow cold starts", "Runtime type errors"],
+    considerFor: ["Unified TS frontend + backend teams"],
+  },
+  flutter: {
+    bestFor: ["Cross-platform mobile", "Design-heavy consumer apps", "Solo-dev mobile output"],
+    failureReasons: ["Native bridges", "iOS polish gaps", "Package ecosystem gaps"],
+    considerFor: ["JS-native mobile teams with web reuse"],
+  },
+  java: {
+    bestFor: ["Enterprise backends", "Long-lived legacy integrations", "JVM ecosystems"],
+    failureReasons: ["Verbosity", "Startup time", "Slow iteration"],
+    considerFor: ["Modern JVM languages like Kotlin"],
+  },
+};
 
 function StackIntelligencePage() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -360,7 +436,9 @@ function TechnologyExplorer({
   onOpen: (slug: string) => void;
   filtered: Tech[];
 }) {
-  const popular = ["react", "nextjs", "nodejs", "express", "mongodb", "postgres", "python", "django", "fastapi", "flutter", "java", "typescript"];
+  const trendingTechs = TRENDING.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
+  const highestTechs = HIGHEST_SUCCESS.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
+  const growingTechs = FASTEST_GROWING.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
 
   return (
     <div className="space-y-8">
@@ -392,150 +470,156 @@ function TechnologyExplorer({
         </kbd>
       </form>
 
-      {/* Popular chips */}
+      {/* Trending Technologies */}
       <section>
-        <SectionHeader title="Popular Technologies" subtitle="Jump straight into a stack" />
-        <div className="mt-4 flex flex-wrap gap-2">
-          {popular.map((slug) => {
-            const t = TECHS.find((x) => x.slug === slug);
-            if (!t) return null;
-            return (
-              <button
-                key={slug}
-                onClick={() => onOpen(slug)}
-                className="stack-chip group inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
-              >
-                <span className="text-base">{t.icon}</span>
-                {t.name}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Trending + Highest completion */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section>
-          <SectionHeader title="Trending Technologies" subtitle="Momentum over the last 30 days" icon={<TrendingUp className="h-4 w-4 text-emerald-500" />} />
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {TRENDING.map((slug) => {
-              const t = TECHS.find((x) => x.slug === slug)!;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => onOpen(slug)}
-                  className="stack-card group flex items-center justify-between rounded-xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted text-lg">{t.icon}</span>
-                    <div>
-                      <div className="font-display text-sm font-semibold">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">{t.category}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <TrendingUp className="h-3 w-3" /> ↑{t.growth}%
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section>
-          <SectionHeader title="Highest Completion Rate" subtitle="Where builders actually finish" icon={<CheckCircle2 className="h-4 w-4 text-primary" />} />
-          <div className="mt-4 space-y-2">
-            {HIGHEST_COMPLETION.map((slug) => {
-              const t = TECHS.find((x) => x.slug === slug)!;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => onOpen(slug)}
-                  className="stack-card group flex w-full items-center gap-4 rounded-xl border border-border bg-card px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-                >
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-base">{t.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-display text-sm font-semibold">{t.name}</div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${t.completion}%` }} />
-                    </div>
-                  </div>
-                  <div className="font-display text-sm font-semibold tabular-nums text-foreground">{t.completion}%</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-
-      {/* AI Recommendation */}
-      <section className="stack-ai relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/12 via-primary/5 to-transparent p-6">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/20 blur-3xl" />
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-          <Sparkles className="h-4 w-4" /> AI Recommendation
-        </div>
-        <h3 className="mt-3 max-w-3xl font-display text-xl font-semibold leading-snug text-foreground">
-          Projects using <span className="text-primary">React + Node.js + PostgreSQL</span> show the highest completion rate this month.
-        </h3>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          88% of drafts with this stack ship within 6 weeks. Consider it for content-heavy SaaS and dashboards.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {["react", "nodejs", "postgres"].map((slug) => {
-            const t = TECHS.find((x) => x.slug === slug)!;
-            return (
-              <button
-                key={slug}
-                onClick={() => onOpen(slug)}
-                className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-card px-3 py-1.5 text-sm font-medium hover:border-primary/60"
-              >
-                <span>{t.icon}</span>
-                {t.name}
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Browse all */}
-      <section>
-        <SectionHeader title="Browse All Technologies" subtitle={`${filtered.length} technologies`} />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((t) => (
-            <button
+        <SectionHeader
+          title="🔥 Trending Technologies"
+          subtitle="Highest recent adoption across the ecosystem"
+          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {trendingTechs.map((t) => (
+            <TechCard
               key={t.slug}
-              onClick={() => onOpen(t.slug)}
-              className="stack-card group relative flex flex-col rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
-            >
-              <div className="flex items-start justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-muted text-2xl">{t.icon}</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </div>
-              <div className="mt-3 font-display text-base font-semibold">{t.name}</div>
-              <div className="text-xs text-muted-foreground">{t.category}</div>
-              <div className="mt-4 flex items-end justify-between">
-                <div>
-                  <div className="font-display text-lg font-semibold tabular-nums">{t.projects.toLocaleString()}</div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Projects</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-display text-lg font-semibold tabular-nums text-primary">{t.completion}%</div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Completion</div>
-                </div>
-              </div>
-            </button>
+              tech={t}
+              onOpen={onOpen}
+              metric={{
+                label: "Trending",
+                value: `↑${t.growth}%`,
+                tone: "emerald",
+              }}
+            />
           ))}
         </div>
-        {filtered.length === 0 && (
-          <div className="mt-6 rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            No technologies match "{query}".
-          </div>
-        )}
       </section>
+
+      {/* Highest Success Rate */}
+      <section>
+        <SectionHeader
+          title="🏆 Highest Success Rate"
+          subtitle="Best project completion percentages"
+          icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {highestTechs.map((t) => (
+            <TechCard
+              key={t.slug}
+              tech={t}
+              onOpen={onOpen}
+              metric={{
+                label: "Success",
+                value: `${t.completion}%`,
+                tone: "violet",
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Fastest Growing */}
+      <section>
+        <SectionHeader
+          title="⚡ Fastest Growing"
+          subtitle="Month-over-month growth in new projects"
+          icon={<TrendingUp className="h-4 w-4 text-amber-500" />}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {growingTechs.map((t) => (
+            <TechCard
+              key={t.slug}
+              tech={t}
+              onOpen={onOpen}
+              metric={{
+                label: "MoM",
+                value: `+${t.growth}%`,
+                tone: "amber",
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Browse all — visible only when the user actively searches */}
+      {query.trim() && (
+        <section>
+          <SectionHeader title="Search Results" subtitle={`${filtered.length} technologies`} />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((t) => (
+              <TechCard key={t.slug} tech={t} onOpen={onOpen} />
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="mt-6 rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              No technologies match "{query}".
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
+
+function TechCard({
+  tech,
+  onOpen,
+  metric,
+}: {
+  tech: Tech;
+  onOpen: (slug: string) => void;
+  metric?: { label: string; value: string; tone: "emerald" | "violet" | "amber" };
+}) {
+  const toneMap: Record<string, string> = {
+    emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    violet: "bg-primary/10 text-primary",
+    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  };
+  return (
+    <button
+      onClick={() => onOpen(tech.slug)}
+      className="stack-card group relative flex w-full flex-col rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-2xl">
+            {tech.icon}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate font-display text-base font-semibold text-foreground">
+              {tech.name}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">{tech.category}</div>
+          </div>
+        </div>
+        {metric && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${toneMap[metric.tone]}`}
+          >
+            {metric.value}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 flex items-end justify-between">
+        <div>
+          <div className="font-display text-lg font-semibold tabular-nums">
+            {tech.projects.toLocaleString()}
+          </div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Projects
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="font-display text-lg font-semibold tabular-nums text-primary">
+            {tech.completion}%
+          </div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Completion
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 
 function SectionHeader({
   title,
@@ -594,13 +678,16 @@ function TechnologyDetail({
             {tech.icon}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate font-display text-3xl font-semibold tracking-tight sm:text-4xl">{tech.name}</h1>
-              <Star className="h-4 w-4 text-muted-foreground hover:text-amber-400" />
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge>{tech.category}</Badge>
+            <h1 className="truncate font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              {tech.name}
+            </h1>
+            <div className="mt-1 text-sm text-muted-foreground">{tech.category}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge>{tech.projects.toLocaleString()} Projects</Badge>
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <RatingStars value={tech.rating} />
+                <span className="ml-1 tabular-nums text-foreground">{tech.rating.toFixed(1)}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -619,23 +706,49 @@ function TechnologyDetail({
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Sparkles className="h-3.5 w-3.5" /> AI Summary
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{tech.summary}</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-              <div className="text-xs font-semibold text-primary">Common challenges</div>
-              <ul className="mt-1.5 space-y-1 text-xs text-muted-foreground">
-                {tech.challenges.map((c) => (
-                  <li key={c} className="flex gap-1.5"><span className="text-primary">•</span> {c}</li>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Best suited for
+              </div>
+              <ul className="mt-1.5 space-y-1 text-sm text-foreground/90">
+                {(AI_INSIGHTS[tech.slug]?.bestFor ?? ["General product work", "Small to mid teams", "Rapid iteration"]).map((b) => (
+                  <li key={b} className="flex gap-1.5">
+                    <span className="text-primary">•</span> {b}
+                  </li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-              <div className="text-xs font-semibold text-primary">Average revival time</div>
-              <div className="mt-1.5 font-display text-lg font-semibold text-emerald-500">{tech.avgRevivalDays} days</div>
+            <div className="grid grid-cols-2 gap-2 self-start">
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Completion rate
+                </div>
+                <div className="mt-1 font-display text-lg font-semibold text-primary">{tech.completion}%</div>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Avg revival time
+                </div>
+                <div className="mt-1 font-display text-lg font-semibold text-emerald-500">{tech.avgRevivalDays} days</div>
+              </div>
             </div>
+          </div>
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Most common failure reasons
+            </div>
+            <ul className="mt-1.5 grid gap-1 text-sm text-foreground/90 sm:grid-cols-2">
+              {(AI_INSIGHTS[tech.slug]?.failureReasons ?? tech.challenges).map((r) => (
+                <li key={r} className="flex gap-1.5">
+                  <span className="text-amber-500">•</span> {r}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
+
 
       {/* Survival + Projects using */}
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
@@ -674,7 +787,7 @@ function TechnologyDetail({
 
         <div className="stack-card rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-base font-semibold">Projects Using {tech.name}</h3>
+            <h3 className="font-display text-base font-semibold">Top DraftYard Projects Using {tech.name}</h3>
             <button className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               View all projects <ArrowRight className="h-3 w-3" />
             </button>
@@ -703,38 +816,53 @@ function TechnologyDetail({
         <div className="stack-card rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-base font-semibold">Similar Technologies</h3>
-            <button className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View comparison <ArrowRight className="h-3 w-3" />
-            </button>
+            <span className="text-xs text-muted-foreground">Click to compare</span>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {(tech.similar.length ? tech.similar : []).map((s) => (
-              <button
-                key={s.slug}
-                onClick={() => onOpen(s.slug)}
-                className="rounded-xl border border-border bg-muted/30 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card hover:shadow-md"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-md bg-card text-sm">{TECHS.find((t) => t.slug === s.slug)?.icon ?? "•"}</span>
-                  <div className="font-display text-sm font-semibold">{s.name}</div>
-                </div>
-                <div className="mt-2 font-display text-xl font-semibold tabular-nums">{s.survival}%</div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Survival Rate</div>
-                <div className="mt-2 h-10">
-                  <ResponsiveContainer>
-                    <AreaChart data={s.trend as any}>
-                      <defs>
-                        <linearGradient id={`sp-${s.slug}`} x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#22c39a" stopOpacity={0.35} />
-                          <stop offset="100%" stopColor="#22c39a" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="y" stroke="#22c39a" strokeWidth={1.5} fill={`url(#sp-${s.slug})`} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </button>
-            ))}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {(() => {
+              const linked = tech.similar
+                .map((s) => TECHS.find((t) => t.slug === s.slug))
+                .filter((t): t is Tech => Boolean(t));
+              const fallback = TECHS.filter(
+                (t) => t.slug !== tech.slug && t.category === tech.category,
+              ).slice(0, 6);
+              const list = (linked.length ? linked : fallback).slice(0, 6);
+              return list.map((s) => (
+                <button
+                  key={s.slug}
+                  onClick={() => onOpen(s.slug)}
+                  className="stack-card group flex flex-col rounded-xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-base">
+                      {s.icon}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate font-display text-sm font-semibold">{s.name}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">{s.category}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-end justify-between">
+                    <div>
+                      <div className="font-display text-base font-semibold tabular-nums text-primary">
+                        {s.completion}%
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Completion
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-display text-base font-semibold tabular-nums">
+                        {s.projects.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Projects
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ));
+            })()}
           </div>
         </div>
 
@@ -743,30 +871,60 @@ function TechnologyDetail({
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Sparkles className="h-4 w-4" /> AI Recommendation
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Based on your project domain</p>
-          <div className="mt-1 inline-flex items-center rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {tech.recommendation.domain}
+          <h3 className="mt-2 font-display text-lg font-semibold text-foreground">
+            Should you use {tech.name}?
+          </h3>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 p-4">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" /> Great for
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm text-foreground/90">
+                {(AI_INSIGHTS[tech.slug]?.bestFor ?? ["General product work", "Small to mid teams", "Rapid iteration"]).map((b) => (
+                  <li key={b} className="flex gap-1.5">
+                    <span className="text-emerald-500">✓</span> {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                ⚠ Consider {tech.recommendation.name} if
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm text-foreground/90">
+                {(AI_INSIGHTS[tech.slug]?.considerFor ?? tech.recommendation.reasons.slice(0, 3)).map((r) => (
+                  <li key={r} className="flex gap-1.5">
+                    <span className="text-amber-500">›</span> {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">Instead of {tech.name}, we recommend</p>
-          <div className="mt-1 flex items-center justify-between gap-4">
-            <button
-              onClick={() => onOpen(tech.recommendation.slug)}
-              className="font-display text-3xl font-semibold text-primary hover:underline"
-            >
-              {tech.recommendation.name}
-            </button>
-            <ScoreRing value={70 + tech.recommendation.delta} size={64} label={`+${tech.recommendation.delta}%`} />
+
+          <div className="mt-5 flex items-center justify-between rounded-xl border border-primary/25 bg-primary/8 px-4 py-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                Predicted completion improvement
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Switching to {tech.recommendation.name} for {tech.recommendation.domain}
+              </div>
+            </div>
+            <div className="font-display text-2xl font-semibold tabular-nums text-emerald-500">
+              +{tech.recommendation.delta}%
+            </div>
           </div>
-          <div className="mt-4 text-xs font-semibold text-foreground">Why {tech.recommendation.name}?</div>
-          <ul className="mt-2 space-y-1.5 text-sm">
-            {tech.recommendation.reasons.map((r) => (
-              <li key={r} className="flex items-start gap-2 text-foreground/85">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {r}
-              </li>
-            ))}
-          </ul>
+
+          <button
+            onClick={() => onOpen(tech.recommendation.slug)}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            Explore {tech.recommendation.name} <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
+
     </div>
   );
 }
@@ -785,6 +943,23 @@ function Badge({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+function RatingStars({ value }: { value: number }) {
+  const full = Math.round(value);
+  return (
+    <span className="inline-flex items-center gap-0.5 text-amber-400">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className="h-3 w-3"
+          fill={i < full ? "currentColor" : "none"}
+          strokeWidth={i < full ? 0 : 1.5}
+        />
+      ))}
+    </span>
+  );
+}
+
 
 function StatCard({
   label,
