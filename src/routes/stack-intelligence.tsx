@@ -63,8 +63,10 @@ type Tech = {
   growth: number; // trending %
   avgRevivalDays: number;
   summary: string;
+  bestFor: string[];
+  failureReasons: string[];
   challenges: string[];
-  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string };
+  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor: string[] };
   survival: { stage: string; pct: number }[];
   similar: { name: string; slug: string; survival: number; trend: number[] }[];
   projectsUsing: {
@@ -75,6 +77,17 @@ type Tech = {
     updated: string;
   }[];
 };
+
+/** Provide safe defaults so every tech has actionable AI content. */
+function withDefaults(t: Partial<Tech> & Pick<Tech, "slug" | "name" | "icon" | "category" | "projects" | "completion" | "revived" | "rating" | "growth" | "avgRevivalDays" | "summary" | "challenges" | "recommendation" | "survival">): Tech {
+  return {
+    bestFor: ["General-purpose product work", "Small to mid-size teams", "Rapid iteration"],
+    failureReasons: ["Weak documentation", "Scope creep", "Poor architecture planning"],
+    similar: [],
+    projectsUsing: [],
+    ...t,
+  } as Tech;
+}
 
 const SURVIVAL = (a: number, b: number, c: number, d: number) => [
   { stage: "Idea", pct: 100 },
