@@ -287,10 +287,73 @@ const TECHS: Tech[] = [
   { slug: "java", name: "Java", icon: "☕", category: "Language", projects: 1620, completion: 71, revived: 14, rating: 4.0, growth: 1, avgRevivalDays: 24, summary: "Enterprise backend workhorse.", challenges: ["Verbosity", "Startup time"], recommendation: { name: "Kotlin", slug: "kotlin", delta: 5, domain: "Enterprise", reasons: ["Modern syntax", "Interop with Java", "Coroutines", "Growing ecosystem"] }, survival: SURVIVAL(72, 50, 28, 14), similar: [], projectsUsing: [] },
 ];
 
-const HIGHEST_COMPLETION = ["react", "nextjs", "typescript", "postgres", "django", "flutter"];
-const TRENDING = ["nextjs", "react", "fastapi", "typescript", "postgres", "nodejs"];
+const TRENDING = [...TECHS].sort((a, b) => b.projects - a.projects).slice(0, 6).map((t) => t.slug);
+const HIGHEST_SUCCESS = [...TECHS].sort((a, b) => b.completion - a.completion).slice(0, 6).map((t) => t.slug);
+const FASTEST_GROWING = [...TECHS].sort((a, b) => b.growth - a.growth).slice(0, 6).map((t) => t.slug);
 
-/* ------------------------------ Page ------------------------------ */
+/** Curated AI insight overrides per technology (falls back to sensible defaults). */
+const AI_INSIGHTS: Record<string, { bestFor: string[]; failureReasons: string[]; considerFor?: string[] }> = {
+  react: {
+    bestFor: ["Interactive product UIs", "Component-driven dashboards", "Solo & small-team builds"],
+    failureReasons: ["State sprawl", "Prop drilling in mid-size apps", "Tooling fatigue"],
+    considerFor: ["Content-heavy sites", "SEO-critical marketing", "Server-rendered SaaS"],
+  },
+  nextjs: {
+    bestFor: ["Full-stack SaaS", "SEO-critical marketing sites", "Content-heavy apps"],
+    failureReasons: ["Caching confusion", "Deploy env drift", "Overuse of server components"],
+    considerFor: ["Pure client SPAs", "Static docs sites"],
+  },
+  django: {
+    bestFor: ["Content-heavy backends", "Admin-driven enterprise apps", "Rapid CRUD MVPs"],
+    failureReasons: ["Scope creep", "Async workflows outgrow WSGI", "ORM performance tuning"],
+    considerFor: ["AI / ML APIs", "Async-first backends", "High-performance edge APIs"],
+  },
+  fastapi: {
+    bestFor: ["AI / ML inference APIs", "High-performance async services", "Type-first Python teams"],
+    failureReasons: ["Auth boilerplate", "ORM choice fatigue", "Missing admin UI"],
+    considerFor: ["Content-heavy CRUD apps", "Teams needing batteries-included admin"],
+  },
+  express: {
+    bestFor: ["REST APIs", "Lightweight backend services", "Rapid MVPs & small teams"],
+    failureReasons: ["Weak documentation", "Poor architecture planning", "Callback / error handling drift"],
+    considerFor: ["AI / ML projects", "High-performance async APIs", "Type-first backends"],
+  },
+  nodejs: {
+    bestFor: ["JavaScript-first backends", "Realtime services", "Shared TypeScript across stack"],
+    failureReasons: ["Async error handling", "Package sprawl", "Runtime version drift"],
+    considerFor: ["Edge-native APIs", "Secure-by-default runtimes"],
+  },
+  postgres: {
+    bestFor: ["Transactional SaaS", "Analytics-heavy products", "Long-lived data models"],
+    failureReasons: ["Migration discipline", "Index tuning", "N+1 query patterns"],
+    considerFor: ["Managed Postgres with auth & realtime out of the box"],
+  },
+  mongodb: {
+    bestFor: ["Early prototypes", "Flexible schemas", "Event / log stores"],
+    failureReasons: ["Schema drift", "Complex joins", "Consistency edge cases"],
+    considerFor: ["Relational workloads that need SQL & strong consistency"],
+  },
+  typescript: {
+    bestFor: ["Long-lived codebases", "Cross-stack shared types", "Team-scale projects"],
+    failureReasons: ["Type gymnastics", "Config sprawl", "Slow feedback loops"],
+    considerFor: ["Throwaway scripts & prototypes"],
+  },
+  python: {
+    bestFor: ["Data & ML pipelines", "Scripting & automation", "AI-first backends"],
+    failureReasons: ["Env management", "Slow cold starts", "Runtime type errors"],
+    considerFor: ["Unified TS frontend + backend teams"],
+  },
+  flutter: {
+    bestFor: ["Cross-platform mobile", "Design-heavy consumer apps", "Solo-dev mobile output"],
+    failureReasons: ["Native bridges", "iOS polish gaps", "Package ecosystem gaps"],
+    considerFor: ["JS-native mobile teams with web reuse"],
+  },
+  java: {
+    bestFor: ["Enterprise backends", "Long-lived legacy integrations", "JVM ecosystems"],
+    failureReasons: ["Verbosity", "Startup time", "Slow iteration"],
+    considerFor: ["Modern JVM languages like Kotlin"],
+  },
+};
 
 function StackIntelligencePage() {
   const [selected, setSelected] = useState<string | null>(null);
