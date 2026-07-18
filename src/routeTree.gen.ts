@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
 import { Route as InsightsLabRouteImport } from './routes/insights-lab'
 import { Route as FeedRouteImport } from './routes/feed'
@@ -20,6 +21,11 @@ import { Route as ProjectSlugRouteImport } from './routes/project.$slug'
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StackIntelligenceRoute = StackIntelligenceRouteImport.update({
+  id: '/stack-intelligence',
+  path: '/stack-intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RevivalBoardRoute = RevivalBoardRouteImport.update({
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/feed': typeof FeedRoute
   '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/feed': typeof FeedRoute
   '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/feed': typeof FeedRoute
   '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/insights-lab'
     | '/revival-board'
+    | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/insights-lab'
     | '/revival-board'
+    | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/insights-lab'
     | '/revival-board'
+    | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   FeedRoute: typeof FeedRoute
   InsightsLabRoute: typeof InsightsLabRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
+  StackIntelligenceRoute: typeof StackIntelligenceRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
 }
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stack-intelligence': {
+      id: '/stack-intelligence'
+      path: '/stack-intelligence'
+      fullPath: '/stack-intelligence'
+      preLoaderRoute: typeof StackIntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/revival-board': {
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedRoute: FeedRoute,
   InsightsLabRoute: InsightsLabRoute,
   RevivalBoardRoute: RevivalBoardRoute,
+  StackIntelligenceRoute: StackIntelligenceRoute,
   WorkspaceRoute: WorkspaceRoute,
   ProjectSlugRoute: ProjectSlugRoute,
 }
