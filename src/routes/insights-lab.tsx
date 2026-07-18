@@ -971,10 +971,11 @@ function StallDNATab() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-5">
           <SectionTitle
             icon={Sparkles}
-            title="Stall DNA · Cluster Map"
-            subtitle="Force-directed clustering of stall patterns. Node size = projects, distance = similarity."
+            title="Stall DNA Network"
+            subtitle="Force-directed network of stall patterns. Node size = project count. Distance = similarity."
             badge="Interactive"
           />
+
           {selected && (
             <button
               onClick={() => setSelectedId(null)}
