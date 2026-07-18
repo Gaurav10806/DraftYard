@@ -812,22 +812,26 @@
 }
 .insights-page .dna-net {
   --dna-edge: rgba(170, 130, 255, 0.35);
+  background: #0D0D14;
+  border-radius: 12px;
 }
 .insights-page .dna-net-bg {
   background:
-    radial-gradient(60% 60% at 50% 50%, rgba(124, 92, 255, 0.10), transparent 65%),
-    radial-gradient(40% 40% at 20% 30%, rgba(59, 130, 246, 0.06), transparent 60%);
+    radial-gradient(55% 55% at 50% 50%, rgba(124, 92, 255, 0.10), transparent 70%);
+  border-radius: 12px;
 }
 :root:not(.dark) .insights-page .dna-net {
-  --dna-edge: rgba(120, 90, 200, 0.28);
+  --dna-edge: rgba(170, 130, 255, 0.35);
+  background: #0D0D14;
 }
 :root:not(.dark) .insights-page .dna-net-bg {
   background:
-    radial-gradient(70% 70% at 50% 50%, rgba(148, 163, 184, 0.10), transparent 70%);
+    radial-gradient(55% 55% at 50% 50%, rgba(124, 92, 255, 0.10), transparent 70%);
 }
 .insights-page .dna-net-label {
-  fill: hsl(var(--muted-foreground));
+  fill: rgba(226, 232, 240, 0.85);
 }
+
 @keyframes dna-edge-flow {
   0%   { stroke-dashoffset: 0; }
   100% { stroke-dashoffset: -20; }
