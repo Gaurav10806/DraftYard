@@ -678,13 +678,16 @@ function TechnologyDetail({
             {tech.icon}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate font-display text-3xl font-semibold tracking-tight sm:text-4xl">{tech.name}</h1>
-              <Star className="h-4 w-4 text-muted-foreground hover:text-amber-400" />
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge>{tech.category}</Badge>
+            <h1 className="truncate font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              {tech.name}
+            </h1>
+            <div className="mt-1 text-sm text-muted-foreground">{tech.category}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge>{tech.projects.toLocaleString()} Projects</Badge>
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <RatingStars value={tech.rating} />
+                <span className="ml-1 tabular-nums text-foreground">{tech.rating.toFixed(1)}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -703,23 +706,49 @@ function TechnologyDetail({
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Sparkles className="h-3.5 w-3.5" /> AI Summary
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{tech.summary}</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-              <div className="text-xs font-semibold text-primary">Common challenges</div>
-              <ul className="mt-1.5 space-y-1 text-xs text-muted-foreground">
-                {tech.challenges.map((c) => (
-                  <li key={c} className="flex gap-1.5"><span className="text-primary">•</span> {c}</li>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Best suited for
+              </div>
+              <ul className="mt-1.5 space-y-1 text-sm text-foreground/90">
+                {(AI_INSIGHTS[tech.slug]?.bestFor ?? ["General product work", "Small to mid teams", "Rapid iteration"]).map((b) => (
+                  <li key={b} className="flex gap-1.5">
+                    <span className="text-primary">•</span> {b}
+                  </li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-              <div className="text-xs font-semibold text-primary">Average revival time</div>
-              <div className="mt-1.5 font-display text-lg font-semibold text-emerald-500">{tech.avgRevivalDays} days</div>
+            <div className="grid grid-cols-2 gap-2 self-start">
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Completion rate
+                </div>
+                <div className="mt-1 font-display text-lg font-semibold text-primary">{tech.completion}%</div>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Avg revival time
+                </div>
+                <div className="mt-1 font-display text-lg font-semibold text-emerald-500">{tech.avgRevivalDays} days</div>
+              </div>
             </div>
+          </div>
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Most common failure reasons
+            </div>
+            <ul className="mt-1.5 grid gap-1 text-sm text-foreground/90 sm:grid-cols-2">
+              {(AI_INSIGHTS[tech.slug]?.failureReasons ?? tech.challenges).map((r) => (
+                <li key={r} className="flex gap-1.5">
+                  <span className="text-amber-500">•</span> {r}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
+
 
       {/* Survival + Projects using */}
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
