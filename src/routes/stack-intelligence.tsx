@@ -944,6 +944,23 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RatingStars({ value }: { value: number }) {
+  const full = Math.round(value);
+  return (
+    <span className="inline-flex items-center gap-0.5 text-amber-400">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className="h-3 w-3"
+          fill={i < full ? "currentColor" : "none"}
+          strokeWidth={i < full ? 0 : 1.5}
+        />
+      ))}
+    </span>
+  );
+}
+
+
 function StatCard({
   label,
   value,
