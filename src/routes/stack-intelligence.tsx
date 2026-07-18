@@ -702,16 +702,16 @@ function TechnologyDetail({
           <StatCard label="Community Rating" value={`${tech.rating}`} suffix=" / 5" accent="blue" icon="★" />
         </div>
 
-        <div className="stack-card rounded-2xl border border-border bg-card p-5">
+        <div className="stack-card rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Sparkles className="h-3.5 w-3.5" /> AI Summary
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Best suited for
               </div>
-              <ul className="mt-1.5 space-y-1 text-sm text-foreground/90">
+              <ul className="mt-1 space-y-0.5 text-sm text-foreground/90">
                 {(AI_INSIGHTS[tech.slug]?.bestFor ?? ["General product work", "Small to mid teams", "Rapid iteration"]).map((b) => (
                   <li key={b} className="flex gap-1.5">
                     <span className="text-primary">•</span> {b}
@@ -720,25 +720,25 @@ function TechnologyDetail({
               </ul>
             </div>
             <div className="grid grid-cols-2 gap-2 self-start">
-              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Completion rate
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-2.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Completion
                 </div>
-                <div className="mt-1 font-display text-lg font-semibold text-primary">{tech.completion}%</div>
+                <div className="mt-0.5 font-display text-base font-semibold text-primary">{tech.completion}%</div>
               </div>
-              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Avg revival time
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-2.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Avg revival
                 </div>
-                <div className="mt-1 font-display text-lg font-semibold text-emerald-500">{tech.avgRevivalDays} days</div>
+                <div className="mt-0.5 font-display text-base font-semibold text-emerald-500">{tech.avgRevivalDays}d</div>
               </div>
             </div>
           </div>
-          <div className="mt-4 border-t border-border/60 pt-4">
+          <div className="mt-3 border-t border-border/60 pt-3">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Most common failure reasons
+              Common failure reasons
             </div>
-            <ul className="mt-1.5 grid gap-1 text-sm text-foreground/90 sm:grid-cols-2">
+            <ul className="mt-1 grid gap-0.5 text-sm text-foreground/90 sm:grid-cols-2">
               {(AI_INSIGHTS[tech.slug]?.failureReasons ?? tech.challenges).map((r) => (
                 <li key={r} className="flex gap-1.5">
                   <span className="text-amber-500">•</span> {r}
@@ -747,6 +747,7 @@ function TechnologyDetail({
             </ul>
           </div>
         </div>
+
       </div>
 
 
