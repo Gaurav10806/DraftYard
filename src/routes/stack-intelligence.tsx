@@ -66,7 +66,7 @@ type Tech = {
   bestFor: string[];
   failureReasons: string[];
   challenges: string[];
-  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor: string[] };
+  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor?: string[] };
   survival: { stage: string; pct: number }[];
   similar: { name: string; slug: string; survival: number; trend: number[] }[];
   projectsUsing: {
