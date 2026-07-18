@@ -9,22 +9,12 @@ lerna-debug.log*
 
 # Node
 node_modules/
-
-# Build output
-dist/
-dist-ssr/
-.output/
-.vinxi/
+dist
+dist-ssr
+.output
+.vinxi
 .tanstack/**
-.nitro/
-build/
-
-# Local files
-*.local
-
-# Wrangler / Cloudflare
-.wrangler/
-.dev.vars
+.nitro
 
 # Python
 venv/
@@ -32,14 +22,22 @@ ml-backend/venv/
 __pycache__/
 *.pyc
 
-# Environment files
+# Environment
 .env
+*.local
+.dev.vars
+
+# Wrangler / Cloudflare
+.wrangler/
+
+# Build
+build/
 
 # Databases
 db.sqlite3
 ml-backend/db.sqlite3
 
-# ML models
+# ML Models
 ml_api/ml_models/*.pkl
 
 # Editor
