@@ -436,7 +436,9 @@ function TechnologyExplorer({
   onOpen: (slug: string) => void;
   filtered: Tech[];
 }) {
-  const popular = ["react", "nextjs", "nodejs", "express", "mongodb", "postgres", "python", "django", "fastapi", "flutter", "java", "typescript"];
+  const trendingTechs = TRENDING.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
+  const highestTechs = HIGHEST_SUCCESS.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
+  const growingTechs = FASTEST_GROWING.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
 
   return (
     <div className="space-y-8">
@@ -468,150 +470,156 @@ function TechnologyExplorer({
         </kbd>
       </form>
 
-      {/* Popular chips */}
+      {/* Trending Technologies */}
       <section>
-        <SectionHeader title="Popular Technologies" subtitle="Jump straight into a stack" />
-        <div className="mt-4 flex flex-wrap gap-2">
-          {popular.map((slug) => {
-            const t = TECHS.find((x) => x.slug === slug);
-            if (!t) return null;
-            return (
-              <button
-                key={slug}
-                onClick={() => onOpen(slug)}
-                className="stack-chip group inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
-              >
-                <span className="text-base">{t.icon}</span>
-                {t.name}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Trending + Highest completion */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section>
-          <SectionHeader title="Trending Technologies" subtitle="Momentum over the last 30 days" icon={<TrendingUp className="h-4 w-4 text-emerald-500" />} />
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {TRENDING.map((slug) => {
-              const t = TECHS.find((x) => x.slug === slug)!;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => onOpen(slug)}
-                  className="stack-card group flex items-center justify-between rounded-xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted text-lg">{t.icon}</span>
-                    <div>
-                      <div className="font-display text-sm font-semibold">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">{t.category}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <TrendingUp className="h-3 w-3" /> ↑{t.growth}%
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section>
-          <SectionHeader title="Highest Completion Rate" subtitle="Where builders actually finish" icon={<CheckCircle2 className="h-4 w-4 text-primary" />} />
-          <div className="mt-4 space-y-2">
-            {HIGHEST_COMPLETION.map((slug) => {
-              const t = TECHS.find((x) => x.slug === slug)!;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => onOpen(slug)}
-                  className="stack-card group flex w-full items-center gap-4 rounded-xl border border-border bg-card px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-                >
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-base">{t.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-display text-sm font-semibold">{t.name}</div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${t.completion}%` }} />
-                    </div>
-                  </div>
-                  <div className="font-display text-sm font-semibold tabular-nums text-foreground">{t.completion}%</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-
-      {/* AI Recommendation */}
-      <section className="stack-ai relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/12 via-primary/5 to-transparent p-6">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/20 blur-3xl" />
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-          <Sparkles className="h-4 w-4" /> AI Recommendation
-        </div>
-        <h3 className="mt-3 max-w-3xl font-display text-xl font-semibold leading-snug text-foreground">
-          Projects using <span className="text-primary">React + Node.js + PostgreSQL</span> show the highest completion rate this month.
-        </h3>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          88% of drafts with this stack ship within 6 weeks. Consider it for content-heavy SaaS and dashboards.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {["react", "nodejs", "postgres"].map((slug) => {
-            const t = TECHS.find((x) => x.slug === slug)!;
-            return (
-              <button
-                key={slug}
-                onClick={() => onOpen(slug)}
-                className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-card px-3 py-1.5 text-sm font-medium hover:border-primary/60"
-              >
-                <span>{t.icon}</span>
-                {t.name}
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Browse all */}
-      <section>
-        <SectionHeader title="Browse All Technologies" subtitle={`${filtered.length} technologies`} />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((t) => (
-            <button
+        <SectionHeader
+          title="🔥 Trending Technologies"
+          subtitle="Highest recent adoption across the ecosystem"
+          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {trendingTechs.map((t) => (
+            <TechCard
               key={t.slug}
-              onClick={() => onOpen(t.slug)}
-              className="stack-card group relative flex flex-col rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
-            >
-              <div className="flex items-start justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-muted text-2xl">{t.icon}</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </div>
-              <div className="mt-3 font-display text-base font-semibold">{t.name}</div>
-              <div className="text-xs text-muted-foreground">{t.category}</div>
-              <div className="mt-4 flex items-end justify-between">
-                <div>
-                  <div className="font-display text-lg font-semibold tabular-nums">{t.projects.toLocaleString()}</div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Projects</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-display text-lg font-semibold tabular-nums text-primary">{t.completion}%</div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Completion</div>
-                </div>
-              </div>
-            </button>
+              tech={t}
+              onOpen={onOpen}
+              metric={{
+                label: "Trending",
+                value: `↑${t.growth}%`,
+                tone: "emerald",
+              }}
+            />
           ))}
         </div>
-        {filtered.length === 0 && (
-          <div className="mt-6 rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            No technologies match "{query}".
-          </div>
-        )}
       </section>
+
+      {/* Highest Success Rate */}
+      <section>
+        <SectionHeader
+          title="🏆 Highest Success Rate"
+          subtitle="Best project completion percentages"
+          icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {highestTechs.map((t) => (
+            <TechCard
+              key={t.slug}
+              tech={t}
+              onOpen={onOpen}
+              metric={{
+                label: "Success",
+                value: `${t.completion}%`,
+                tone: "violet",
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Fastest Growing */}
+      <section>
+        <SectionHeader
+          title="⚡ Fastest Growing"
+          subtitle="Month-over-month growth in new projects"
+          icon={<TrendingUp className="h-4 w-4 text-amber-500" />}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {growingTechs.map((t) => (
+            <TechCard
+              key={t.slug}
+              tech={t}
+              onOpen={onOpen}
+              metric={{
+                label: "MoM",
+                value: `+${t.growth}%`,
+                tone: "amber",
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Browse all — visible only when the user actively searches */}
+      {query.trim() && (
+        <section>
+          <SectionHeader title="Search Results" subtitle={`${filtered.length} technologies`} />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((t) => (
+              <TechCard key={t.slug} tech={t} onOpen={onOpen} />
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="mt-6 rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              No technologies match "{query}".
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
+
+function TechCard({
+  tech,
+  onOpen,
+  metric,
+}: {
+  tech: Tech;
+  onOpen: (slug: string) => void;
+  metric?: { label: string; value: string; tone: "emerald" | "violet" | "amber" };
+}) {
+  const toneMap: Record<string, string> = {
+    emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    violet: "bg-primary/10 text-primary",
+    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  };
+  return (
+    <button
+      onClick={() => onOpen(tech.slug)}
+      className="stack-card group relative flex w-full flex-col rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-2xl">
+            {tech.icon}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate font-display text-base font-semibold text-foreground">
+              {tech.name}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">{tech.category}</div>
+          </div>
+        </div>
+        {metric && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${toneMap[metric.tone]}`}
+          >
+            {metric.value}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 flex items-end justify-between">
+        <div>
+          <div className="font-display text-lg font-semibold tabular-nums">
+            {tech.projects.toLocaleString()}
+          </div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Projects
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="font-display text-lg font-semibold tabular-nums text-primary">
+            {tech.completion}%
+          </div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Completion
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 
 function SectionHeader({
   title,
