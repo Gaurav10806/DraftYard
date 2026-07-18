@@ -1150,8 +1150,9 @@ type SimNode = {
 };
 
 const GRAPH_W = 1400;
-const GRAPH_H = 620;
-const SATELLITE_TOTAL = 42;
+const GRAPH_H = 780;
+const SAT_MIN = 15;
+const SAT_MAX = 25;
 
 // Simple deterministic PRNG for stable initial placement.
 function mulberry32(seed: number) {
