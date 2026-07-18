@@ -787,7 +787,7 @@ function TechnologyDetail({
 
         <div className="stack-card rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-base font-semibold">Projects Using {tech.name}</h3>
+            <h3 className="font-display text-base font-semibold">Top DraftYard Projects Using {tech.name}</h3>
             <button className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               View all projects <ArrowRight className="h-3 w-3" />
             </button>
@@ -816,38 +816,53 @@ function TechnologyDetail({
         <div className="stack-card rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-base font-semibold">Similar Technologies</h3>
-            <button className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View comparison <ArrowRight className="h-3 w-3" />
-            </button>
+            <span className="text-xs text-muted-foreground">Click to compare</span>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {(tech.similar.length ? tech.similar : []).map((s) => (
-              <button
-                key={s.slug}
-                onClick={() => onOpen(s.slug)}
-                className="rounded-xl border border-border bg-muted/30 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card hover:shadow-md"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-md bg-card text-sm">{TECHS.find((t) => t.slug === s.slug)?.icon ?? "•"}</span>
-                  <div className="font-display text-sm font-semibold">{s.name}</div>
-                </div>
-                <div className="mt-2 font-display text-xl font-semibold tabular-nums">{s.survival}%</div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Survival Rate</div>
-                <div className="mt-2 h-10">
-                  <ResponsiveContainer>
-                    <AreaChart data={s.trend as any}>
-                      <defs>
-                        <linearGradient id={`sp-${s.slug}`} x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#22c39a" stopOpacity={0.35} />
-                          <stop offset="100%" stopColor="#22c39a" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="y" stroke="#22c39a" strokeWidth={1.5} fill={`url(#sp-${s.slug})`} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </button>
-            ))}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {(() => {
+              const linked = tech.similar
+                .map((s) => TECHS.find((t) => t.slug === s.slug))
+                .filter((t): t is Tech => Boolean(t));
+              const fallback = TECHS.filter(
+                (t) => t.slug !== tech.slug && t.category === tech.category,
+              ).slice(0, 6);
+              const list = (linked.length ? linked : fallback).slice(0, 6);
+              return list.map((s) => (
+                <button
+                  key={s.slug}
+                  onClick={() => onOpen(s.slug)}
+                  className="stack-card group flex flex-col rounded-xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-base">
+                      {s.icon}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate font-display text-sm font-semibold">{s.name}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">{s.category}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-end justify-between">
+                    <div>
+                      <div className="font-display text-base font-semibold tabular-nums text-primary">
+                        {s.completion}%
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Completion
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-display text-base font-semibold tabular-nums">
+                        {s.projects.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Projects
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ));
+            })()}
           </div>
         </div>
 
@@ -856,30 +871,60 @@ function TechnologyDetail({
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Sparkles className="h-4 w-4" /> AI Recommendation
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Based on your project domain</p>
-          <div className="mt-1 inline-flex items-center rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {tech.recommendation.domain}
+          <h3 className="mt-2 font-display text-lg font-semibold text-foreground">
+            Should you use {tech.name}?
+          </h3>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 p-4">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" /> Great for
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm text-foreground/90">
+                {(AI_INSIGHTS[tech.slug]?.bestFor ?? ["General product work", "Small to mid teams", "Rapid iteration"]).map((b) => (
+                  <li key={b} className="flex gap-1.5">
+                    <span className="text-emerald-500">✓</span> {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                ⚠ Consider {tech.recommendation.name} if
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm text-foreground/90">
+                {(AI_INSIGHTS[tech.slug]?.considerFor ?? tech.recommendation.reasons.slice(0, 3)).map((r) => (
+                  <li key={r} className="flex gap-1.5">
+                    <span className="text-amber-500">›</span> {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">Instead of {tech.name}, we recommend</p>
-          <div className="mt-1 flex items-center justify-between gap-4">
-            <button
-              onClick={() => onOpen(tech.recommendation.slug)}
-              className="font-display text-3xl font-semibold text-primary hover:underline"
-            >
-              {tech.recommendation.name}
-            </button>
-            <ScoreRing value={70 + tech.recommendation.delta} size={64} label={`+${tech.recommendation.delta}%`} />
+
+          <div className="mt-5 flex items-center justify-between rounded-xl border border-primary/25 bg-primary/8 px-4 py-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                Predicted completion improvement
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Switching to {tech.recommendation.name} for {tech.recommendation.domain}
+              </div>
+            </div>
+            <div className="font-display text-2xl font-semibold tabular-nums text-emerald-500">
+              +{tech.recommendation.delta}%
+            </div>
           </div>
-          <div className="mt-4 text-xs font-semibold text-foreground">Why {tech.recommendation.name}?</div>
-          <ul className="mt-2 space-y-1.5 text-sm">
-            {tech.recommendation.reasons.map((r) => (
-              <li key={r} className="flex items-start gap-2 text-foreground/85">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {r}
-              </li>
-            ))}
-          </ul>
+
+          <button
+            onClick={() => onOpen(tech.recommendation.slug)}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            Explore {tech.recommendation.name} <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
+
     </div>
   );
 }
