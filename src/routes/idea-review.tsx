@@ -911,35 +911,29 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Technologies most common across shipped projects.
           </p>
-          <div className="mt-4 flex flex-col gap-2.5">
-            {[
+          <div className="mt-4 grid grid-cols-6 gap-2.5">
+            {(
               [
-                { name: "React", category: "Frontend", icon: "⚛️" },
-                { name: "Node.js", category: "Backend", icon: "🟢" },
-                { name: "MongoDB", category: "Database", icon: "🍃" },
-              ],
-              [
-                { name: "Gemini API", category: "AI", icon: "✨" },
-                { name: "Vercel", category: "Hosting", icon: "▲" },
-              ],
-            ].map((row, ri) => (
-              <div key={ri} className="flex flex-wrap gap-2.5">
-                {row.map((t) => (
-                  <div
-                    key={t.name}
-                    className="flex min-w-[150px] items-center gap-2.5 rounded-xl border border-border/70 bg-background/40 px-3 py-2 shadow-sm transition hover:border-primary/40"
-                  >
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-base">
-                      {t.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {t.category}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                { name: "React", category: "Frontend", icon: "⚛️", span: 2 },
+                { name: "Node.js", category: "Backend", icon: "🟢", span: 2 },
+                { name: "MongoDB", category: "Database", icon: "🍃", span: 2 },
+                { name: "Gemini API", category: "AI", icon: "✨", span: 3 },
+                { name: "Vercel", category: "Hosting", icon: "▲", span: 3 },
+              ] as const
+            ).map((t) => (
+              <div
+                key={t.name}
+                className={`flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/40 px-3 py-2 shadow-sm transition hover:border-primary/40 ${t.span === 3 ? "col-span-3" : "col-span-2"}`}
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-base">
+                  {t.icon}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {t.category}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
