@@ -752,17 +752,20 @@ function ReportView({ report }: { report: Report }) {
 
         <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
           <h4 className="text-sm font-semibold text-foreground">Recommended Tech Stack</h4>
-          <div className="mt-4 grid grid-cols-5 gap-2 text-center">
+          <div className="mt-4 grid grid-cols-6 gap-2 text-center">
             {(
               [
-                ["React", "Frontend"],
-                ["Node.js", "Backend"],
-                ["MongoDB", "Database"],
-                ["OpenAI API", "AI"],
-                ["Vercel", "Hosting"],
+                ["React", "Frontend", 2],
+                ["Node.js", "Backend", 2],
+                ["MongoDB", "Database", 2],
+                ["Gemini API", "AI", 3],
+                ["Vercel", "Hosting", 3],
               ] as const
-            ).map(([name, role]) => (
-              <div key={name} className="rounded-lg border border-border/60 bg-background/40 p-2">
+            ).map(([name, role, span]) => (
+              <div
+                key={name}
+                className={`rounded-lg border border-border/60 bg-background/40 p-2 ${span === 3 ? "col-span-3" : "col-span-2"}`}
+              >
                 <div className="mx-auto grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">
                   {name.slice(0, 2)}
                 </div>
