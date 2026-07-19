@@ -687,6 +687,9 @@ function ReportView({ report }: { report: Report }) {
         <NoCommunityBanner />
       )}
 
+      {/* Similar Projects */}
+      {report.community ? <SimilarProjectsSection seed={report.name + report.pitch} /> : null}
+
       {/* AI Analysis */}
       <section>
         <SectionTitle number={2} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
