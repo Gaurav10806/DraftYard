@@ -35,7 +35,7 @@ const primary = [
   { title: "Revival Board", url: "/revival-board", icon: RefreshCw },
   { title: "Insights", url: "/insights-lab", icon: BarChart2 },
   { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
-  { title: "Idea Review", url: "#", icon: ClipboardCheck },
+  { title: "Idea Review", url: "/idea-review", icon: ClipboardCheck },
   { title: "AI Assistant", url: "#", icon: Bot },
   { title: "Profile", url: "#", icon: UserCircle },
   { title: "Settings", url: "#", icon: Settings },
