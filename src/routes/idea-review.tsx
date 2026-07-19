@@ -722,18 +722,18 @@ function ReportView({ report }: { report: Report }) {
             tone="sky"
             icon={<Scale className="h-4 w-4" />}
           />
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-sm">
             <div className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-md bg-emerald-500/10 text-emerald-500">
+              <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-500/10 text-emerald-500">
                 <TrendingUp className="h-4 w-4" />
               </span>
-              <span className="text-xs font-medium text-muted-foreground">Market Opportunity</span>
+              <span className="text-[11px] font-medium text-muted-foreground">Market Opportunity</span>
+              <span className="ml-auto text-[11px] font-semibold text-primary truncate max-w-[55%]">
+                {report.metrics.market.headline}
+              </span>
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+            <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
               {report.metrics.market.note}
-            </p>
-            <p className="mt-2 text-xs font-semibold text-primary">
-              {report.metrics.market.headline}
             </p>
           </div>
         </div>
