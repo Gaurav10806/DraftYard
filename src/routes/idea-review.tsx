@@ -906,19 +906,22 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Technologies most common across shipped projects.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {c.topStack.map((t) => (
-              <span
-                key={t.name}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground/90"
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full bg-primary"
-                  aria-hidden
-                />
-                {t.name}
-              </span>
-            ))}
+          <div className="mt-3 flex flex-col gap-2">
+            {[c.topStack.slice(0, 3), c.topStack.slice(3)].map((row, ri) =>
+              row.length ? (
+                <div key={ri} className="flex flex-wrap gap-2">
+                  {row.map((t) => (
+                    <span
+                      key={t.name}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground/90"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              ) : null,
+            )}
           </div>
           <p className="mt-3 text-[11px] text-muted-foreground">
             Used by {topStackCount} of the {c.similarCount} successful projects.
