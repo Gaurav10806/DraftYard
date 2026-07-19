@@ -833,8 +833,8 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
     <section>
       <SectionTitle
         number={1}
-        title="Community Insights"
-        subtitle={`Real-world insights from ${c.similarCount} similar DraftYard projects.`}
+        title="DraftYard Insights"
+        subtitle="Real-world insights from similar DraftYard projects."
       />
 
       {/* Row 1 — Outcomes + Stopping Points */}
