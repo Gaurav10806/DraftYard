@@ -618,7 +618,7 @@ function ReportView({ report }: { report: Report }) {
       : "text-rose-500";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Summary card */}
       <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-7">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)] lg:items-center">
