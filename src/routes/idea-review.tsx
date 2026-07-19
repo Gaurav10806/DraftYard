@@ -687,9 +687,12 @@ function ReportView({ report }: { report: Report }) {
         <NoCommunityBanner />
       )}
 
+      {/* Similar Projects */}
+      {report.community ? <SimilarProjectsSection seed={report.name + report.pitch} /> : null}
+
       {/* AI Analysis */}
       <section>
-        <SectionTitle number={2} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
+        <SectionTitle number={3} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <MetricCard
             title="Feasibility"
@@ -931,6 +934,185 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
     </section>
   );
 }
+
+// ---------------- Similar Projects ----------------
+
+type SimilarStatus = "Completed" | "Active" | "Abandoned";
+
+type SimilarProject = {
+  name: string;
+  status: SimilarStatus;
+  completion: number;
+  summary: string;
+  learning: string;
+};
+
+const SIMILAR_POOL: SimilarProject[] = [
+  {
+    name: "StudyPilot",
+    status: "Completed",
+    completion: 100,
+    summary: "AI planner that turns a syllabus into daily study blocks.",
+    learning: "A single-feature MVP shipped in 6 weeks drove first retention.",
+  },
+  {
+    name: "FocusForge",
+    status: "Active",
+    completion: 62,
+    summary: "Pomodoro + AI recap for solo student sessions.",
+    learning: "Adding AI recaps late kept scope tight and users engaged.",
+  },
+  {
+    name: "GradeGuru",
+    status: "Abandoned",
+    completion: 34,
+    summary: "Full LMS clone with AI tutoring, payments, and community.",
+    learning: "Trying to ship auth, payments and AI at once stalled progress.",
+  },
+  {
+    name: "PlanPal",
+    status: "Completed",
+    completion: 100,
+    summary: "Weekly study planner for CS undergrads with reminders.",
+    learning: "Picking one segment before building beat generic planners.",
+  },
+  {
+    name: "SyllabusAI",
+    status: "Active",
+    completion: 48,
+    summary: "Parses PDFs into structured study timelines.",
+    learning: "Caching parsed syllabi cut AI cost enough to keep going.",
+  },
+  {
+    name: "CramDeck",
+    status: "Abandoned",
+    completion: 22,
+    summary: "AI flashcard generator with spaced repetition and social feed.",
+    learning: "Social features pulled focus away from the core learning loop.",
+  },
+];
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h || 42;
+}
+
+function pickSimilar(seed: string): SimilarProject[] {
+  const h = hashString(seed);
+  const start = h % SIMILAR_POOL.length;
+  // Ensure a mix of statuses when possible: try to pick one of each.
+  const desired: SimilarStatus[] = ["Completed", "Active", "Abandoned"];
+  const picks: SimilarProject[] = [];
+  for (const status of desired) {
+    const candidates = SIMILAR_POOL.filter(
+      (p) => p.status === status && !picks.includes(p),
+    );
+    if (candidates.length) {
+      picks.push(candidates[(start + picks.length) % candidates.length]);
+    }
+  }
+  while (picks.length < 3) {
+    const cand = SIMILAR_POOL[(start + picks.length) % SIMILAR_POOL.length];
+    if (!picks.includes(cand)) picks.push(cand);
+  }
+  return picks.slice(0, 3);
+}
+
+const STATUS_STYLES: Record<
+  SimilarStatus,
+  { chip: string; bar: string; cta: string; ctaLabel: string; accent: string }
+> = {
+  Completed: {
+    chip: "bg-emerald-500/12 text-emerald-500 border-emerald-500/25",
+    bar: "bg-emerald-500",
+    cta: "bg-emerald-500 text-white hover:bg-emerald-500/90",
+    ctaLabel: "View Project",
+    accent: "from-emerald-500/12 to-transparent",
+  },
+  Active: {
+    chip: "bg-primary/12 text-primary border-primary/25",
+    bar: "bg-primary",
+    cta: "bg-primary text-primary-foreground hover:bg-primary/90",
+    ctaLabel: "Open Project",
+    accent: "from-primary/12 to-transparent",
+  },
+  Abandoned: {
+    chip: "bg-rose-500/12 text-rose-500 border-rose-500/25",
+    bar: "bg-rose-500",
+    cta: "bg-rose-500 text-white hover:bg-rose-500/90",
+    ctaLabel: "View Autopsy",
+    accent: "from-rose-500/12 to-transparent",
+  },
+};
+
+function SimilarProjectsSection({ seed }: { seed: string }) {
+  const projects = useMemo(() => pickSimilar(seed), [seed]);
+  return (
+    <section>
+      <SectionTitle
+        number={2}
+        title="Similar Projects"
+        subtitle="Projects in DraftYard with ideas most similar to yours."
+      />
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {projects.map((p) => {
+          const s = STATUS_STYLES[p.status];
+          return (
+            <article
+              key={p.name}
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_40px_-24px_rgba(124,92,255,0.35)]"
+            >
+              <div
+                className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-to-br ${s.accent} blur-2xl`}
+                aria-hidden
+              />
+              <div className="relative flex items-start justify-between gap-2">
+                <h4 className="font-display text-base font-semibold text-foreground">{p.name}</h4>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${s.chip}`}
+                >
+                  {p.status}
+                </span>
+              </div>
+
+              <div className="relative mt-4">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Completion</span>
+                  <span className="font-medium text-foreground/80">{p.completion}%</span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full ${s.bar}`} style={{ width: `${p.completion}%` }} />
+                </div>
+              </div>
+
+              <p className="relative mt-4 text-sm text-foreground/85">{p.summary}</p>
+
+              <div className="relative mt-3 rounded-lg border border-border/70 bg-muted/40 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Primary learning
+                </p>
+                <p className="mt-1 text-xs text-foreground/85">{p.learning}</p>
+              </div>
+
+              <div className="relative mt-4 flex justify-end">
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${s.cta}`}
+                >
+                  {s.ctaLabel}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+
 
 function NoCommunityBanner() {
   return (
