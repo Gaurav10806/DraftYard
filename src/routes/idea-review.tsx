@@ -618,7 +618,7 @@ function ReportView({ report }: { report: Report }) {
       : "text-rose-500";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Summary card */}
       <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-7">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)] lg:items-center">
@@ -722,18 +722,18 @@ function ReportView({ report }: { report: Report }) {
             tone="sky"
             icon={<Scale className="h-4 w-4" />}
           />
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-sm">
             <div className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-md bg-emerald-500/10 text-emerald-500">
+              <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-500/10 text-emerald-500">
                 <TrendingUp className="h-4 w-4" />
               </span>
-              <span className="text-xs font-medium text-muted-foreground">Market Opportunity</span>
+              <span className="text-[11px] font-medium text-muted-foreground">Market Opportunity</span>
+              <span className="ml-auto text-[11px] font-semibold text-primary truncate max-w-[55%]">
+                {report.metrics.market.headline}
+              </span>
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+            <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
               {report.metrics.market.note}
-            </p>
-            <p className="mt-2 text-xs font-semibold text-primary">
-              {report.metrics.market.headline}
             </p>
           </div>
         </div>
@@ -776,20 +776,21 @@ function ReportView({ report }: { report: Report }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
-          <h4 className="text-sm font-semibold text-foreground">Development Roadmap (Suggested)</h4>
-          <div className="relative mt-5">
-            <div className="absolute left-3 right-3 top-3 h-px bg-border" aria-hidden />
-            <ol className="relative flex justify-between gap-1">
+        <div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+          <h4 className="text-sm font-semibold text-foreground">Development Roadmap</h4>
+          <p className="mt-0.5 text-xs text-muted-foreground">Suggested milestones from week zero to launch.</p>
+          <div className="relative mt-7 pb-1">
+            <div className="absolute left-5 right-5 top-5 h-0.5 rounded-full bg-gradient-to-r from-primary/40 via-primary/25 to-primary/10" aria-hidden />
+            <ol className="relative flex justify-between gap-3">
               {report.roadmap.map((r, i) => (
-                <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
-                  <span className="relative z-10 grid h-6 w-6 place-items-center rounded-full border border-border bg-card text-[10px] font-semibold text-primary">
+                <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-2.5 text-center">
+                  <span className="relative z-10 grid h-10 w-10 place-items-center rounded-full border border-primary/30 bg-card text-sm font-semibold text-primary shadow-[0_2px_10px_-4px_rgba(124,92,255,0.5)]">
                     {i + 1}
                   </span>
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary/90">
                     {r.week}
                   </span>
-                  <span className="text-[11px] font-medium leading-tight text-foreground">
+                  <span className="text-xs font-medium leading-snug text-foreground">
                     {r.label}
                   </span>
                 </li>
@@ -799,22 +800,23 @@ function ReportView({ report }: { report: Report }) {
         </div>
       </section>
 
-      {/* Sticky CTA */}
-      <div className="sticky bottom-4 z-10 flex flex-col items-start justify-between gap-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:p-5">
-        <div className="flex items-start gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Rocket className="h-4 w-4" />
+      {/* Final Recommendation */}
+      <div className="sticky bottom-4 z-10 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border/70 bg-card/95 p-5 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Rocket className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-display text-sm font-semibold text-foreground">
-              {report.finalNote}
+            <p className="font-display text-base font-semibold text-foreground">
+              Final Recommendation
             </p>
-            <p className="text-xs text-muted-foreground">
-              Build small, validate fast, and iterate based on user feedback.
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Based on historical DraftYard projects and AI analysis, this idea has strong potential.
+              Start with an MVP focused on solving one problem well.
             </p>
           </div>
         </div>
-        <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
+        <Button asChild size="lg" className="h-11 shrink-0 gap-2 rounded-xl px-6">
           <Link to="/workspace">
             Create Draft Project <ArrowRight className="h-4 w-4" />
           </Link>
@@ -833,8 +835,8 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
     <section>
       <SectionTitle
         number={1}
-        title="Community Insights"
-        subtitle={`Real-world insights from ${c.similarCount} similar DraftYard projects.`}
+        title="DraftYard Insights"
+        subtitle="Real-world insights from similar DraftYard projects."
       />
 
       {/* Row 1 — Outcomes + Stopping Points */}
@@ -909,24 +911,39 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Technologies most common across shipped projects.
           </p>
-          <div className="mt-3 flex flex-col gap-2">
-            {[c.topStack.slice(0, 3), c.topStack.slice(3)].map((row, ri) =>
-              row.length ? (
-                <div key={ri} className="flex flex-wrap gap-2">
-                  {row.map((t) => (
-                    <span
-                      key={t.name}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground/90"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                      {t.name}
+          <div className="mt-4 flex flex-col gap-2.5">
+            {[
+              [
+                { name: "React", category: "Frontend", icon: "⚛️" },
+                { name: "Node.js", category: "Backend", icon: "🟢" },
+                { name: "MongoDB", category: "Database", icon: "🍃" },
+              ],
+              [
+                { name: "Gemini API", category: "AI", icon: "✨" },
+                { name: "Vercel", category: "Hosting", icon: "▲" },
+              ],
+            ].map((row, ri) => (
+              <div key={ri} className="flex flex-wrap gap-2.5">
+                {row.map((t) => (
+                  <div
+                    key={t.name}
+                    className="flex min-w-[150px] items-center gap-2.5 rounded-xl border border-border/70 bg-background/40 px-3 py-2 shadow-sm transition hover:border-primary/40"
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-base">
+                      {t.icon}
                     </span>
-                  ))}
-                </div>
-              ) : null,
-            )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {t.category}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <p className="mt-3.5 text-[11px] text-muted-foreground">
             Used by {topStackCount} of the {c.similarCount} successful projects.
           </p>
         </CommunityCard>
@@ -1224,15 +1241,15 @@ function MetricCard({
     Low: "text-rose-500",
   };
   return (
-    <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+    <div className="rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`grid h-7 w-7 place-items-center rounded-md ${toneMap[tone]}`}>{icon}</span>
-        <span className="text-xs font-medium text-muted-foreground">{title}</span>
+        <span className={`grid h-6 w-6 place-items-center rounded-md ${toneMap[tone]}`}>{icon}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{title}</span>
+        <span className={`ml-auto text-xs font-semibold ${statusTone[status] ?? "text-foreground"}`}>
+          {status}
+        </span>
       </div>
-      <div className={`mt-2 text-base font-semibold ${statusTone[status] ?? "text-foreground"}`}>
-        {status}
-      </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">{note}</p>
     </div>
   );
 }
