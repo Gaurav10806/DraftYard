@@ -687,12 +687,9 @@ function ReportView({ report }: { report: Report }) {
         <NoCommunityBanner />
       )}
 
-      {/* Similar Projects */}
-      {report.community ? <SimilarProjectsSection seed={report.name + report.pitch} /> : null}
-
       {/* AI Analysis */}
       <section>
-        <SectionTitle number={3} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
+        <SectionTitle number={2} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <MetricCard
             title="Feasibility"
