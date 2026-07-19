@@ -800,22 +800,23 @@ function ReportView({ report }: { report: Report }) {
         </div>
       </section>
 
-      {/* Sticky CTA */}
-      <div className="sticky bottom-4 z-10 flex flex-col items-start justify-between gap-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:p-5">
-        <div className="flex items-start gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Rocket className="h-4 w-4" />
+      {/* Final Recommendation */}
+      <div className="sticky bottom-4 z-10 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border/70 bg-card/95 p-5 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Rocket className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-display text-sm font-semibold text-foreground">
-              {report.finalNote}
+            <p className="font-display text-base font-semibold text-foreground">
+              Final Recommendation
             </p>
-            <p className="text-xs text-muted-foreground">
-              Build small, validate fast, and iterate based on user feedback.
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Based on historical DraftYard projects and AI analysis, this idea has strong potential.
+              Start with an MVP focused on solving one problem well.
             </p>
           </div>
         </div>
-        <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
+        <Button asChild size="lg" className="h-11 shrink-0 gap-2 rounded-xl px-6">
           <Link to="/workspace">
             Create Draft Project <ArrowRight className="h-4 w-4" />
           </Link>
