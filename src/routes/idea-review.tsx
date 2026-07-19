@@ -9,25 +9,25 @@ import {
   Search,
   MoreHorizontal,
   Inbox,
-  Gauge,
   Users,
-  ShieldAlert,
   Lightbulb,
-  Server,
-  Compass,
   Rocket,
   ArrowRight,
   CheckCircle2,
-  AlertCircle,
+  XCircle,
   Loader2,
   Trash2,
   Copy,
   Pencil,
   Star,
-  Layers,
   TrendingUp,
   Wrench,
   Scale,
+  ShieldCheck,
+  Layers3,
+  Radar,
+  Clock,
+  FileText,
 } from "lucide-react";
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -36,7 +36,6 @@ import { TopBar } from "@/components/dashboard/top-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -59,21 +58,33 @@ export const Route = createFileRoute("/idea-review")({
       {
         name: "description",
         content:
-          "Validate your software idea before writing a single line of code. AI-powered feasibility, competition, and roadmap analysis.",
+          "Validate your software idea using AI and real-world DraftYard project insights before you build.",
       },
       { property: "og:title", content: "Idea Review · DraftYard" },
       {
         property: "og:description",
-        content: "An AI product consultant for your next build.",
+        content:
+          "Community + AI intelligence to help you decide what's worth building.",
       },
     ],
   }),
   component: IdeaReviewPage,
 });
 
-// ---------------- Types & mock analysis ----------------
+// ---------------- Types ----------------
 
 type Verdict = "Worth Building" | "Needs Refinement" | "Reconsider";
+type Level = "High" | "Medium" | "Low";
+
+type CommunityInsights = {
+  similarCount: number;
+  outcomes: { completed: number; active: number; abandoned: number };
+  stoppingPoints: { label: string; pct: number }[];
+  avgCompletion: number;
+  topStack: { name: string; pct: number }[];
+  successPatterns: string[];
+  failurePatterns: string[];
+};
 
 type Report = {
   id: string;
@@ -83,15 +94,14 @@ type Report = {
   score: number;
   verdict: Verdict;
   summary: string;
+  community: CommunityInsights | null;
   metrics: {
-    feasibility: { label: string; note: string };
-    competition: { label: string; note: string };
-    complexity: { label: string; note: string };
-    scalability: { label: string; note: string };
+    feasibility: { label: Level; note: string };
+    competition: { label: Level; note: string };
+    complexity: { label: Level; note: string };
+    scalability: { label: Level; note: string };
+    market: { headline: string; note: string };
   };
-  competitors: { product: string; strength: string; weakness: string }[];
-  audience: string[];
-  risks: string[];
   recommendations: string[];
   stack: { frontend: string; backend: string; database: string; ai: string; hosting: string };
   roadmap: { week: string; label: string }[];
@@ -118,7 +128,7 @@ const emptyForm: FormState = {
   notes: "",
 };
 
-const STORAGE_KEY = "draftyard.idea-reviews.v1";
+const STORAGE_KEY = "draftyard.idea-reviews.v2";
 
 function loadReports(): Report[] {
   if (typeof window === "undefined") return [];
@@ -139,12 +149,48 @@ function saveReports(list: Report[]) {
 }
 
 function generateReport(form: FormState): Report {
-  // Deterministic pseudo-analysis so the demo feels alive without a network call.
   const seed =
     (form.name + form.pitch + form.problem).split("").reduce((a, c) => a + c.charCodeAt(0), 0) || 42;
-  const score = 68 + (seed % 27); // 68..94
+  const score = 68 + (seed % 27);
   const verdict: Verdict =
     score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider";
+
+  // Simulate DB match: hide community if seed is very small (rare)
+  const hasCommunity = seed % 7 !== 0;
+
+  const community: CommunityInsights | null = hasCommunity
+    ? {
+        similarCount: 14,
+        outcomes: { completed: 5, active: 3, abandoned: 6 },
+        stoppingPoints: [
+          { label: "Authentication", pct: 29 },
+          { label: "AI Cost / Limits", pct: 21 },
+          { label: "User Retention", pct: 21 },
+          { label: "Payment Integration", pct: 14 },
+          { label: "Deployment", pct: 14 },
+        ],
+        avgCompletion: 62,
+        topStack: [
+          { name: "React", pct: 86 },
+          { name: "Node.js", pct: 71 },
+          { name: "MongoDB", pct: 64 },
+          { name: "Firebase", pct: 29 },
+          { name: "Supabase", pct: 21 },
+        ],
+        successPatterns: [
+          "Started with a core planner only",
+          "Focused on a single student segment",
+          "Introduced AI recommendations early",
+          "Kept UI simple for higher retention",
+        ],
+        failurePatterns: [
+          "Too many features shipped at once",
+          "Skipped early user validation",
+          "Complex auth and payments upfront",
+          "High AI usage without cost limits",
+        ],
+      }
+    : null;
 
   return {
     id: crypto.randomUUID?.() ?? String(Date.now()),
@@ -154,69 +200,57 @@ function generateReport(form: FormState): Report {
     score,
     verdict,
     summary:
-      verdict === "Worth Building"
-        ? "Strong potential with the right execution and focus. Clear problem, credible audience, and a lean path to a first version."
-        : verdict === "Needs Refinement"
-        ? "Solid direction, but the scope needs tightening before you invest weeks of work."
-        : "The current framing has weak signals. Sharpen the problem or reconsider the audience before building.",
+      hasCommunity
+        ? "Strong potential based on community data and AI analysis. Focus on a lean MVP first."
+        : "No similar DraftYard projects were found. This analysis is based on market research and AI reasoning.",
+    community,
     metrics: {
       feasibility: {
         label: score >= 78 ? "High" : "Medium",
-        note: "A small team can ship a working prototype in 4–6 weeks.",
+        note: "Can be built in 2–3 months with the right stack.",
       },
       competition: {
         label: score % 2 === 0 ? "Medium" : "High",
-        note: "Established players exist, but most miss your specific audience.",
+        note: "Some competitors exist, but room for personalization.",
       },
       complexity: {
         label: score >= 82 ? "Medium" : "High",
-        note: "Core logic is standard; the AI layer is the main unknown.",
+        note: "AI integration and user retention are key challenges.",
       },
       scalability: {
         label: "High",
-        note: "Stateless workloads and cheap storage give you room to grow.",
+        note: "Strong scalability with cloud and modular architecture.",
+      },
+      market: {
+        headline: "$25.7B by 2030",
+        note: "The global AI in education market is projected to grow at 45% CAGR.",
       },
     },
-    competitors: [
-      { product: "Notion", strength: "Powerful", weakness: "Complex to onboard" },
-      { product: "Motion", strength: "Automation", weakness: "Expensive at scale" },
-      { product: "Todoist", strength: "Simplicity", weakness: "No AI features" },
-      { product: "StudyQuest", strength: "Student focused", weakness: "Limited features" },
-    ],
-    audience:
-      form.audience.trim().length > 0
-        ? form.audience.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 5)
-        : ["College Students", "JEE / NEET Aspirants", "UPSC Aspirants", "Working Professionals"],
-    risks: [
-      "AI API operational cost may erode margins early",
-      "Strong existing competitors with distribution",
-      "Data privacy & compliance for user-generated content",
-      "User retention beyond the first 4 weeks",
-    ],
     recommendations: [
-      "Focus on one wedge audience first — don't try to serve everyone",
-      "Keep the first release simple (5–7 core features)",
-      "Validate with a small user group before scaling paid ads",
-      "Avoid adding chat features until v2",
+      "Start with a lean MVP: AI planner + progress tracking",
+      "Focus on student retention with daily value delivery",
+      "Limit AI usage and optimize for low cost",
+      "Validate with 20–30 users before expanding features",
     ],
     stack: {
-      frontend: "React + Tailwind",
-      backend: "Node.js + Express",
+      frontend: "React",
+      backend: "Node.js",
       database: "MongoDB",
-      ai: "Gemini / OpenAI",
-      hosting: "Vercel / Render",
+      ai: "OpenAI API",
+      hosting: "Vercel",
     },
     roadmap: [
       { week: "Week 1", label: "Research" },
-      { week: "Week 2", label: "UI / UX" },
-      { week: "Week 3", label: "Backend" },
-      { week: "Week 4", label: "AI Integration" },
-      { week: "Week 5", label: "Testing & Launch" },
+      { week: "Week 2", label: "UI/UX Design" },
+      { week: "Week 3–4", label: "Backend Setup" },
+      { week: "Week 5–6", label: "AI Integration" },
+      { week: "Week 7", label: "Testing" },
+      { week: "Week 8", label: "Launch MVP" },
     ],
     finalNote:
-      verdict === "Worth Building"
-        ? "This idea has strong potential. Start small, validate fast, and iterate."
-        : "Refine your positioning, then revisit this analysis before you commit weeks of work.",
+      hasCommunity
+        ? "This idea has strong potential based on real-world data and AI insights."
+        : "This idea shows promise based on AI market analysis. Validate with real users early.",
   };
 }
 
@@ -240,6 +274,7 @@ function IdeaReviewShell() {
   const [reports, setReports] = useState<Report[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [emptyHistoryOpen, setEmptyHistoryOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
@@ -273,25 +308,33 @@ function IdeaReviewShell() {
     setForm(emptyForm);
   }
 
+  function openHistory() {
+    if (reports.length === 0) setEmptyHistoryOpen(true);
+    else setHistoryOpen(true);
+  }
+
   function handleDelete(id: string) {
     const next = reports.filter((r) => r.id !== id);
     persist(next);
     if (activeId === id) setActiveId(null);
   }
-
   function handleDuplicate(id: string) {
     const src = reports.find((r) => r.id === id);
     if (!src) return;
-    const copy: Report = { ...src, id: crypto.randomUUID?.() ?? String(Date.now()), createdAt: Date.now(), name: src.name + " (copy)" };
+    const copy: Report = {
+      ...src,
+      id: crypto.randomUUID?.() ?? String(Date.now()),
+      createdAt: Date.now(),
+      name: src.name + " (copy)",
+    };
     persist([copy, ...reports]);
   }
-
   function handleRename(id: string, name: string) {
     persist(reports.map((r) => (r.id === id ? { ...r, name } : r)));
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1240px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
       {/* Header */}
       <header className="flex flex-col gap-4 pb-8 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -303,26 +346,22 @@ function IdeaReviewShell() {
           </div>
           <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
             {active
-              ? "AI analysis complete. Here's what we found for your idea."
-              : "Validate your software idea before writing a single line of code."}
+              ? "AI + Community insights to help you build what works."
+              : "Validate your software idea using AI and real-world developer insights."}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setHistoryOpen(true)}
+            onClick={openHistory}
             className="h-9 gap-2 rounded-lg border-border/70 bg-card"
           >
             <HistoryIcon className="h-3.5 w-3.5" />
             History{reports.length > 0 ? ` (${reports.length})` : ""}
           </Button>
           {active && (
-            <Button
-              size="sm"
-              onClick={handleNewReview}
-              className="h-9 gap-2 rounded-lg"
-            >
+            <Button size="sm" onClick={handleNewReview} className="h-9 gap-2 rounded-lg">
               <Plus className="h-3.5 w-3.5" /> New Review
             </Button>
           )}
@@ -348,12 +387,7 @@ function IdeaReviewShell() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
           >
-            <IdeaForm
-              form={form}
-              setForm={setForm}
-              onSubmit={handleAnalyze}
-              analyzing={analyzing}
-            />
+            <IdeaForm form={form} setForm={setForm} onSubmit={handleAnalyze} analyzing={analyzing} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -370,6 +404,23 @@ function IdeaReviewShell() {
         onDuplicate={handleDuplicate}
         onRename={handleRename}
       />
+
+      <Dialog open={emptyHistoryOpen} onOpenChange={(v) => (v ? null : setEmptyHistoryOpen(false))}>
+        <DialogContent className="max-w-sm rounded-2xl border border-border/70 bg-card p-6 text-center shadow-2xl">
+          <DialogHeader>
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-muted/60 text-muted-foreground">
+              <Inbox className="h-5 w-5" />
+            </div>
+            <DialogTitle className="mt-3 text-base font-semibold">No Reviews Yet</DialogTitle>
+            <DialogDescription>
+              Analyze your first idea to start building your review history.
+            </DialogDescription>
+          </DialogHeader>
+          <Button className="mt-4 w-full rounded-lg" onClick={() => setEmptyHistoryOpen(false)}>
+            Got it
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -391,8 +442,7 @@ function IdeaForm({
 
   function addFeature() {
     const v = featureDraft.trim();
-    if (!v) return;
-    if (form.features.includes(v)) return;
+    if (!v || form.features.includes(v)) return;
     setForm({ ...form, features: [...form.features, v] });
     setFeatureDraft("");
   }
@@ -407,7 +457,7 @@ function IdeaForm({
           Tell us about your idea
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          The more details you provide, the better our AI analysis will be.
+          We combine DraftYard's community data with AI reasoning to help you validate before you build.
         </p>
       </div>
 
@@ -421,7 +471,7 @@ function IdeaForm({
           />
         </Field>
 
-        <Field label="Key Features" hint="Press Enter to add a tag">
+        <Field label="Key Features" hint="Press Enter to add">
           <div className="rounded-lg border border-border bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-primary/30">
             <div className="flex flex-wrap items-center gap-1.5">
               {form.features.map((f) => (
@@ -473,27 +523,17 @@ function IdeaForm({
           <Input
             value={form.stack}
             onChange={(e) => setForm({ ...form, stack: e.target.value })}
-            placeholder="e.g. React, Node.js, MongoDB, Gemini API"
+            placeholder="e.g. React, Node.js, MongoDB, OpenAI"
             className="h-10 rounded-lg"
           />
         </Field>
 
-        <Field label="Problem" required>
+        <Field label="Problem Statement" required>
           <Input
             value={form.problem}
             onChange={(e) => setForm({ ...form, problem: e.target.value })}
             placeholder="e.g. Students don't know what to study daily"
             className="h-10 rounded-lg"
-          />
-        </Field>
-
-        <Field label="Anything else we should know?" hint="Optional">
-          <Textarea
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            placeholder="Any specific context, constraints or goals?"
-            rows={2}
-            className="resize-none rounded-lg"
           />
         </Field>
 
@@ -505,6 +545,16 @@ function IdeaForm({
             className="h-10 rounded-lg"
           />
         </Field>
+
+        <Field label="Additional Context" hint="Optional">
+          <Textarea
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            placeholder="Any specific constraints, goals, or context?"
+            rows={2}
+            className="resize-none rounded-lg"
+          />
+        </Field>
       </div>
 
       <div className="mt-10 flex flex-col items-center gap-2">
@@ -512,7 +562,7 @@ function IdeaForm({
           size="lg"
           onClick={onSubmit}
           disabled={!canSubmit || analyzing}
-          className="group h-12 min-w-[280px] gap-2 rounded-xl px-8 text-sm font-semibold"
+          className="h-12 min-w-[280px] gap-2 rounded-xl px-8 text-sm font-semibold"
         >
           {analyzing ? (
             <>
@@ -526,9 +576,7 @@ function IdeaForm({
             </>
           )}
         </Button>
-        <p className="text-xs text-muted-foreground">
-          Analysis usually takes 30–60 seconds.
-        </p>
+        <p className="text-xs text-muted-foreground">Analysis usually takes 30–60 seconds.</p>
       </div>
     </section>
   );
@@ -570,174 +618,183 @@ function ReportView({ report }: { report: Report }) {
       : "text-rose-500";
 
   return (
-    <div className="space-y-6">
-      {/* Verdict + metrics */}
-      <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:items-center">
+    <div className="space-y-8">
+      {/* Summary card */}
+      <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-7">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)] lg:items-center">
           <div className="flex items-center gap-5">
             <ScoreDial score={report.score} />
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Overall Verdict
               </p>
-              <h3 className={`font-display text-xl font-semibold ${verdictTone}`}>
+              <h3 className={`font-display text-2xl font-semibold ${verdictTone}`}>
                 {report.verdict}
               </h3>
               <div className="mt-1 flex items-center gap-0.5 text-amber-400">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
-                    className={`h-3.5 w-3.5 ${i < Math.round(report.score / 20) ? "fill-current" : "opacity-30"}`}
+                    className={`h-3.5 w-3.5 ${
+                      i < Math.round(report.score / 20) ? "fill-current" : "opacity-30"
+                    }`}
                   />
                 ))}
               </div>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
                 {report.summary}
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <MetricCard
-              icon={<Gauge className="h-3.5 w-3.5" />}
-              title="Feasibility"
-              status={report.metrics.feasibility.label}
-              note={report.metrics.feasibility.note}
-              tone="emerald"
+
+          <ul className="space-y-3 border-y border-border/60 py-4 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
+            <MetaRow
+              icon={<Radar className="h-4 w-4" />}
+              label="Analysis Type"
+              value={report.community ? "AI + Community" : "AI only"}
             />
-            <MetricCard
-              icon={<TrendingUp className="h-3.5 w-3.5" />}
-              title="Competition"
-              status={report.metrics.competition.label}
-              note={report.metrics.competition.note}
-              tone="amber"
+            <MetaRow
+              icon={<Layers3 className="h-4 w-4" />}
+              label="Similar Projects Found"
+              value={report.community ? String(report.community.similarCount) : "0"}
             />
-            <MetricCard
-              icon={<Wrench className="h-3.5 w-3.5" />}
-              title="Complexity"
-              status={report.metrics.complexity.label}
-              note={report.metrics.complexity.note}
-              tone="violet"
+            <MetaRow
+              icon={<Clock className="h-4 w-4" />}
+              label="Analysis Completed"
+              value={relTime(report.createdAt)}
             />
-            <MetricCard
-              icon={<Scale className="h-3.5 w-3.5" />}
-              title="Scalability"
-              status={report.metrics.scalability.label}
-              note={report.metrics.scalability.note}
-              tone="sky"
-            />
+          </ul>
+
+          <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <FileText className="h-3.5 w-3.5 text-primary" />
+              Your Idea
+            </div>
+            <p className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground">
+              {report.name}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+              {report.pitch}
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Competition */}
-      <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <SectionHeading icon={<Layers className="h-4 w-4" />} title="Competition Snapshot" />
-        <div className="mt-4 overflow-hidden rounded-xl border border-border/60">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Product</th>
-                <th className="px-4 py-2 font-medium">Strength</th>
-                <th className="px-4 py-2 font-medium">Weakness</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.competitors.map((c, i) => (
-                <tr
-                  key={c.product}
-                  className={i % 2 ? "bg-transparent" : "bg-muted/20"}
-                >
-                  <td className="px-4 py-2.5 font-medium text-foreground">{c.product}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.strength}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.weakness}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2.5 text-sm">
-          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-          <span className="text-foreground/80">
-            <span className="font-medium text-foreground">Opportunity:</span>{" "}
-            Few products offer adaptive AI planning tailored to your specific audience.
-          </span>
+      {/* Community Insights */}
+      {report.community ? (
+        <CommunitySection c={report.community} />
+      ) : (
+        <NoCommunityBanner />
+      )}
+
+      {/* AI Analysis */}
+      <section>
+        <SectionTitle number={2} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <MetricCard
+            title="Feasibility"
+            status={report.metrics.feasibility.label}
+            note={report.metrics.feasibility.note}
+            tone="emerald"
+            icon={<ShieldCheck className="h-4 w-4" />}
+          />
+          <MetricCard
+            title="Competition"
+            status={report.metrics.competition.label}
+            note={report.metrics.competition.note}
+            tone="amber"
+            icon={<Users className="h-4 w-4" />}
+          />
+          <MetricCard
+            title="Complexity"
+            status={report.metrics.complexity.label}
+            note={report.metrics.complexity.note}
+            tone="violet"
+            icon={<Wrench className="h-4 w-4" />}
+          />
+          <MetricCard
+            title="Scalability"
+            status={report.metrics.scalability.label}
+            note={report.metrics.scalability.note}
+            tone="sky"
+            icon={<Scale className="h-4 w-4" />}
+          />
+          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="grid h-7 w-7 place-items-center rounded-md bg-emerald-500/10 text-emerald-500">
+                <TrendingUp className="h-4 w-4" />
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">Market Opportunity</span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+              {report.metrics.market.note}
+            </p>
+            <p className="mt-2 text-xs font-semibold text-primary">
+              {report.metrics.market.headline}
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Audience / risks / recommendations */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <InfoCard icon={<Users className="h-4 w-4" />} title="Target Audience">
-          <ul className="space-y-2 text-sm text-foreground/80">
-            {report.audience.map((a) => (
-              <li key={a} className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {a}
-              </li>
-            ))}
-          </ul>
-        </InfoCard>
-        <InfoCard icon={<ShieldAlert className="h-4 w-4 text-rose-500" />} title="Risks & Challenges">
-          <ul className="space-y-2 text-sm text-foreground/80">
-            {report.risks.map((r) => (
-              <li key={r} className="flex items-start gap-2">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500/80" />
-                <span>{r}</span>
-              </li>
-            ))}
-          </ul>
-        </InfoCard>
-        <InfoCard icon={<Lightbulb className="h-4 w-4 text-amber-500" />} title="AI Recommendations">
-          <ul className="space-y-2 text-sm text-foreground/80">
+      {/* Recommendations + Stack + Roadmap */}
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)]">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+          <SectionHeading number={3} icon={<Lightbulb className="h-4 w-4" />} title="AI Recommendations" />
+          <ul className="mt-4 space-y-2.5 text-sm">
             {report.recommendations.map((r) => (
-              <li key={r} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+              <li key={r} className="flex items-start gap-2 text-foreground/85">
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <span>{r}</span>
               </li>
             ))}
           </ul>
-        </InfoCard>
-      </div>
+        </div>
 
-      {/* Stack + roadmap */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-        <InfoCard icon={<Server className="h-4 w-4" />} title="Recommended Tech Stack">
-          <dl className="divide-y divide-border/60 text-sm">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+          <h4 className="text-sm font-semibold text-foreground">Recommended Tech Stack</h4>
+          <div className="mt-4 grid grid-cols-5 gap-2 text-center">
             {(
               [
-                ["Frontend", report.stack.frontend],
-                ["Backend", report.stack.backend],
-                ["Database", report.stack.database],
-                ["AI", report.stack.ai],
-                ["Hosting", report.stack.hosting],
+                ["React", "Frontend"],
+                ["Node.js", "Backend"],
+                ["MongoDB", "Database"],
+                ["OpenAI API", "AI"],
+                ["Vercel", "Hosting"],
               ] as const
-            ).map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between py-2.5">
-                <dt className="text-muted-foreground">{k}</dt>
-                <dd className="font-medium text-foreground">{v}</dd>
+            ).map(([name, role]) => (
+              <div key={name} className="rounded-lg border border-border/60 bg-background/40 p-2">
+                <div className="mx-auto grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">
+                  {name.slice(0, 2)}
+                </div>
+                <p className="mt-1.5 text-[11px] font-semibold text-foreground">{name}</p>
+                <p className="text-[10px] text-muted-foreground">{role}</p>
               </div>
             ))}
-          </dl>
-        </InfoCard>
+          </div>
+        </div>
 
-        <InfoCard icon={<Compass className="h-4 w-4" />} title="Development Roadmap">
-          <div className="relative pt-4">
-            <div className="absolute left-4 right-4 top-[34px] h-px bg-border" aria-hidden />
-            <ol className="relative flex justify-between gap-2">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+          <h4 className="text-sm font-semibold text-foreground">Development Roadmap (Suggested)</h4>
+          <div className="relative mt-5">
+            <div className="absolute left-3 right-3 top-3 h-px bg-border" aria-hidden />
+            <ol className="relative flex justify-between gap-1">
               {report.roadmap.map((r, i) => (
-                <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
-                  <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full border border-border bg-card text-[11px] font-semibold text-foreground">
+                <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
+                  <span className="relative z-10 grid h-6 w-6 place-items-center rounded-full border border-border bg-card text-[10px] font-semibold text-primary">
                     {i + 1}
                   </span>
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                     {r.week}
                   </span>
-                  <span className="text-xs font-medium text-foreground">{r.label}</span>
+                  <span className="text-[11px] font-medium leading-tight text-foreground">
+                    {r.label}
+                  </span>
                 </li>
               ))}
             </ol>
           </div>
-        </InfoCard>
-      </div>
+        </div>
+      </section>
 
       {/* Sticky CTA */}
       <div className="sticky bottom-4 z-10 flex flex-col items-start justify-between gap-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:p-5">
@@ -750,7 +807,7 @@ function ReportView({ report }: { report: Report }) {
               {report.finalNote}
             </p>
             <p className="text-xs text-muted-foreground">
-              This will prefill your project details in Workspace.
+              Build small, validate fast, and iterate based on user feedback.
             </p>
           </div>
         </div>
@@ -764,51 +821,233 @@ function ReportView({ report }: { report: Report }) {
   );
 }
 
-function ScoreDial({ score }: { score: number }) {
-  const size = 108;
-  const stroke = 8;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(100, score)) / 100;
-  const dash = c * pct;
+// ---------------- Community section ----------------
 
+function CommunitySection({ c }: { c: CommunityInsights }) {
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="currentColor"
-          strokeOpacity={0.12}
-          strokeWidth={stroke}
-          fill="none"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="url(#dial)"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          fill="none"
-          strokeDasharray={`${dash} ${c - dash}`}
-        />
-        <defs>
-          <linearGradient id="dial" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-[26px] font-semibold leading-none text-foreground">
-          {score}
-        </span>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          / 100
-        </span>
+    <section>
+      <SectionTitle
+        number={1}
+        title="Community Insights"
+        subtitle={`Based on ${c.similarCount} similar projects in DraftYard.`}
+      />
+
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {/* Outcomes */}
+        <CommunityCard title="Project Outcomes">
+          <div className="mt-1 flex items-center gap-4">
+            <OutcomeDonut
+              completed={c.outcomes.completed}
+              active={c.outcomes.active}
+              abandoned={c.outcomes.abandoned}
+            />
+            <ul className="space-y-1.5 text-xs">
+              <LegendDot color="#22C55E" label="Completed" value={c.outcomes.completed} total={c.similarCount} />
+              <LegendDot color="#7C5CFF" label="Active" value={c.outcomes.active} total={c.similarCount} />
+              <LegendDot color="#EF4444" label="Abandoned" value={c.outcomes.abandoned} total={c.similarCount} />
+            </ul>
+          </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            {Math.round(((c.outcomes.completed + c.outcomes.active) / c.similarCount) * 100)}%
+            reached at least MVP
+          </p>
+        </CommunityCard>
+
+        {/* Stopping points */}
+        <CommunityCard title="Common Stopping Points">
+          <ul className="mt-1 space-y-2.5">
+            {c.stoppingPoints.map((s) => (
+              <li key={s.label}>
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="text-foreground/80">{s.label}</span>
+                  <span className="font-medium text-muted-foreground">{s.pct}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary/80"
+                    style={{ width: `${Math.min(100, s.pct * 3)}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CommunityCard>
+
+        {/* Average completion */}
+        <CommunityCard title="Average Completion">
+          <div className="font-display text-4xl font-semibold text-primary">{c.avgCompletion}%</div>
+          <p className="text-[11px] text-muted-foreground">Average progress</p>
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-x-0 top-3 h-px bg-border" aria-hidden />
+              <ol className="relative flex justify-between">
+                {["Idea", "Prototype", "Development", "Testing", "Launch"].map((s, i) => {
+                  const stageAt = (i + 1) * 20;
+                  const reached = c.avgCompletion >= stageAt - 10;
+                  return (
+                    <li key={s} className="flex flex-col items-center gap-1.5">
+                      <span
+                        className={`relative z-10 grid h-6 w-6 place-items-center rounded-full border text-[10px] font-semibold ${
+                          reached
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground"
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {s}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          </div>
+        </CommunityCard>
+
+        {/* Top Stack */}
+        <CommunityCard title="Top Tech Stack Used">
+          <ul className="mt-1 space-y-2.5">
+            {c.topStack.map((t, i) => (
+              <li key={t.name}>
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="text-foreground/80">{t.name}</span>
+                  <span className="font-medium text-muted-foreground">
+                    {Math.round((t.pct / 100) * 14)} ({t.pct}%)
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${t.pct}%`,
+                      background: ["#7C5CFF", "#22C55E", "#F59E0B", "#3B82F6", "#EC4899"][i % 5],
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CommunityCard>
+
+        {/* Success & Failure Patterns */}
+        <CommunityCard title="Success & Failure Patterns">
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500">
+                Success Patterns
+              </p>
+              <ul className="mt-1.5 space-y-1.5 text-xs">
+                {c.successPatterns.map((p) => (
+                  <li key={p} className="flex items-start gap-1.5 text-foreground/85">
+                    <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-500">
+                Failure Patterns
+              </p>
+              <ul className="mt-1.5 space-y-1.5 text-xs">
+                {c.failurePatterns.map((p) => (
+                  <li key={p} className="flex items-start gap-1.5 text-foreground/85">
+                    <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </CommunityCard>
       </div>
+    </section>
+  );
+}
+
+function NoCommunityBanner() {
+  return (
+    <section className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
+      <p className="font-display text-base font-semibold text-foreground">
+        No similar DraftYard projects were found.
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        This analysis is based on market research and AI reasoning.
+      </p>
+    </section>
+  );
+}
+
+// ---------------- Small UI pieces ----------------
+
+function MetaRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+        <p className="text-sm font-semibold text-foreground">{value}</p>
+      </div>
+    </li>
+  );
+}
+
+function SectionTitle({
+  number,
+  title,
+  subtitle,
+}: {
+  number: number;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+        {number}
+      </span>
+      <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+      {subtitle && <span className="ml-1 text-xs text-muted-foreground">{subtitle}</span>}
+    </div>
+  );
+}
+
+function SectionHeading({
+  number,
+  icon,
+  title,
+}: {
+  number?: number;
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {typeof number === "number" ? (
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+          {number}
+        </span>
+      ) : (
+        <span className="grid h-7 w-7 place-items-center rounded-md bg-primary/10 text-primary">
+          {icon}
+        </span>
+      )}
+      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+    </div>
+  );
+}
+
+function CommunityCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/90">{title}</h4>
+      <div className="mt-3">{children}</div>
     </div>
   );
 }
@@ -832,44 +1071,135 @@ function MetricCard({
     violet: "text-primary bg-primary/10",
     sky: "text-sky-500 bg-sky-500/10",
   };
+  const statusTone: Record<string, string> = {
+    High: "text-emerald-500",
+    Medium: "text-amber-500",
+    Low: "text-rose-500",
+  };
   return (
-    <div className="rounded-xl border border-border/60 bg-background/40 p-3">
+    <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`grid h-6 w-6 place-items-center rounded-md ${toneMap[tone]}`}>{icon}</span>
+        <span className={`grid h-7 w-7 place-items-center rounded-md ${toneMap[tone]}`}>{icon}</span>
         <span className="text-xs font-medium text-muted-foreground">{title}</span>
       </div>
-      <div className="mt-2 text-sm font-semibold text-foreground">{status}</div>
+      <div className={`mt-2 text-base font-semibold ${statusTone[status] ?? "text-foreground"}`}>
+        {status}
+      </div>
       <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{note}</p>
     </div>
   );
 }
 
-function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string }) {
+function OutcomeDonut({
+  completed,
+  active,
+  abandoned,
+}: {
+  completed: number;
+  active: number;
+  abandoned: number;
+}) {
+  const total = completed + active + abandoned || 1;
+  const R = 28;
+  const C = 2 * Math.PI * R;
+  const parts = [
+    { v: completed, color: "#22C55E" },
+    { v: active, color: "#7C5CFF" },
+    { v: abandoned, color: "#EF4444" },
+  ];
+  let offset = 0;
   return (
-    <div className="flex items-center gap-2">
-      <span className="grid h-7 w-7 place-items-center rounded-md bg-primary/10 text-primary">
-        {icon}
-      </span>
-      <h3 className="font-display text-base font-semibold tracking-tight text-foreground">
-        {title}
-      </h3>
-    </div>
+    <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
+      {parts.map((p, i) => {
+        const len = (p.v / total) * C;
+        const el = (
+          <circle
+            key={i}
+            cx="36"
+            cy="36"
+            r={R}
+            fill="none"
+            stroke={p.color}
+            strokeWidth="10"
+            strokeDasharray={`${len} ${C - len}`}
+            strokeDashoffset={-offset}
+          />
+        );
+        offset += len;
+        return el;
+      })}
+    </svg>
   );
 }
 
-function InfoCard({
-  icon,
-  title,
-  children,
+function LegendDot({
+  color,
+  label,
+  value,
+  total,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
+  color: string;
+  label: string;
+  value: number;
+  total: number;
 }) {
+  const pct = Math.round((value / total) * 100);
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
-      <SectionHeading icon={icon} title={title} />
-      <div className="mt-4">{children}</div>
+    <li className="flex items-center gap-2">
+      <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+      <span className="text-foreground/80">{label}</span>
+      <span className="ml-auto tabular-nums text-muted-foreground">
+        {value} ({pct}%)
+      </span>
+    </li>
+  );
+}
+
+function ScoreDial({ score }: { score: number }) {
+  const size = 120;
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, score)) / 100;
+  const dash = c * pct;
+
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="currentColor"
+          strokeOpacity={0.1}
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="url(#dial)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${dash} ${c - dash}`}
+        />
+        <defs>
+          <linearGradient id="dial" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#22C55E" />
+            <stop offset="100%" stopColor="#7C5CFF" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-[30px] font-semibold leading-none text-foreground">
+          {score}
+        </span>
+        <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          / 100
+        </span>
+      </div>
     </div>
   );
 }
@@ -895,10 +1225,7 @@ function HistoryModal({
 }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(
-    () =>
-      reports.filter((r) =>
-        r.name.toLowerCase().includes(q.trim().toLowerCase()),
-      ),
+    () => reports.filter((r) => r.name.toLowerCase().includes(q.trim().toLowerCase())),
     [reports, q],
   );
 
@@ -909,106 +1236,85 @@ function HistoryModal({
           <DialogTitle className="flex items-center justify-between text-base font-semibold">
             <span>History{reports.length ? ` (${reports.length})` : ""}</span>
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Past idea reviews
-          </DialogDescription>
+          <DialogDescription className="sr-only">Past idea reviews</DialogDescription>
         </DialogHeader>
 
-        {reports.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-6 pb-8 pt-2 text-center">
-            <span className="grid h-14 w-14 place-items-center rounded-xl bg-muted/60 text-muted-foreground">
-              <Inbox className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">No reviews yet.</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Analyze your first idea to start building history.
-              </p>
-            </div>
-            <Button className="mt-2 w-full rounded-lg" onClick={onClose}>
-              Got it
-            </Button>
+        <div className="px-5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search reviews…"
+              className="h-9 rounded-lg pl-9"
+            />
           </div>
-        ) : (
-          <>
-            <div className="px-5">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search reviews…"
-                  className="h-9 rounded-lg pl-9"
-                />
-              </div>
-            </div>
-            <ul className="max-h-[360px] overflow-y-auto px-2 py-2">
-              {filtered.map((r) => (
-                <li key={r.id}>
-                  <div className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-muted/60">
-                    <button
-                      type="button"
-                      onClick={() => onSelect(r.id)}
-                      className="flex flex-1 items-center gap-3 text-left"
-                    >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <Sparkles className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{r.name}</p>
-                        <p className="text-xs text-muted-foreground">{relTime(r.createdAt)}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        {r.score}
-                        <span className="text-xs text-muted-foreground">/100</span>
-                      </span>
-                    </button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100"
-                          aria-label="More"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const name = window.prompt("Rename review", r.name);
-                            if (name && name.trim()) onRename(r.id, name.trim());
-                          }}
-                        >
-                          <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDuplicate(r.id)}>
-                          <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-rose-500 focus:text-rose-500"
-                          onClick={() => onDelete(r.id)}
-                        >
-                          <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+        </div>
+        <ul className="max-h-[420px] overflow-y-auto px-2 py-2">
+          {filtered.map((r) => (
+            <li key={r.id}>
+              <div className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-muted/60">
+                <button
+                  type="button"
+                  onClick={() => onSelect(r.id)}
+                  className="flex flex-1 items-center gap-3 text-left"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <FileText className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{r.name}</p>
+                    <p className="text-xs text-muted-foreground">{relTime(r.createdAt)}</p>
                   </div>
-                </li>
-              ))}
-              {filtered.length === 0 && (
-                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  No reviews match “{q}”.
-                </li>
-              )}
-            </ul>
-            <div className="border-t border-border/70 px-5 py-3">
-              <Button variant="outline" className="w-full rounded-lg" onClick={onClose}>
-                Close
-              </Button>
-            </div>
-          </>
-        )}
+                  <span className="text-sm font-semibold text-foreground">
+                    {r.score}
+                    <span className="text-xs text-muted-foreground">/100</span>
+                  </span>
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100"
+                      aria-label="More"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const name = window.prompt("Rename review", r.name);
+                        if (name && name.trim()) onRename(r.id, name.trim());
+                      }}
+                    >
+                      <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDuplicate(r.id)}>
+                      <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-rose-500 focus:text-rose-500"
+                      onClick={() => onDelete(r.id)}
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </li>
+          ))}
+          {filtered.length === 0 && (
+            <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+              No reviews match “{q}”.
+            </li>
+          )}
+        </ul>
+        <div className="border-t border-border/70 px-5 py-3">
+          <Button variant="outline" className="w-full rounded-lg" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -1017,7 +1323,7 @@ function HistoryModal({
 function relTime(ts: number) {
   const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
+  if (m < 1) return "Just now";
   if (m < 60) return `${m} min ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
