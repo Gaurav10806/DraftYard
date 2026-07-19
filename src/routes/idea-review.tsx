@@ -824,38 +824,39 @@ function ReportView({ report }: { report: Report }) {
 // ---------------- Community section ----------------
 
 function CommunitySection({ c }: { c: CommunityInsights }) {
+  const mvpPct = Math.round(((c.outcomes.completed + c.outcomes.active) / c.similarCount) * 100);
+  const topStackCount = Math.round((c.topStack[0]?.pct ?? 0) / 100 * c.similarCount);
   return (
     <section>
       <SectionTitle
         number={1}
         title="Community Insights"
-        subtitle={`Based on ${c.similarCount} similar projects in DraftYard.`}
+        subtitle={`Real-world insights from ${c.similarCount} similar DraftYard projects.`}
       />
 
-      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {/* Outcomes */}
+      {/* Row 1 — Outcomes + Stopping Points */}
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
         <CommunityCard title="Project Outcomes">
-          <div className="mt-1 flex items-center gap-4">
+          <div className="mt-1 flex items-center gap-5">
             <OutcomeDonut
               completed={c.outcomes.completed}
               active={c.outcomes.active}
               abandoned={c.outcomes.abandoned}
             />
-            <ul className="space-y-1.5 text-xs">
+            <ul className="space-y-2 text-xs">
               <LegendDot color="#22C55E" label="Completed" value={c.outcomes.completed} total={c.similarCount} />
               <LegendDot color="#7C5CFF" label="Active" value={c.outcomes.active} total={c.similarCount} />
               <LegendDot color="#EF4444" label="Abandoned" value={c.outcomes.abandoned} total={c.similarCount} />
             </ul>
           </div>
-          <p className="mt-3 text-[11px] text-muted-foreground">
-            {Math.round(((c.outcomes.completed + c.outcomes.active) / c.similarCount) * 100)}%
-            reached at least MVP
-          </p>
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+            <span className="font-display text-lg font-semibold text-primary">{mvpPct}%</span>
+            <span className="text-[11px] text-muted-foreground">reached at least MVP</span>
+          </div>
         </CommunityCard>
 
-        {/* Stopping points */}
         <CommunityCard title="Common Stopping Points">
-          <ul className="mt-1 space-y-2.5">
+          <ul className="mt-1 space-y-3">
             {c.stoppingPoints.map((s) => (
               <li key={s.label}>
                 <div className="mb-1 flex items-center justify-between text-xs">
@@ -872,95 +873,59 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
             ))}
           </ul>
         </CommunityCard>
+      </div>
 
-        {/* Average completion */}
-        <CommunityCard title="Average Completion">
-          <div className="font-display text-4xl font-semibold text-primary">{c.avgCompletion}%</div>
-          <p className="text-[11px] text-muted-foreground">Average progress</p>
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-x-0 top-3 h-px bg-border" aria-hidden />
-              <ol className="relative flex justify-between">
-                {["Idea", "Prototype", "Development", "Testing", "Launch"].map((s, i) => {
-                  const stageAt = (i + 1) * 20;
-                  const reached = c.avgCompletion >= stageAt - 10;
-                  return (
-                    <li key={s} className="flex flex-col items-center gap-1.5">
-                      <span
-                        className={`relative z-10 grid h-6 w-6 place-items-center rounded-full border text-[10px] font-semibold ${
-                          reached
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card text-muted-foreground"
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                      <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {s}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          </div>
-        </CommunityCard>
-
-        {/* Top Stack */}
-        <CommunityCard title="Top Tech Stack Used">
-          <ul className="mt-1 space-y-2.5">
-            {c.topStack.map((t, i) => (
-              <li key={t.name}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-foreground/80">{t.name}</span>
-                  <span className="font-medium text-muted-foreground">
-                    {Math.round((t.pct / 100) * 14)} ({t.pct}%)
-                  </span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${t.pct}%`,
-                      background: ["#7C5CFF", "#22C55E", "#F59E0B", "#3B82F6", "#EC4899"][i % 5],
-                    }}
-                  />
-                </div>
+      {/* Row 2 — What Worked + Common Mistakes */}
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CommunityCard title="What Worked">
+          <ul className="mt-1 space-y-2.5 text-sm">
+            {c.successPatterns.map((p) => (
+              <li key={p} className="flex items-start gap-2 text-foreground/85">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                <span>{p}</span>
               </li>
             ))}
           </ul>
         </CommunityCard>
 
-        {/* Success & Failure Patterns */}
-        <CommunityCard title="Success & Failure Patterns">
-          <div className="space-y-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500">
-                Success Patterns
-              </p>
-              <ul className="mt-1.5 space-y-1.5 text-xs">
-                {c.successPatterns.map((p) => (
-                  <li key={p} className="flex items-start gap-1.5 text-foreground/85">
-                    <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-500">
-                Failure Patterns
-              </p>
-              <ul className="mt-1.5 space-y-1.5 text-xs">
-                {c.failurePatterns.map((p) => (
-                  <li key={p} className="flex items-start gap-1.5 text-foreground/85">
-                    <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <CommunityCard title="Common Mistakes">
+          <ul className="mt-1 space-y-2.5 text-sm">
+            {c.failurePatterns.map((p) => (
+              <li key={p} className="flex items-start gap-2 text-foreground/85">
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </CommunityCard>
+      </div>
+
+      {/* Row 3 — Most Successful Tech Stack (full width) */}
+      <div className="mt-4">
+        <CommunityCard title="Most Successful Tech Stack">
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Technologies most common across shipped projects.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {[c.topStack.slice(0, 3), c.topStack.slice(3)].map((row, ri) =>
+              row.length ? (
+                <div key={ri} className="flex flex-wrap gap-2">
+                  {row.map((t) => (
+                    <span
+                      key={t.name}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground/90"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              ) : null,
+            )}
           </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Used by {topStackCount} of the {c.similarCount} successful projects.
+          </p>
         </CommunityCard>
       </div>
     </section>
