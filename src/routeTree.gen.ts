@@ -13,6 +13,7 @@ import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
 import { Route as InsightsLabRouteImport } from './routes/insights-lab'
+import { Route as IdeaReviewRouteImport } from './routes/idea-review'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -36,6 +37,11 @@ const RevivalBoardRoute = RevivalBoardRouteImport.update({
 const InsightsLabRoute = InsightsLabRouteImport.update({
   id: '/insights-lab',
   path: '/insights-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IdeaReviewRoute = IdeaReviewRouteImport.update({
+  id: '/idea-review',
+  path: '/idea-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedRoute = FeedRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/idea-review': typeof IdeaReviewRoute
   '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/idea-review': typeof IdeaReviewRoute
   '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/idea-review': typeof IdeaReviewRoute
   '/insights-lab': typeof InsightsLabRoute
   '/revival-board': typeof RevivalBoardRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/idea-review'
     | '/insights-lab'
     | '/revival-board'
     | '/stack-intelligence'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/idea-review'
     | '/insights-lab'
     | '/revival-board'
     | '/stack-intelligence'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/feed'
+    | '/idea-review'
     | '/insights-lab'
     | '/revival-board'
     | '/stack-intelligence'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
+  IdeaReviewRoute: typeof IdeaReviewRoute
   InsightsLabRoute: typeof InsightsLabRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
   StackIntelligenceRoute: typeof StackIntelligenceRoute
@@ -164,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsLabRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/idea-review': {
+      id: '/idea-review'
+      path: '/idea-review'
+      fullPath: '/idea-review'
+      preLoaderRoute: typeof IdeaReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feed': {
       id: '/feed'
       path: '/feed'
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
+  IdeaReviewRoute: IdeaReviewRoute,
   InsightsLabRoute: InsightsLabRoute,
   RevivalBoardRoute: RevivalBoardRoute,
   StackIntelligenceRoute: StackIntelligenceRoute,
@@ -208,13 +229,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
