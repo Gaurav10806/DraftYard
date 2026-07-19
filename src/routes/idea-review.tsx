@@ -1239,15 +1239,15 @@ function MetricCard({
     Low: "text-rose-500",
   };
   return (
-    <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+    <div className="rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`grid h-7 w-7 place-items-center rounded-md ${toneMap[tone]}`}>{icon}</span>
-        <span className="text-xs font-medium text-muted-foreground">{title}</span>
+        <span className={`grid h-6 w-6 place-items-center rounded-md ${toneMap[tone]}`}>{icon}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{title}</span>
+        <span className={`ml-auto text-xs font-semibold ${statusTone[status] ?? "text-foreground"}`}>
+          {status}
+        </span>
       </div>
-      <div className={`mt-2 text-base font-semibold ${statusTone[status] ?? "text-foreground"}`}>
-        {status}
-      </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">{note}</p>
     </div>
   );
 }
