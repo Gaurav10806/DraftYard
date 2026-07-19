@@ -776,20 +776,21 @@ function ReportView({ report }: { report: Report }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
-          <h4 className="text-sm font-semibold text-foreground">Development Roadmap (Suggested)</h4>
-          <div className="relative mt-5">
-            <div className="absolute left-3 right-3 top-3 h-px bg-border" aria-hidden />
-            <ol className="relative flex justify-between gap-1">
+        <div className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+          <h4 className="text-sm font-semibold text-foreground">Development Roadmap</h4>
+          <p className="mt-0.5 text-xs text-muted-foreground">Suggested milestones from week zero to launch.</p>
+          <div className="relative mt-7 pb-1">
+            <div className="absolute left-5 right-5 top-5 h-0.5 rounded-full bg-gradient-to-r from-primary/40 via-primary/25 to-primary/10" aria-hidden />
+            <ol className="relative flex justify-between gap-3">
               {report.roadmap.map((r, i) => (
-                <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
-                  <span className="relative z-10 grid h-6 w-6 place-items-center rounded-full border border-border bg-card text-[10px] font-semibold text-primary">
+                <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-2.5 text-center">
+                  <span className="relative z-10 grid h-10 w-10 place-items-center rounded-full border border-primary/30 bg-card text-sm font-semibold text-primary shadow-[0_2px_10px_-4px_rgba(124,92,255,0.5)]">
                     {i + 1}
                   </span>
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary/90">
                     {r.week}
                   </span>
-                  <span className="text-[11px] font-medium leading-tight text-foreground">
+                  <span className="text-xs font-medium leading-snug text-foreground">
                     {r.label}
                   </span>
                 </li>
