@@ -909,24 +909,39 @@ function CommunitySection({ c }: { c: CommunityInsights }) {
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Technologies most common across shipped projects.
           </p>
-          <div className="mt-3 flex flex-col gap-2">
-            {[c.topStack.slice(0, 3), c.topStack.slice(3)].map((row, ri) =>
-              row.length ? (
-                <div key={ri} className="flex flex-wrap gap-2">
-                  {row.map((t) => (
-                    <span
-                      key={t.name}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground/90"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                      {t.name}
+          <div className="mt-4 flex flex-col gap-2.5">
+            {[
+              [
+                { name: "React", category: "Frontend", icon: "⚛️" },
+                { name: "Node.js", category: "Backend", icon: "🟢" },
+                { name: "MongoDB", category: "Database", icon: "🍃" },
+              ],
+              [
+                { name: "Gemini API", category: "AI", icon: "✨" },
+                { name: "Vercel", category: "Hosting", icon: "▲" },
+              ],
+            ].map((row, ri) => (
+              <div key={ri} className="flex flex-wrap gap-2.5">
+                {row.map((t) => (
+                  <div
+                    key={t.name}
+                    className="flex min-w-[150px] items-center gap-2.5 rounded-xl border border-border/70 bg-background/40 px-3 py-2 shadow-sm transition hover:border-primary/40"
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-base">
+                      {t.icon}
                     </span>
-                  ))}
-                </div>
-              ) : null,
-            )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {t.category}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <p className="mt-3.5 text-[11px] text-muted-foreground">
             Used by {topStackCount} of the {c.similarCount} successful projects.
           </p>
         </CommunityCard>
