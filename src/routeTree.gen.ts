@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as InsightsLabRouteImport } from './routes/insights-lab'
@@ -29,6 +30,11 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
 const StackIntelligenceRoute = StackIntelligenceRouteImport.update({
   id: '/stack-intelligence',
   path: '/stack-intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RevivalBoardRoute = RevivalBoardRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/insights-lab': typeof InsightsLabRoute
   '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/settings': typeof SettingsRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/insights-lab': typeof InsightsLabRoute
   '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/settings': typeof SettingsRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/insights-lab': typeof InsightsLabRoute
   '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/settings': typeof SettingsRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
   '/project/$slug': typeof ProjectSlugRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/insights-lab'
     | '/profile'
     | '/revival-board'
+    | '/settings'
     | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/insights-lab'
     | '/profile'
     | '/revival-board'
+    | '/settings'
     | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/insights-lab'
     | '/profile'
     | '/revival-board'
+    | '/settings'
     | '/stack-intelligence'
     | '/workspace'
     | '/project/$slug'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   InsightsLabRoute: typeof InsightsLabRoute
   ProfileRoute: typeof ProfileRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
+  SettingsRoute: typeof SettingsRoute
   StackIntelligenceRoute: typeof StackIntelligenceRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/stack-intelligence'
       fullPath: '/stack-intelligence'
       preLoaderRoute: typeof StackIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/revival-board': {
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   InsightsLabRoute: InsightsLabRoute,
   ProfileRoute: ProfileRoute,
   RevivalBoardRoute: RevivalBoardRoute,
+  SettingsRoute: SettingsRoute,
   StackIntelligenceRoute: StackIntelligenceRoute,
   WorkspaceRoute: WorkspaceRoute,
   ProjectSlugRoute: ProjectSlugRoute,

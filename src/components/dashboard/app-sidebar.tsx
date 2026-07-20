@@ -38,7 +38,7 @@ const primary = [
   { title: "Idea Review", url: "/idea-review", icon: ClipboardCheck },
   { title: "AI Assistant", url: "/ai-assistant", icon: Bot },
   { title: "Profile", url: "/profile", icon: UserCircle },
-  { title: "Settings", url: "#", icon: Settings },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
