@@ -6,7 +6,6 @@ const connectDB = require("./config/db");
 
 dotenv.config();
 
-
 connectDB();
 
 const app = express();
@@ -14,8 +13,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const burialRoutes = require("./routes/burialRoutes");  // ← add
-app.use("/api", burialRoutes); 
+// Routes
+const burialRoutes = require("./routes/burialRoutes");
+const authRoutes = require("./routes/authRoutes");
+
+app.use("/api", burialRoutes);
+app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("DraftYard API is running 🚀");
