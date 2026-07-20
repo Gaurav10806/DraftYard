@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as InsightsLabRouteImport } from './routes/insights-lab'
 import { Route as IdeaReviewRouteImport } from './routes/idea-review'
 import { Route as FeedRouteImport } from './routes/feed'
@@ -33,6 +34,11 @@ const StackIntelligenceRoute = StackIntelligenceRouteImport.update({
 const RevivalBoardRoute = RevivalBoardRouteImport.update({
   id: '/revival-board',
   path: '/revival-board',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InsightsLabRoute = InsightsLabRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/feed': typeof FeedRoute
   '/idea-review': typeof IdeaReviewRoute
   '/insights-lab': typeof InsightsLabRoute
+  '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/feed': typeof FeedRoute
   '/idea-review': typeof IdeaReviewRoute
   '/insights-lab': typeof InsightsLabRoute
+  '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/feed': typeof FeedRoute
   '/idea-review': typeof IdeaReviewRoute
   '/insights-lab': typeof InsightsLabRoute
+  '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/idea-review'
     | '/insights-lab'
+    | '/profile'
     | '/revival-board'
     | '/stack-intelligence'
     | '/workspace'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/idea-review'
     | '/insights-lab'
+    | '/profile'
     | '/revival-board'
     | '/stack-intelligence'
     | '/workspace'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/idea-review'
     | '/insights-lab'
+    | '/profile'
     | '/revival-board'
     | '/stack-intelligence'
     | '/workspace'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   FeedRoute: typeof FeedRoute
   IdeaReviewRoute: typeof IdeaReviewRoute
   InsightsLabRoute: typeof InsightsLabRoute
+  ProfileRoute: typeof ProfileRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
   StackIntelligenceRoute: typeof StackIntelligenceRoute
   WorkspaceRoute: typeof WorkspaceRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/revival-board'
       fullPath: '/revival-board'
       preLoaderRoute: typeof RevivalBoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/insights-lab': {
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedRoute: FeedRoute,
   IdeaReviewRoute: IdeaReviewRoute,
   InsightsLabRoute: InsightsLabRoute,
+  ProfileRoute: ProfileRoute,
   RevivalBoardRoute: RevivalBoardRoute,
   StackIntelligenceRoute: StackIntelligenceRoute,
   WorkspaceRoute: WorkspaceRoute,
@@ -250,13 +271,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
