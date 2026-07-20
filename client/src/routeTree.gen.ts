@@ -12,13 +12,17 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RevivalBoardRouteImport } from './routes/revival-board'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NewDraftRouteImport } from './routes/new-draft'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsightsLabRouteImport } from './routes/insights-lab'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as IdeaReviewRouteImport } from './routes/idea-review'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectSlugRouteImport } from './routes/project.$slug'
 
@@ -37,9 +41,19 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RevivalBoardRoute = RevivalBoardRouteImport.update({
   id: '/revival-board',
   path: '/revival-board',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewDraftRoute = NewDraftRouteImport.update({
@@ -62,6 +76,11 @@ const InsightsRoute = InsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IdeaReviewRoute = IdeaReviewRouteImport.update({
+  id: '/idea-review',
+  path: '/idea-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedRoute = FeedRouteImport.update({
   id: '/feed',
   path: '/feed',
@@ -70,6 +89,11 @@ const FeedRoute = FeedRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiAssistantRoute = AiAssistantRouteImport.update({
+  id: '/ai-assistant',
+  path: '/ai-assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -85,13 +109,17 @@ const ProjectSlugRoute = ProjectSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ai-assistant': typeof AiAssistantRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/idea-review': typeof IdeaReviewRoute
   '/insights': typeof InsightsRoute
   '/insights-lab': typeof InsightsLabRoute
   '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
+  '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
@@ -99,13 +127,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ai-assistant': typeof AiAssistantRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/idea-review': typeof IdeaReviewRoute
   '/insights': typeof InsightsRoute
   '/insights-lab': typeof InsightsLabRoute
   '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
+  '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
@@ -114,13 +146,17 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ai-assistant': typeof AiAssistantRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
+  '/idea-review': typeof IdeaReviewRoute
   '/insights': typeof InsightsRoute
   '/insights-lab': typeof InsightsLabRoute
   '/login': typeof LoginRoute
   '/new-draft': typeof NewDraftRoute
+  '/profile': typeof ProfileRoute
   '/revival-board': typeof RevivalBoardRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
@@ -130,13 +166,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ai-assistant'
     | '/dashboard'
     | '/feed'
+    | '/idea-review'
     | '/insights'
     | '/insights-lab'
     | '/login'
     | '/new-draft'
+    | '/profile'
     | '/revival-board'
+    | '/settings'
     | '/signup'
     | '/stack-intelligence'
     | '/workspace'
@@ -144,13 +184,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ai-assistant'
     | '/dashboard'
     | '/feed'
+    | '/idea-review'
     | '/insights'
     | '/insights-lab'
     | '/login'
     | '/new-draft'
+    | '/profile'
     | '/revival-board'
+    | '/settings'
     | '/signup'
     | '/stack-intelligence'
     | '/workspace'
@@ -158,13 +202,17 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/ai-assistant'
     | '/dashboard'
     | '/feed'
+    | '/idea-review'
     | '/insights'
     | '/insights-lab'
     | '/login'
     | '/new-draft'
+    | '/profile'
     | '/revival-board'
+    | '/settings'
     | '/signup'
     | '/stack-intelligence'
     | '/workspace'
@@ -173,13 +221,17 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiAssistantRoute: typeof AiAssistantRoute
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
+  IdeaReviewRoute: typeof IdeaReviewRoute
   InsightsRoute: typeof InsightsRoute
   InsightsLabRoute: typeof InsightsLabRoute
   LoginRoute: typeof LoginRoute
   NewDraftRoute: typeof NewDraftRoute
+  ProfileRoute: typeof ProfileRoute
   RevivalBoardRoute: typeof RevivalBoardRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   StackIntelligenceRoute: typeof StackIntelligenceRoute
   WorkspaceRoute: typeof WorkspaceRoute
@@ -209,11 +261,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/revival-board': {
       id: '/revival-board'
       path: '/revival-board'
       fullPath: '/revival-board'
       preLoaderRoute: typeof RevivalBoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/new-draft': {
@@ -244,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/idea-review': {
+      id: '/idea-review'
+      path: '/idea-review'
+      fullPath: '/idea-review'
+      preLoaderRoute: typeof IdeaReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feed': {
       id: '/feed'
       path: '/feed'
@@ -256,6 +329,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-assistant': {
+      id: '/ai-assistant'
+      path: '/ai-assistant'
+      fullPath: '/ai-assistant'
+      preLoaderRoute: typeof AiAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -277,13 +357,17 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiAssistantRoute: AiAssistantRoute,
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
+  IdeaReviewRoute: IdeaReviewRoute,
   InsightsRoute: InsightsRoute,
   InsightsLabRoute: InsightsLabRoute,
   LoginRoute: LoginRoute,
   NewDraftRoute: NewDraftRoute,
+  ProfileRoute: ProfileRoute,
   RevivalBoardRoute: RevivalBoardRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   StackIntelligenceRoute: StackIntelligenceRoute,
   WorkspaceRoute: WorkspaceRoute,
