@@ -26,7 +26,7 @@ export async function fetchFeed(): Promise<Draft[]> {
   return res.json();
 }
 
-export type NewBurial = {
+export type NewDraft = {
   projectName: string;
   oneLiner: string;
   domain: string;
@@ -42,8 +42,8 @@ export type NewBurial = {
   ownerToken: string;
 };
 
-export async function createBurial(data: NewBurial): Promise<Draft> {
-  const res = await fetch(`${API_BASE}/bury`, {
+export async function createDraft(data: NewDraft): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -69,7 +69,7 @@ export type RaiseHandInput = {
 };
 
 export async function raiseHand({ id, ...body }: RaiseHandInput): Promise<Draft> {
-  const res = await fetch(`${API_BASE}/bury/${id}/raise-hand`, {
+  const res = await fetch(`${API_BASE}/draft/${id}/raise-hand`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -8,20 +8,18 @@ router.post('/draft', async (req, res) => {
     const draft = new Draft(req.body);
     await draft.save();
 
-    // Ask Django to classify the death reason (optional, fail gracefully)
+    // Ask Django to classify the death reason
     try {
-      if (draft.whyItDied) {
-        const response = await fetch('http://localhost:8000/api/ml/classify/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            burials: [{ id: draft._id.toString(), whyItDied: draft.whyItDied }]
-          })
-        });
-        const result = await response.json();
-        draft.deathCategory = result[0].deathCategory;
-        await draft.save();
-      }
+      const response = await fetch('http://localhost:8000/api/ml/classify/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          burials: [{ id: draft._id.toString(), whyItDied: draft.whyItDied }]
+        })
+      });
+      const result = await response.json();
+      draft.deathCategory = result[0].deathCategory;
+      await draft.save();
     } catch (mlError) {
       console.error('ML classification failed, continuing without it:', mlError.message);
     }
@@ -64,6 +62,8 @@ router.patch('/draft/:id/upvote', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// --- Added for the Revival Board (Member C) ---
 
 // GET /api/revival-board -> only projects open for revival, newest first
 router.get('/revival-board', async (req, res) => {

@@ -12,6 +12,7 @@ import {
 import { drafts } from "@/data/drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
 import { slugify } from "@/routes/project.$slug";
+import { useDrafts } from "@/hooks/use-drafts";
 
 export function DraftShelf() {
   const navigate = useNavigate();
@@ -20,7 +21,8 @@ export function DraftShelf() {
     scroller.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
   };
 
-  const items = drafts.slice(0, 12);
+  const { data: serverDrafts } = useDrafts();
+  const items = (serverDrafts && serverDrafts.length > 0 ? serverDrafts : drafts).slice(0, 12);
   const openDraft = (name: string) =>
     navigate({ to: "/project/$slug", params: { slug: slugify(name) } });
 
@@ -154,7 +156,7 @@ export function DraftShelf() {
             );
           })}
           <button
-            onClick={() => toast("New draft creation is on the roadmap — not built yet")}
+            onClick={() => navigate({ to: "/new-draft" })}
             className="snap-start shrink-0 grid w-64 place-items-center rounded-2xl border-2 border-dashed border-border p-4 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
           >
             <div className="text-center">

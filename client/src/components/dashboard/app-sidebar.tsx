@@ -133,23 +133,23 @@ export function AppSidebar() {
             <Button
               size="sm"
               className="mt-3 w-full rounded-lg"
-              onClick={() =>
-                toast("New draft creation is on the roadmap — not built yet")
-              }
+              asChild
             >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              New Draft
+              <Link to="/new-draft">
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                New Draft
+              </Link>
             </Button>
           </div>
         ) : (
           <Button
             size="icon"
             className="rounded-lg"
-            onClick={() =>
-              toast("New draft creation is on the roadmap — not built yet")
-            }
+            asChild
           >
-            <Plus className="h-4 w-4" />
+            <Link to="/new-draft">
+              <Plus className="h-4 w-4" />
+            </Link>
           </Button>
         )}
       </SidebarFooter>

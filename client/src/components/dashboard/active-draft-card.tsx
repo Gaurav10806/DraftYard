@@ -7,10 +7,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { drafts } from "@/data/drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
 import { slugify } from "@/routes/project.$slug";
+import { useDrafts } from "@/hooks/use-drafts";
 
 export function ActiveDraftCard() {
   const navigate = useNavigate();
-  const d = drafts[0];
+  const { data: serverDrafts } = useDrafts();
+  const d = serverDrafts && serverDrafts.length > 0 ? serverDrafts[0] : drafts[0];
   const progress = stageToProgress(d.stageDied);
   return (
     <div className="group flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">

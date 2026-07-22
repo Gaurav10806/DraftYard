@@ -42,6 +42,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { drafts, type Draft } from "@/data/drafts";
+import { fetchFeed } from "@/lib/api";
 
 export const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -57,7 +58,14 @@ export const Route = createFileRoute("/project/$slug")({
       { property: "og:title", content: `${params.slug} · DraftYard` },
     ],
   }),
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
+    try {
+      const serverDrafts = await fetchFeed();
+      const draft = serverDrafts.find((d) => slugify(d.projectName) === params.slug);
+      if (draft) return { draft };
+    } catch (e) {
+      console.warn("Failed to load drafts from server, falling back to static:", e);
+    }
     const draft = drafts.find((d) => slugify(d.projectName) === params.slug);
     if (!draft) throw notFound();
     return { draft };

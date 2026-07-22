@@ -14,10 +14,10 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-const burialRoutes = require("./routes/burialRoutes");
+const draftRoutes = require("./routes/draftRoutes");
 const authRoutes = require("./routes/authRoutes");
 
-app.use("/api", burialRoutes);
+app.use("/api", draftRoutes);
 app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {

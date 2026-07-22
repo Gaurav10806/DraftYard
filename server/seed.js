@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const dns = require("node:dns");
-const Burial = require("./models/burial");
+const Draft = require("./models/draft");
 
 dotenv.config();
 
@@ -1315,10 +1315,10 @@ const seedDB = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("✅ MongoDB Connected");
 
-    await Burial.deleteMany({});
+    await Draft.deleteMany({});
     console.log("🗑️  Cleared existing burials");
 
-    await Burial.insertMany(fakeBurials);
+    await Draft.insertMany(fakeBurials);
     console.log(`🌱 Seeded ${fakeBurials.length} fake burials`);
 
     mongoose.connection.close();

@@ -25,7 +25,7 @@ export async function getRevivalProjects({ stack = '', stage = '', domain = '' }
 
 // PATCH raise a hand on a specific project
 export async function raiseHand(projectId, { name, message = '', contact = '' }) {
-  const res = await fetch(`${API_BASE}/bury/${projectId}/raise-hand`, {
+  const res = await fetch(`${API_BASE}/draft/${projectId}/raise-hand`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, message, contact }),
