@@ -1,0 +1,246 @@
+/* client/src/pages/RevivalBoard.css */
+/* Uses the same CSS variables defined in index.css so it matches the rest of the app */
+
+.revival-board {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+  text-align: left;
+}
+
+.rb-header h1 {
+  margin: 0 0 4px;
+}
+
+.rb-header p {
+  color: var(--text);
+  margin-bottom: 24px;
+}
+
+.rb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.rb-filters input,
+.rb-filters select {
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.rb-filters button {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.rb-filters button:hover {
+  border-color: var(--accent-border);
+}
+
+.rb-status {
+  color: var(--text);
+  padding: 24px 0;
+}
+
+.rb-error {
+  color: #e5484d;
+}
+
+.rb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.rb-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg);
+}
+
+.rb-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.rb-card-top h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-h);
+}
+
+.rb-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.rb-oneliner {
+  color: var(--text-h);
+  font-size: 15px;
+}
+
+.rb-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rb-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--code-bg);
+  color: var(--text);
+}
+
+.rb-why,
+.rb-salvage {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.rb-card-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border);
+}
+
+.rb-stage {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.rb-raise-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.rb-raise-btn:hover {
+  border-color: var(--accent-border);
+}
+
+/* Modal */
+
+.rb-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.rb-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+}
+
+.rb-modal h3 {
+  margin: 0 0 4px;
+}
+
+.rb-modal-sub {
+  color: var(--text);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.rb-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rb-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.rb-modal input,
+.rb-modal textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.rb-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.rb-cancel-btn {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.rb-submit-btn {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.rb-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
