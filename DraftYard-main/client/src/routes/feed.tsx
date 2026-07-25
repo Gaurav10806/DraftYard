@@ -301,14 +301,11 @@ function FeedTopBar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((p) => p[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "DY";
+  const initials = user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : user?.name
+      ? user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+      : "DY";
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 sm:px-6">

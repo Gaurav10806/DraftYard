@@ -24,6 +24,10 @@ import {
   ChevronDown,
   Plus,
   Edit3,
+  LogOut,
+  UserCircle,
+  Settings,
+  Hand,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -43,8 +47,24 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { drafts } from "@/data/drafts";
-import { fetchFeed, type Draft, navigateToWorkspace, updateDraftInsights } from "@/lib/api";
+import { fetchFeed, type Draft, navigateToWorkspace, updateDraftInsights, raiseHand } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getOwnerToken } from "@/lib/owner-token";
 
@@ -111,6 +131,19 @@ const DISCUSSIONS = [
   { tag: "General", tagTone: "sky", title: "Project roadmap and next steps", body: "What are the next big things to do if someone takes over?", author: "Neeraj Patel", replies: 2, comments: 5, upvotes: 7, time: "2d ago" },
 ];
 
+const AI_SUGGESTIONS = [
+  "Improve state management using Zustand or Redux Toolkit.",
+  "Add dark mode to enhance user experience.",
+  "Fix dashboard responsiveness on mobile devices.",
+  "Introduce end-to-end testing with Playwright or Cypress.",
+  "Add role-based access control for different team members.",
+  "Implement optimistic UI updates to improve perceived performance.",
+  "Set up a CI/CD pipeline using GitHub Actions.",
+  "Add API rate limiting and error boundary handling.",
+];
+
+const DISCUSSION_TAGS = ["Idea", "Problem", "Question", "General"] as const;
+
 const OPEN_POSITIONS = [
   { role: "Frontend Developer", tech: "React, TypeScript, Tailwind CSS", match: 92, tone: "emerald" },
   { role: "Backend Developer", tech: "Node.js, Express, MongoDB", match: 88, tone: "emerald" },
@@ -167,8 +200,102 @@ function ProjectPage() {
     (user && draft.submittedBy && draft.submittedBy === user._id) ||
     (draft.ownerToken && draft.ownerToken === getOwnerToken());
 
+  // Request to Join state
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinName, setJoinName] = useState(user?.name || "");
+  const [joinMessage, setJoinMessage] = useState("");
+  const [joinContact, setJoinContact] = useState(user?.email || "");
+  const [joinSubmitting, setJoinSubmitting] = useState(false);
+  const [joinDone, setJoinDone] = useState(false);
+
+  const handleRequestJoin = async () => {
+    if (!joinName.trim() || !joinMessage.trim() || !joinContact.trim()) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    if (!draft._id) {
+      toast.error("Project ID missing.");
+      return;
+    }
+    setJoinSubmitting(true);
+    try {
+      await raiseHand({ id: draft._id, name: joinName.trim(), message: joinMessage.trim(), contact: joinContact.trim() });
+      setJoinDone(true);
+      toast.success("Request sent! The project owner will be in touch.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to send request.");
+    } finally {
+      setJoinSubmitting(false);
+    }
+  };
+
   return (
     <SidebarProvider>
+      {/* Request to Join Dialog */}
+      <Dialog open={joinOpen} onOpenChange={(o) => { setJoinOpen(o); if (!o) setJoinDone(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Hand className="h-5 w-5 text-violet-500" /> Request to Join
+            </DialogTitle>
+          </DialogHeader>
+          {joinDone ? (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-500/15 text-emerald-500">
+                <Check className="h-7 w-7" />
+              </div>
+              <p className="font-semibold">Request Sent!</p>
+              <p className="text-sm text-muted-foreground">
+                The project owner will review your request and get back to you.
+              </p>
+              <Button className="mt-2" onClick={() => setJoinOpen(false)}>Done</Button>
+            </div>
+          ) : (
+            <div className="space-y-4 mt-2">
+              <p className="text-sm text-muted-foreground">
+                Tell the owner why you want to contribute to <span className="font-medium text-foreground">{draft.projectName}</span>.
+              </p>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Your Name</label>
+                <Input
+                  placeholder="Full name"
+                  value={joinName}
+                  onChange={(e) => setJoinName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Contact (email / GitHub / LinkedIn)</label>
+                <Input
+                  placeholder="how can they reach you?"
+                  value={joinContact}
+                  onChange={(e) => setJoinContact(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Message</label>
+                <Textarea
+                  placeholder="Why do you want to join? What can you contribute?"
+                  rows={4}
+                  value={joinMessage}
+                  onChange={(e) => setJoinMessage(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setJoinOpen(false)}>Cancel</Button>
+                <Button
+                  disabled={joinSubmitting}
+                  onClick={handleRequestJoin}
+                  className="gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                >
+                  <Send className="h-4 w-4" />
+                  {joinSubmitting ? "Sending…" : "Send Request"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="project-page flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
         <SidebarInset className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -187,13 +314,26 @@ function ProjectPage() {
                 draft={draft}
                 bookmarked={bookmarked}
                 onBookmark={() => setBookmarked((b) => !b)}
+                onRequestJoin={() => setJoinOpen(true)}
+                onShare={() => {
+                  const url = window.location.href;
+                  if (navigator.share) {
+                    navigator.share({ title: draft.projectName, url }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(url).then(() => {
+                      toast.success("Link copied to clipboard!");
+                    }).catch(() => {
+                      toast.error("Could not copy link.");
+                    });
+                  }
+                }}
                 isOwner={!!isOwner}
               />
               <ProjectTabs tab={tab} onTab={setTab} />
               <div className="h-6" />
-              {tab === "overview" && <OverviewTab draft={draft} />}
+              {tab === "overview" && <OverviewTab draft={draft} onViewDiscussions={() => setTab("discussions")} />}
               {tab === "discussions" && <DiscussionsTab />}
-              {tab === "contributors" && <ContributorsTab />}
+              {tab === "contributors" && <ContributorsTab onApply={(role) => { setJoinMessage(`I'd like to apply for the ${role} position.`); setJoinOpen(true); }} />}
               {tab === "activity" && <ActivityTab />}
             </motion.main>
           </div>
@@ -207,6 +347,16 @@ function ProjectPage() {
 // Top bar
 // ————————————————————————————————————————————————————————————
 function ProjectTopBar() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = (() => {
+    if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase();
+    }
+    return "DY";
+  })();
+
   return (
     <header className="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
@@ -220,9 +370,37 @@ function ProjectTopBar() {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Avatar className="h-9 w-9 ring-2 ring-border">
-          <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">DC</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button>
+              <Avatar className="h-9 w-9 ring-2 ring-border transition-shadow hover:ring-primary/50">
+                <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="truncate">{user?.name || "Account"}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
+              <UserCircle className="mr-2 h-4 w-4" /> Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+              <Settings className="mr-2 h-4 w-4" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                logout();
+                toast("Signed out");
+                navigate({ to: "/login" });
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
@@ -235,11 +413,15 @@ function ProjectHero({
   draft,
   bookmarked,
   onBookmark,
+  onShare,
+  onRequestJoin,
   isOwner,
 }: {
   draft: Draft;
   bookmarked: boolean;
   onBookmark: () => void;
+  onShare: () => void;
+  onRequestJoin: () => void;
   isOwner: boolean;
 }) {
   const navigate = useNavigate();
@@ -339,14 +521,17 @@ function ProjectHero({
               <Edit3 className="h-4 w-4" /> Continue Editing
             </Button>
           ) : (
-            <Button className="w-full gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.55)] hover:from-violet-600 hover:to-fuchsia-600">
+            <Button
+              onClick={onRequestJoin}
+              className="w-full gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.55)] hover:from-violet-600 hover:to-fuchsia-600"
+            >
               <Send className="h-4 w-4" /> Request to Join
             </Button>
           )}
           <Button variant="outline" onClick={onBookmark} className="w-full gap-2 rounded-lg">
             <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} /> Bookmark
           </Button>
-          <Button variant="outline" className="w-full gap-2 rounded-lg">
+          <Button variant="outline" onClick={onShare} className="w-full gap-2 rounded-lg">
             <Share2 className="h-4 w-4" /> Share Project
           </Button>
         </div>
@@ -691,7 +876,7 @@ function ProjectTabs({ tab, onTab }: { tab: TabId; onTab: (t: TabId) => void }) 
 // ————————————————————————————————————————————————————————————
 // OVERVIEW TAB
 // ————————————————————————————————————————————————————————————
-function OverviewTab({ draft }: { draft: Draft }) {
+function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscussions: () => void }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       {/* About */}
@@ -813,23 +998,16 @@ function OverviewTab({ draft }: { draft: Draft }) {
         </ul>
       </Card>
 
-      {/* Project snapshots */}
-      <Card className="lg:col-span-2">
-        <CardTitle>Project Snapshots</CardTitle>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <SnapshotThumb key={i} idx={i} />
-          ))}
-        </div>
-      </Card>
-
       {/* Discussion preview */}
       <Card className="lg:col-span-3">
         <div className="flex items-center justify-between">
           <CardTitle icon={<MessageCircle className="h-4 w-4 text-violet-500" />}>
             Discussion Preview
           </CardTitle>
-          <button className="text-xs font-medium text-[var(--project-accent)]">
+          <button
+            onClick={onViewDiscussions}
+            className="text-xs font-medium text-[var(--project-accent)]"
+          >
             View all discussions →
           </button>
         </div>
@@ -923,14 +1101,145 @@ function ProbabilityRing({ value }: { value: number }) {
 // ————————————————————————————————————————————————————————————
 function DiscussionsTab() {
   const [filter, setFilter] = useState("All");
+  const [sortBy, setSortBy] = useState<"Latest" | "Most Upvoted" | "Most Replies">("Latest");
+  const [newDiscussionOpen, setNewDiscussionOpen] = useState(false);
+  const [discussions, setDiscussions] = useState(DISCUSSIONS);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+
+  // New discussion form state
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [newTag, setNewTag] = useState<(typeof DISCUSSION_TAGS)[number]>("Idea");
+
+  const tagToneMap: Record<string, string> = {
+    Idea: "violet",
+    Problem: "rose",
+    Question: "amber",
+    General: "sky",
+  };
+
+  const handleSubmitDiscussion = () => {
+    if (!newTitle.trim() || !newBody.trim()) {
+      toast.error("Please fill in both the title and description.");
+      return;
+    }
+    setDiscussions((prev) => [
+      {
+        tag: newTag,
+        tagTone: tagToneMap[newTag],
+        title: newTitle.trim(),
+        body: newBody.trim(),
+        author: "You",
+        replies: 0,
+        comments: 0,
+        upvotes: 0,
+        time: "just now",
+      },
+      ...prev,
+    ]);
+    toast.success("Discussion posted!");
+    setNewTitle("");
+    setNewBody("");
+    setNewTag("Idea");
+    setNewDiscussionOpen(false);
+  };
+
+  const visibleSuggestions = showAllSuggestions ? AI_SUGGESTIONS : AI_SUGGESTIONS.slice(0, 3);
+
+  // Normalise filter: tabs say "Ideas" but tags are "Idea" etc.
+  const tagFromFilter: Record<string, string> = {
+    Ideas: "Idea",
+    Problems: "Problem",
+    Questions: "Question",
+    General: "General",
+  };
+
+  const filtered =
+    filter === "All"
+      ? discussions
+      : discussions.filter((d) => d.tag === (tagFromFilter[filter] ?? filter));
+
+  const filteredDiscussions = [...filtered].sort((a, b) => {
+    if (sortBy === "Most Upvoted") return b.upvotes - a.upvotes;
+    if (sortBy === "Most Replies") return b.replies - a.replies;
+    // "Latest" — keep insertion order (newest first already since new posts are prepended)
+    return 0;
+  });
+
   return (
+    <>
+      {/* New Discussion Dialog */}
+      <Dialog open={newDiscussionOpen} onOpenChange={setNewDiscussionOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Start a Discussion</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-4">
+            {/* Tag selector */}
+            <div className="flex flex-wrap gap-2">
+              {DISCUSSION_TAGS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setNewTag(t)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    newTag === t
+                      ? "bg-[var(--project-accent)]/15 text-[var(--project-accent)] ring-1 ring-[var(--project-accent)]/30"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <Input
+              placeholder="Discussion title..."
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+            />
+            <Textarea
+              placeholder="Share your idea, problem, or question..."
+              rows={4}
+              value={newBody}
+              onChange={(e) => setNewBody(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNewDiscussionOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                onClick={handleSubmitDiscussion}
+              >
+                <Send className="h-4 w-4" /> Post Discussion
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Card>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-base font-semibold">All Discussions</h3>
-          <button className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            Sort by: Latest <ChevronDown className="h-3 w-3" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                Sort by: {sortBy} <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {(["Latest", "Most Upvoted", "Most Replies"] as const).map((opt) => (
+                <DropdownMenuItem
+                  key={opt}
+                  onClick={() => setSortBy(opt)}
+                  className={sortBy === opt ? "font-medium text-[var(--project-accent)]" : ""}
+                >
+                  {sortBy === opt && <Check className="mr-2 h-3 w-3" />}
+                  {opt}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {["All", "Ideas", "Problems", "Questions", "General"].map((f) => (
@@ -948,9 +1257,15 @@ function DiscussionsTab() {
           ))}
         </div>
         <div className="mt-4 space-y-2.5">
-          {DISCUSSIONS.map((d) => (
-            <DiscussionRow key={d.title} d={d} />
-          ))}
+          {filteredDiscussions.length > 0 ? (
+            filteredDiscussions.map((d) => (
+              <DiscussionRow key={d.title + d.time} d={d} />
+            ))
+          ) : (
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              No discussions in this category yet.
+            </p>
+          )}
         </div>
       </Card>
 
@@ -960,7 +1275,10 @@ function DiscussionsTab() {
           <p className="mt-2 text-xs text-muted-foreground">
             Share your ideas, ask questions or discuss how we can revive this project.
           </p>
-          <Button className="mt-3 w-full gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+          <Button
+            className="mt-3 w-full gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+            onClick={() => setNewDiscussionOpen(true)}
+          >
             <Plus className="h-4 w-4" /> Write something...
           </Button>
         </Card>
@@ -968,19 +1286,19 @@ function DiscussionsTab() {
         <Card>
           <CardTitle icon={<Sparkles className="h-4 w-4 text-violet-500" />}>AI Suggestions</CardTitle>
           <ul className="mt-3 space-y-2.5 text-xs text-muted-foreground">
-            {[
-              "Improve state management using Zustand or Redux Toolkit.",
-              "Add dark mode to enhance user experience.",
-              "Fix dashboard responsiveness on mobile devices.",
-            ].map((s) => (
+            {visibleSuggestions.map((s) => (
               <li key={s} className="flex items-start gap-2">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--project-accent)]" />
                 <span>{s}</span>
               </li>
             ))}
           </ul>
-          <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--project-accent)]">
-            View more suggestions <ArrowRight className="h-3 w-3" />
+          <button
+            onClick={() => setShowAllSuggestions((prev) => !prev)}
+            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--project-accent)]"
+          >
+            {showAllSuggestions ? "Show fewer" : "View more suggestions"}{" "}
+            <ArrowRight className={`h-3 w-3 transition-transform ${showAllSuggestions ? "rotate-90" : ""}`} />
           </button>
 
           {/* AI orb decoration */}
@@ -993,6 +1311,7 @@ function DiscussionsTab() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1053,7 +1372,7 @@ function DiscussionRow({ d }: { d: (typeof DISCUSSIONS)[number] }) {
 // ————————————————————————————————————————————————————————————
 // CONTRIBUTORS TAB
 // ————————————————————————————————————————————————————————————
-function ContributorsTab() {
+function ContributorsTab({ onApply }: { onApply: (role: string) => void }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
       {/* Core team */}
@@ -1155,6 +1474,7 @@ function ContributorsTab() {
               </div>
               <Button
                 size="sm"
+                onClick={() => onApply(p.role)}
                 className="mt-2 h-7 w-full rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[11px] text-white"
               >
                 Apply
@@ -1199,6 +1519,7 @@ function ContributorsTab() {
               </div>
               <Button
                 size="sm"
+                onClick={() => onApply(`Contribution: ${o.title}`)}
                 className="h-7 w-full rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[11px] text-white"
               >
                 Claim

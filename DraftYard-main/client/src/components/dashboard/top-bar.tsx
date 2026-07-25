@@ -53,15 +53,12 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
   const [unread, setUnread] = useState(NOTIFICATIONS.length);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const displayName = user?.name || "there";
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((p) => p[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "DY";
+  const displayName = user?.name || user?.email?.split("@")[0] || "there";
+  const initials = user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : user?.name
+      ? user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+      : "DY";
 
   useEffect(() => {
     const h = new Date().getHours();

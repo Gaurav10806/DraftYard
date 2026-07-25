@@ -18,14 +18,11 @@ export function SiteHeader() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((p) => p[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "DY";
+  const initials = user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : user?.name
+      ? user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+      : "DY";
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur">
