@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Info } from "lucide-react";
 
@@ -50,16 +50,15 @@ function hexPoints(cx: number, cy: number, r: number) {
   return pts.join(" ");
 }
 
-export function ProjectCompass() {
-  const [focus, setFocus] = useState<Pole>("Build");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("compassFocus") as Pole | null;
-    if (stored && POLES.includes(stored)) setFocus(stored);
-  }, []);
-
+export function ProjectCompass({
+  focus,
+  onFocusChange,
+}: {
+  focus: Pole;
+  onFocusChange: (p: Pole) => void;
+}) {
   const setPole = (p: Pole) => {
-    setFocus(p);
+    onFocusChange(p);
     localStorage.setItem("compassFocus", p);
   };
 

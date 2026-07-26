@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { ActiveDraftCard } from "@/components/dashboard/active-draft-card";
 import { ProjectCompass } from "@/components/dashboard/project-compass";
-import { OpenQuestions } from "@/components/dashboard/open-questions";
+import { CompassFeed, type CompassMode } from "@/components/dashboard/compass-feed";
 import { DraftShelf } from "@/components/dashboard/draft-shelf";
-import { QuickActions } from "@/components/dashboard/quick-actions";
+import { WeeklyChallenge } from "@/components/dashboard/weekly-challenge";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export const Route = createFileRoute("/dashboard")({
@@ -29,12 +30,24 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
+const POLES = ["Explore", "Learn", "Build", "Collaborate", "Publish"] as const;
+
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
   show: { opacity: 1, y: 0 },
 };
 
 function Dashboard() {
+  const [compassFocus, setCompassFocus] = useState<CompassMode>("Build");
+
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("compassFocus") as CompassMode | null;
+    if (stored && (POLES as readonly string[]).includes(stored)) {
+      setCompassFocus(stored);
+    }
+  }, []);
+
   return (
     <ProtectedRoute>
       <SidebarProvider>
@@ -68,13 +81,13 @@ function Dashboard() {
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <ProjectCompass />
+                  <ProjectCompass focus={compassFocus} onFocusChange={setCompassFocus} />
                 </motion.div>
                 <motion.div
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <OpenQuestions />
+                  <CompassFeed mode={compassFocus} />
                 </motion.div>
               </div>
 
@@ -84,7 +97,7 @@ function Dashboard() {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               >
                 <DraftShelf />
-                <QuickActions />
+                <WeeklyChallenge />
               </motion.div>
             </motion.main>
           </SidebarInset>
