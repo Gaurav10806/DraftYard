@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const signToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const signToken = (userId, role) =>
+  jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
 // POST /api/auth/register
 const register = async (req, res) => {
@@ -25,7 +25,7 @@ const register = async (req, res) => {
     }
 
     const user = await User.create({ name: name.trim(), email, password });
-    const token = signToken(user._id);
+    const token = signToken(user._id, user.role);
 
     res.status(201).json({ token, user });
   } catch (err) {
@@ -52,7 +52,7 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user._id, user.role);
     res.json({ token, user });
   } catch (err) {
     res.status(400).json({ error: err.message });

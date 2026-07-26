@@ -1,3 +1,4 @@
+console.log("🚀 draftRoutes.js loaded");
 const express = require('express');
 const router = express.Router();
 const Draft = require('../models/draft');
@@ -20,14 +21,18 @@ const optionalAuth = async (req, res, next) => {
 
 // POST /api/draft
 router.post('/draft', optionalAuth, async (req, res) => {
+  console.log("POST /api/draft hit");
   try {
     const body = { ...req.body };
     // If the caller is authenticated, link the draft to their account
     if (req.user) body.submittedBy = req.user._id;
     const draft = new Draft(body);
-    await draft.save();
+await draft.save();
 
-    res.status(201).json(draft);
+console.log("Saved Draft:", draft);
+console.log("Collection:", Draft.collection.name);
+
+res.status(201).json(draft);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

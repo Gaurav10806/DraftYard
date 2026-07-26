@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import {
   Boxes,
   Rss,
@@ -28,16 +29,23 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-const primary = [
+const primaryBase = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Workspace", url: "/workspace", icon: Boxes },
   { title: "DraftYard Feed", url: "/feed", icon: Rss },
-  { title: "Insights", url: "/insights-lab", icon: BarChart2 },
   { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
   { title: "Idea Review", url: "/idea-review", icon: ClipboardCheck },
   { title: "AI Assistant", url: "/ai-assistant", icon: Bot },
   { title: "Profile", url: "/profile", icon: UserCircle },
   { title: "Settings", url: "/settings", icon: Settings },
+];
+
+const adminOnlyItems = [
+  { title: "Insights", url: "/insights-lab", icon: BarChart2, adminOnly: true },
+];
+
+const userOnlyItems = [
+  { title: "Your Insights", url: "/insights", icon: BarChart2, userOnly: true },
 ];
 
 export function AppSidebar() {
@@ -46,6 +54,25 @@ export function AppSidebar() {
   const pathname = useRouterState({
     select: (r) => r.location.pathname,
   });
+  const { user } = useAuth();
+
+  // Build menu based on user role
+  let primary = [...primaryBase];
+  if (user?.role === "admin") {
+    // Insert admin insights after feed
+    primary = [
+      ...primary.slice(0, 3),
+      ...adminOnlyItems,
+      ...primary.slice(3),
+    ];
+  } else {
+    // Insert user insights after feed
+    primary = [
+      ...primary.slice(0, 3),
+      ...userOnlyItems,
+      ...primary.slice(3),
+    ];
+  }
 
   return (
     <Sidebar collapsible="icon">

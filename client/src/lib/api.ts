@@ -257,3 +257,35 @@ export async function updateUserProfile(data: Partial<UserProfile>): Promise<Use
   }
   return res.json();
 }
+
+// ===== User Insights =====
+
+export type UserInsightsData = {
+  healthScore: number;
+  stallRisk: number;
+  completionProbability: number;
+  improvements: Array<{
+    label: string;
+    impact: string;
+    description: string;
+  }>;
+  similarProjects: Array<{
+    name: string;
+    success: boolean;
+    timeToCompletion?: string;
+    reason?: string;
+  }>;
+  revivalPotential: number;
+  totalDrafts: number;
+};
+
+export async function fetchUserInsights(): Promise<UserInsightsData> {
+  const res = await fetch(`${API_BASE}/user/insights`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to load user insights");
+  }
+  return res.json();
+}

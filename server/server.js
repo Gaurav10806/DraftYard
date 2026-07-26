@@ -17,10 +17,17 @@ app.use(express.json());
 const draftRoutes = require("./routes/draftRoutes");
 const authRoutes = require("./routes/authRoutes");
 const workspaceRoutes = require("./routes/workspaceRoutes");
+const userRoutes = require("./routes/userRoutes");
+
+app.use("/api", (req, res, next) => {
+  console.log(req.method, req.originalUrl);
+  next();
+});
 
 app.use("/api", draftRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", workspaceRoutes);
+app.use("/api", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("DraftYard API is running 🚀");

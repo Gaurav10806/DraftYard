@@ -30,6 +30,6 @@ const draftSchema = new mongoose.Schema({
     ],
     default: [],
   },
-}, { timestamps: true, collection: 'burials' });
+}, { timestamps: true, collection: 'drafts' });
 
-module.exports = mongoose.model('Draft', draftSchema, 'burials');
+module.exports = mongoose.model('Draft', draftSchema, 'drafts');

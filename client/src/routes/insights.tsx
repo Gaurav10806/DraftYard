@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchMyDrafts, updateDraftInsights, type Draft } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { UserInsights } from "@/pages/UserInsights";
 
 export const Route = createFileRoute("/insights")({
   head: () => ({
@@ -28,8 +30,34 @@ export const Route = createFileRoute("/insights")({
       },
     ],
   }),
-  component: Insights,
+  component: InsightsPage,
 });
+
+function InsightsPage() {
+  const { user, isLoading } = useAuth();
+
+  // Show loading state while user data is being fetched
+  if (isLoading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background text-foreground">
+          <AppSidebar />
+          <SidebarInset className="flex min-w-0 flex-1 flex-col items-center justify-center">
+            <div className="text-muted-foreground">Loading...</div>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  // Route to appropriate insights page based on user role
+  if (user?.role === "user") {
+    return <UserInsights />;
+  }
+
+  // Default to admin insights (for admin role or no role specified)
+  return <Insights />;
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },

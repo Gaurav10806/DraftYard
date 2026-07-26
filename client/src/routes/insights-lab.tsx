@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
+import { Loader2 } from "lucide-react";
 import {
   ChevronRight,
   Sparkles,
@@ -71,8 +73,38 @@ export const Route = createFileRoute("/insights-lab")({
       },
     ],
   }),
-  component: InsightsLabPage,
+  component: InsightsLabPageWrapper,
 });
+
+// Wrapper component to handle admin check
+function InsightsLabPageWrapper() {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background text-foreground">
+          <AppSidebar />
+          <SidebarInset className="flex min-w-0 flex-1 flex-col items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  // Redirect non-admins to regular insights
+  if (user?.role !== "admin") {
+    // Redirect to /insights which will show User Insights
+    navigate({ to: "/insights" });
+    return null;
+  }
+
+  // Render admin insights page
+  return <InsightsLabPage />;
+}
 
 const TABS = ["Overview", "Technology", "Stall DNA", "Revival Analytics", "Predictions"] as const;
 type Tab = (typeof TABS)[number];
