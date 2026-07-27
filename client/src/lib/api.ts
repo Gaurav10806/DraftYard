@@ -258,6 +258,141 @@ export async function updateUserProfile(data: Partial<UserProfile>): Promise<Use
   return res.json();
 }
 
+export async function fetchUserProfile(): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/user/profile`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch user profile");
+  }
+  return res.json();
+}
+
+// ===== Follow / Unfollow =====
+
+export type PublicUser = {
+  _id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  bio?: string;
+};
+
+export async function followUser(userId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/user/follow/${userId}`, {
+    method: "POST",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to follow user");
+  }
+}
+
+export async function unfollowUser(userId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/user/unfollow/${userId}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to unfollow user");
+  }
+}
+
+export async function fetchFollowers(): Promise<PublicUser[]> {
+  const res = await fetch(`${API_BASE}/user/followers`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch followers");
+  return res.json();
+}
+
+export async function fetchFollowing(): Promise<PublicUser[]> {
+  const res = await fetch(`${API_BASE}/user/following`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch following");
+  return res.json();
+}
+
+export async function searchUsers(query: string): Promise<PublicUser[]> {
+  const res = await fetch(`${API_BASE}/users/search?query=${encodeURIComponent(query)}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to search users");
+  return res.json();
+}
+
+export async function fetchUserSuggestions(): Promise<PublicUser[]> {
+  const res = await fetch(`${API_BASE}/users/suggestions`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch user suggestions");
+  return res.json();
+}
+
+// ===== Skills =====
+
+export async function addSkill(skill: string): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/user/skills`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify({ skill }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to add skill");
+  }
+  return res.json();
+}
+
+export async function removeSkill(skill: string): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/user/skills`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    body: JSON.stringify({ skill }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to remove skill");
+  }
+  return res.json();
+}
+
+// ===== Collaborations =====
+
+export async function joinCollaboration(draftId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/collaborate`, {
+    method: "POST",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to join collaboration");
+  }
+}
+
+export async function leaveCollaboration(draftId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/collaborate`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to leave collaboration");
+  }
+}
+
+export async function fetchUserCollaborations(): Promise<Draft[]> {
+  const res = await fetch(`${API_BASE}/user/collaborations`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch collaborations");
+  return res.json();
+}
 // ===== User Insights =====
 
 export type UserInsightsData = {

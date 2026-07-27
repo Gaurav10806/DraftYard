@@ -24,6 +24,11 @@ const userSchema = new mongoose.Schema(
     github: { type: String, default: '' },
     linkedin: { type: String, default: '' },
     portfolio: { type: String, default: '' },
+    skills: { type: [String], default: [] },
+
+// Social connections
+followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   },
   { timestamps: true }
 );
