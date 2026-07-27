@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { matchIdea, getIdeaAnalysis, type DraftMatch, type AiIdeaAnalysis } from "@/lib/api";
 
 export const Route = createFileRoute("/idea-review")({
   head: () => ({
@@ -95,6 +96,10 @@ type Report = {
   verdict: Verdict;
   summary: string;
   community: CommunityInsights | null;
+  matches: DraftMatch[];
+  matchError: string | null;
+  aiAnalysisUsed: boolean;
+  aiAnalysisError: string | null;
   metrics: {
     feasibility: { label: Level; note: string };
     competition: { label: Level; note: string };
@@ -140,15 +145,25 @@ function saveReports(list: Report[]) {
   }
 }
 
-function generateReport(form: FormState): Report {
+function generateReport(
+  form: FormState,
+  matches: DraftMatch[],
+  matchError: string | null,
+  aiAnalysis: AiIdeaAnalysis | null,
+  aiAnalysisError: string | null,
+): Report {
   const seed =
     (form.name + form.pitch + form.context).split("").reduce((a, c) => a + c.charCodeAt(0), 0) || 42;
-  const score = 68 + (seed % 27);
+  const fallbackScore = 68 + (seed % 27);
+  const score = aiAnalysis?.score ?? fallbackScore;
   const verdict: Verdict =
-    score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider";
+    aiAnalysis?.verdict ??
+    (score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider");
 
-  // Simulate DB match: hide community if seed is very small (rare)
-  const hasCommunity = seed % 7 !== 0;
+  // Community insights (outcomes donut, stopping points, etc.) are still
+  // simulated below — only the matched-drafts list is real. Base the
+  // on/off toggle on whether we actually found any real matches.
+  const hasCommunity = matches.length > 0;
 
   const community: CommunityInsights | null = hasCommunity
     ? {
@@ -192,46 +207,59 @@ function generateReport(form: FormState): Report {
     score,
     verdict,
     summary:
-      hasCommunity
+      aiAnalysis?.summary ??
+      (hasCommunity
         ? "Strong potential based on community data and AI analysis. Focus on a lean MVP first."
-        : "No similar DraftYard projects were found. This analysis is based on market research and AI reasoning.",
+        : "No similar DraftYard projects were found. This analysis is based on market research and AI reasoning."),
     community,
-    metrics: {
-      feasibility: {
-        label: score >= 78 ? "High" : "Medium",
-        note: "Can be built in 2–3 months with the right stack.",
-      },
-      competition: {
-        label: score % 2 === 0 ? "Medium" : "High",
-        note: "Some competitors exist, but room for personalization.",
-      },
-      complexity: {
-        label: score >= 82 ? "Medium" : "High",
-        note: "AI integration and user retention are key challenges.",
-      },
-      scalability: {
-        label: "High",
-        note: "Strong scalability with cloud and modular architecture.",
-      },
-      market: {
-        headline: "$25.7B by 2030",
-        note: "The global AI in education market is projected to grow at 45% CAGR.",
-      },
-    },
-    recommendations: [
+    matches,
+    matchError,
+    aiAnalysisUsed: Boolean(aiAnalysis),
+    aiAnalysisError,
+    metrics: aiAnalysis
+      ? {
+          feasibility: aiAnalysis.feasibility,
+          competition: aiAnalysis.competition,
+          complexity: aiAnalysis.complexity,
+          scalability: aiAnalysis.scalability,
+          market: aiAnalysis.market,
+        }
+      : {
+          feasibility: {
+            label: score >= 78 ? "High" : "Medium",
+            note: "Can be built in 2–3 months with the right stack.",
+          },
+          competition: {
+            label: score % 2 === 0 ? "Medium" : "High",
+            note: "Some competitors exist, but room for personalization.",
+          },
+          complexity: {
+            label: score >= 82 ? "Medium" : "High",
+            note: "AI integration and user retention are key challenges.",
+          },
+          scalability: {
+            label: "High",
+            note: "Strong scalability with cloud and modular architecture.",
+          },
+          market: {
+            headline: "$25.7B by 2030",
+            note: "The global AI in education market is projected to grow at 45% CAGR.",
+          },
+        },
+    recommendations: aiAnalysis?.recommendations ?? [
       "Start with a lean MVP: AI planner + progress tracking",
       "Focus on student retention with daily value delivery",
       "Limit AI usage and optimize for low cost",
       "Validate with 20–30 users before expanding features",
     ],
-    stack: {
+    stack: aiAnalysis?.techStack ?? {
       frontend: "React",
       backend: "Node.js",
       database: "MongoDB",
       ai: "OpenAI API",
       hosting: "Vercel",
     },
-    roadmap: [
+    roadmap: aiAnalysis?.roadmap ?? [
       { week: "Week 1", label: "Research" },
       { week: "Week 2", label: "UI/UX Design" },
       { week: "Week 3–4", label: "Backend Setup" },
@@ -240,9 +268,10 @@ function generateReport(form: FormState): Report {
       { week: "Week 8", label: "Launch MVP" },
     ],
     finalNote:
-      hasCommunity
+      aiAnalysis?.finalNote ??
+      (hasCommunity
         ? "This idea has strong potential based on real-world data and AI insights."
-        : "This idea shows promise based on AI market analysis. Validate with real users early.",
+        : "This idea shows promise based on AI market analysis. Validate with real users early."),
   };
 }
 
@@ -287,8 +316,48 @@ function IdeaReviewShell() {
   async function handleAnalyze() {
     if (!form.pitch.trim() || !form.context.trim()) return;
     setAnalyzing(true);
-    await new Promise((r) => setTimeout(r, 1600));
-    const report = generateReport(form);
+    let matches: DraftMatch[] = [];
+    let matchError: string | null = null;
+    try {
+      const result = await matchIdea({
+        projectName: form.name,
+        pitch: form.pitch,
+        context: form.context,
+      });
+      // Rank by priority first, then raw similarity, so a "High" 20%
+      // match always sits above a "Medium" 19.9% edge case.
+      const priorityRank = { High: 0, Medium: 1, Low: 2 } as const;
+      matches = [...result.matches].sort(
+        (a, b) => priorityRank[a.priority] - priorityRank[b.priority] || b.similarity - a.similarity,
+      );
+    } catch (err) {
+      console.error("Idea matching failed:", err);
+      // Surface this distinctly from "found zero matches" — an empty
+      // list here should never be visually indistinguishable from a
+      // failed request, or debugging becomes guesswork.
+      matchError = err instanceof Error ? err.message : "Couldn't reach the matching service.";
+    }
+
+    // No DraftYard drafts resemble this idea, so there's no community
+    // data to lean on — ask a real LLM to analyze the idea directly
+    // instead of falling back to simulated numbers.
+    let aiAnalysis: AiIdeaAnalysis | null = null;
+    let aiAnalysisError: string | null = null;
+    if (matches.length === 0) {
+      try {
+        aiAnalysis = await getIdeaAnalysis({
+          projectName: form.name,
+          pitch: form.pitch,
+          context: form.context,
+        });
+      } catch (err) {
+        console.error("AI analysis failed:", err);
+        aiAnalysisError =
+          err instanceof Error ? err.message : "Couldn't reach the AI analysis service.";
+      }
+    }
+
+    const report = generateReport(form, matches, matchError, aiAnalysis, aiAnalysisError);
     const next = [report, ...reports];
     persist(next);
     setActiveId(report.id);
@@ -567,7 +636,7 @@ function ReportView({ report }: { report: Report }) {
             <MetaRow
               icon={<Radar className="h-4 w-4" />}
               label="Analysis Type"
-              value={report.community ? "AI + Community" : "AI only"}
+              value={report.community ? "AI + Community" : report.aiAnalysisUsed ? "Live AI" : "AI only"}
             />
             <MetaRow
               icon={<Layers3 className="h-4 w-4" />}
@@ -596,12 +665,8 @@ function ReportView({ report }: { report: Report }) {
         </div>
       </section>
 
-      {/* Community Insights */}
-      {report.community ? (
-        <CommunitySection c={report.community} />
-      ) : (
-        <NoCommunityBanner />
-      )}
+      {/* Matched Drafts (real DraftYard data) */}
+      <MatchedDraftsSection matches={report.matches} error={report.matchError} />
 
       {/* AI Analysis */}
       <section>
@@ -655,7 +720,7 @@ function ReportView({ report }: { report: Report }) {
       {/* Recommendations + Stack + Roadmap */}
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)]">
         <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
-          <SectionHeading number={3} icon={<Lightbulb className="h-4 w-4" />} title="AI Recommendations" />
+          <SectionHeading number={2} icon={<Lightbulb className="h-4 w-4" />} title="AI Recommendations" />
           <ul className="mt-4 space-y-2.5 text-sm">
             {report.recommendations.map((r) => (
               <li key={r} className="flex items-start gap-2 text-foreground/85">
@@ -742,292 +807,142 @@ function ReportView({ report }: { report: Report }) {
   );
 }
 
-// ---------------- Community section ----------------
+// ---------------- Matched Drafts (real backend matching) ----------------
 
-function CommunitySection({ c }: { c: CommunityInsights }) {
-  const mvpPct = Math.round(((c.outcomes.completed + c.outcomes.active) / c.similarCount) * 100);
-  const topStackCount = Math.round((c.topStack[0]?.pct ?? 0) / 100 * c.similarCount);
+const PRIORITY_STYLES: Record<
+  DraftMatch["priority"],
+  { chip: string; bar: string }
+> = {
+  High: {
+    chip: "bg-emerald-500/12 text-emerald-500 border-emerald-500/25",
+    bar: "bg-emerald-500",
+  },
+  Medium: {
+    chip: "bg-primary/12 text-primary border-primary/25",
+    bar: "bg-primary",
+  },
+  Low: {
+    chip: "bg-muted text-muted-foreground border-border",
+    bar: "bg-muted-foreground/50",
+  },
+};
+
+function MatchedDraftsSection({ matches, error }: { matches: DraftMatch[]; error: string | null }) {
+  if (error) {
+    return (
+      <section className="rounded-2xl border border-dashed border-rose-500/40 bg-rose-500/5 p-6 text-center">
+        <p className="font-display text-base font-semibold text-rose-500">
+          Couldn't check for matching drafts.
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {error} — this is not the same as "no matches found." Check that the ML backend is
+          running and reachable, then try again.
+        </p>
+      </section>
+    );
+  }
+
+  if (matches.length === 0) {
+    return (
+      <section className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
+        <p className="font-display text-base font-semibold text-foreground">
+          No matching drafts found on DraftYard.
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Nothing in the community database — even loosely — resembles this idea yet.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section>
       <SectionTitle
         number={1}
-        title="DraftYard Insights"
-        subtitle="Real-world insights from similar DraftYard projects."
+        title="Matching Drafts"
+        subtitle={`${matches.length} draft${matches.length === 1 ? "" : "s"} on DraftYard resemble this idea, ranked by priority.`}
       />
-
-      {/* Row 1 — Outcomes + Stopping Points */}
-      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <CommunityCard title="Project Outcomes">
-          <div className="mt-1 flex items-center gap-5">
-            <OutcomeDonut
-              completed={c.outcomes.completed}
-              active={c.outcomes.active}
-              abandoned={c.outcomes.abandoned}
-            />
-            <ul className="space-y-2 text-xs">
-              <LegendDot color="#22C55E" label="Completed" value={c.outcomes.completed} total={c.similarCount} />
-              <LegendDot color="#7C5CFF" label="Active" value={c.outcomes.active} total={c.similarCount} />
-              <LegendDot color="#EF4444" label="Abandoned" value={c.outcomes.abandoned} total={c.similarCount} />
-            </ul>
-          </div>
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
-            <span className="font-display text-lg font-semibold text-primary">{mvpPct}%</span>
-            <span className="text-[11px] text-muted-foreground">reached at least MVP</span>
-          </div>
-        </CommunityCard>
-
-        <CommunityCard title="Common Stopping Points">
-          <ul className="mt-1 space-y-3">
-            {c.stoppingPoints.map((s) => (
-              <li key={s.label}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-foreground/80">{s.label}</span>
-                  <span className="font-medium text-muted-foreground">{s.pct}%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary/80"
-                    style={{ width: `${Math.min(100, s.pct * 3)}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </CommunityCard>
-      </div>
-
-      {/* Row 2 — What Worked + Common Mistakes */}
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <CommunityCard title="What Worked">
-          <ul className="mt-1 space-y-2.5 text-sm">
-            {c.successPatterns.map((p) => (
-              <li key={p} className="flex items-start gap-2 text-foreground/85">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                <span>{p}</span>
-              </li>
-            ))}
-          </ul>
-        </CommunityCard>
-
-        <CommunityCard title="Common Mistakes">
-          <ul className="mt-1 space-y-2.5 text-sm">
-            {c.failurePatterns.map((p) => (
-              <li key={p} className="flex items-start gap-2 text-foreground/85">
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                <span>{p}</span>
-              </li>
-            ))}
-          </ul>
-        </CommunityCard>
-      </div>
-
-      {/* Row 3 — Most Successful Tech Stack (full width) */}
-      <div className="mt-4">
-        <CommunityCard title="Most Successful Tech Stack">
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Technologies most common across shipped projects.
-          </p>
-          <div className="mt-4 grid grid-cols-6 gap-2.5">
-            {(
-              [
-                { name: "React", category: "Frontend", icon: "⚛️", span: 2 },
-                { name: "Node.js", category: "Backend", icon: "🟢", span: 2 },
-                { name: "MongoDB", category: "Database", icon: "🍃", span: 2 },
-                { name: "Gemini API", category: "AI", icon: "✨", span: 3 },
-                { name: "Vercel", category: "Hosting", icon: "▲", span: 3 },
-              ] as const
-            ).map((t) => (
-              <div
-                key={t.name}
-                className={`flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/40 px-3 py-2 shadow-sm transition hover:border-primary/40 ${t.span === 3 ? "col-span-3" : "col-span-2"}`}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-base">
-                  {t.icon}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">{t.name}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    {t.category}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3.5 text-[11px] text-muted-foreground">
-            Used by {topStackCount} of the {c.similarCount} successful projects.
-          </p>
-        </CommunityCard>
-      </div>
-    </section>
-  );
-}
-
-// ---------------- Similar Projects ----------------
-
-type SimilarStatus = "Completed" | "Active" | "Abandoned";
-
-type SimilarProject = {
-  name: string;
-  status: SimilarStatus;
-  completion: number;
-  summary: string;
-  learning: string;
-};
-
-const SIMILAR_POOL: SimilarProject[] = [
-  {
-    name: "StudyPilot",
-    status: "Completed",
-    completion: 100,
-    summary: "AI planner that turns a syllabus into daily study blocks.",
-    learning: "A single-feature MVP shipped in 6 weeks drove first retention.",
-  },
-  {
-    name: "FocusForge",
-    status: "Active",
-    completion: 62,
-    summary: "Pomodoro + AI recap for solo student sessions.",
-    learning: "Adding AI recaps late kept scope tight and users engaged.",
-  },
-  {
-    name: "GradeGuru",
-    status: "Abandoned",
-    completion: 34,
-    summary: "Full LMS clone with AI tutoring, payments, and community.",
-    learning: "Trying to ship auth, payments and AI at once stalled progress.",
-  },
-  {
-    name: "PlanPal",
-    status: "Completed",
-    completion: 100,
-    summary: "Weekly study planner for CS undergrads with reminders.",
-    learning: "Picking one segment before building beat generic planners.",
-  },
-  {
-    name: "SyllabusAI",
-    status: "Active",
-    completion: 48,
-    summary: "Parses PDFs into structured study timelines.",
-    learning: "Caching parsed syllabi cut AI cost enough to keep going.",
-  },
-  {
-    name: "CramDeck",
-    status: "Abandoned",
-    completion: 22,
-    summary: "AI flashcard generator with spaced repetition and social feed.",
-    learning: "Social features pulled focus away from the core learning loop.",
-  },
-];
-
-function hashString(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h || 42;
-}
-
-function pickSimilar(seed: string): SimilarProject[] {
-  const h = hashString(seed);
-  const start = h % SIMILAR_POOL.length;
-  // Ensure a mix of statuses when possible: try to pick one of each.
-  const desired: SimilarStatus[] = ["Completed", "Active", "Abandoned"];
-  const picks: SimilarProject[] = [];
-  for (const status of desired) {
-    const candidates = SIMILAR_POOL.filter(
-      (p) => p.status === status && !picks.includes(p),
-    );
-    if (candidates.length) {
-      picks.push(candidates[(start + picks.length) % candidates.length]);
-    }
-  }
-  while (picks.length < 3) {
-    const cand = SIMILAR_POOL[(start + picks.length) % SIMILAR_POOL.length];
-    if (!picks.includes(cand)) picks.push(cand);
-  }
-  return picks.slice(0, 3);
-}
-
-const STATUS_STYLES: Record<
-  SimilarStatus,
-  { chip: string; bar: string; cta: string; ctaLabel: string; accent: string }
-> = {
-  Completed: {
-    chip: "bg-emerald-500/12 text-emerald-500 border-emerald-500/25",
-    bar: "bg-emerald-500",
-    cta: "bg-emerald-500 text-white hover:bg-emerald-500/90",
-    ctaLabel: "View Project",
-    accent: "from-emerald-500/12 to-transparent",
-  },
-  Active: {
-    chip: "bg-primary/12 text-primary border-primary/25",
-    bar: "bg-primary",
-    cta: "bg-primary text-primary-foreground hover:bg-primary/90",
-    ctaLabel: "Open Project",
-    accent: "from-primary/12 to-transparent",
-  },
-  Abandoned: {
-    chip: "bg-rose-500/12 text-rose-500 border-rose-500/25",
-    bar: "bg-rose-500",
-    cta: "bg-rose-500 text-white hover:bg-rose-500/90",
-    ctaLabel: "View Autopsy",
-    accent: "from-rose-500/12 to-transparent",
-  },
-};
-
-function SimilarProjectsSection({ seed }: { seed: string }) {
-  const projects = useMemo(() => pickSimilar(seed), [seed]);
-  return (
-    <section>
-      <SectionTitle
-        number={2}
-        title="Similar Projects"
-        subtitle="Projects in DraftYard with ideas most similar to yours."
-      />
-      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {projects.map((p) => {
-          const s = STATUS_STYLES[p.status];
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {matches.map((m) => {
+          const s = PRIORITY_STYLES[m.priority];
           return (
             <article
-              key={p.name}
+              key={m.id}
               className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_40px_-24px_rgba(124,92,255,0.35)]"
             >
-              <div
-                className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-to-br ${s.accent} blur-2xl`}
-                aria-hidden
-              />
               <div className="relative flex items-start justify-between gap-2">
-                <h4 className="font-display text-base font-semibold text-foreground">{p.name}</h4>
+                <h4 className="font-display text-base font-semibold text-foreground">
+                  {m.projectName}
+                </h4>
                 <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${s.chip}`}
+                  className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${s.chip}`}
                 >
-                  {p.status}
+                  {m.priority}
                 </span>
               </div>
 
               <div className="relative mt-4">
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Completion</span>
-                  <span className="font-medium text-foreground/80">{p.completion}%</span>
+                  <span>Match strength</span>
+                  <span className="font-medium text-foreground/80">{m.similarityPct}%</span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={`h-full rounded-full ${s.bar}`} style={{ width: `${p.completion}%` }} />
+                  <div
+                    className={`h-full rounded-full ${s.bar}`}
+                    style={{ width: `${Math.max(4, m.similarityPct)}%` }}
+                  />
                 </div>
               </div>
 
-              <p className="relative mt-4 text-sm text-foreground/85">{p.summary}</p>
+              <p className="relative mt-4 text-sm text-foreground/85">{m.oneLiner}</p>
 
-              <div className="relative mt-3 rounded-lg border border-border/70 bg-muted/40 p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Primary learning
-                </p>
-                <p className="mt-1 text-xs text-foreground/85">{p.learning}</p>
-              </div>
+              {m.matchedKeywords?.length > 0 && (
+                <div className="relative mt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Matched words
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {m.matchedKeywords.map((w) => (
+                      <span
+                        key={w}
+                        className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                      >
+                        {w}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              <div className="relative mt-4 flex justify-end">
+              {m.techStack.length > 0 && (
+                <div className="relative mt-3 flex flex-wrap gap-1.5">
+                  {m.techStack.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground/80"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {m.failureReason && (
+                <div className="relative mt-3 rounded-lg border border-border/70 bg-muted/40 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Why it stalled
+                  </p>
+                  <p className="mt-1 text-xs text-foreground/85">{m.failureReason}</p>
+                </div>
+              )}
+
+              <div className="relative mt-4 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>{m.currentStage}</span>
                 <button
                   type="button"
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${s.cta}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
                 >
-                  {s.ctaLabel}
+                  View Draft
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -1041,15 +956,27 @@ function SimilarProjectsSection({ seed }: { seed: string }) {
 
 
 
-function NoCommunityBanner() {
+function NoCommunityBanner({ used, error }: { used: boolean; error: string | null }) {
   return (
     <section className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
       <p className="font-display text-base font-semibold text-foreground">
         No similar DraftYard projects were found.
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        This analysis is based on market research and AI reasoning.
-      </p>
+      {used ? (
+        <p className="mt-1 text-sm text-muted-foreground">
+          The analysis below was generated live by AI for this specific idea, since there's no
+          community data to compare against.
+        </p>
+      ) : error ? (
+        <p className="mt-1 text-sm text-rose-500">
+          Couldn't reach the AI analysis service ({error}). Showing a generic estimate instead —
+          try again in a moment.
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-muted-foreground">
+          This analysis is based on market research and AI reasoning.
+        </p>
+      )}
     </section>
   );
 }

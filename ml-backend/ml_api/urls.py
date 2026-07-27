@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, analytics_views, stack_views, survival_views
+from . import views, analytics_views, stack_views, survival_views, idea_analysis_views, idea_match_views
 
 urlpatterns = [
     path("classify/", views.classify, name="classify"),
@@ -13,4 +13,6 @@ urlpatterns = [
     path("stack/<str:stack_name>/", stack_views.stack_insights, name="stack-insights"),
 
     path("survival-check/", survival_views.survival_check, name="survival-check"),
+    path("idea-analysis/", idea_analysis_views.idea_analysis),
+    path("idea-match/", idea_match_views.idea_match),
 ]

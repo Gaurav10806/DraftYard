@@ -289,3 +289,92 @@ export async function fetchUserInsights(): Promise<UserInsightsData> {
   }
   return res.json();
 }
+
+// ===== Idea Matching (Django ML backend) =====
+
+const ML_API_BASE = import.meta.env.VITE_ML_API_URL ?? "http://localhost:8000";
+
+export type DraftMatch = {
+  id: string;
+  projectName: string;
+  oneLiner: string;
+  domain: string;
+  techStack: string[];
+  currentStage: string;
+  failureReason: string;
+  similarity: number;
+  similarityPct: number;
+  priority: "High" | "Medium" | "Low";
+  matchedKeywords: string[];
+};
+
+export type IdeaMatchResult = {
+  query: string;
+  matchCount: number;
+  matches: DraftMatch[];
+};
+
+export async function matchIdea(input: {
+  projectName?: string;
+  pitch: string;
+  context: string;
+}): Promise<IdeaMatchResult> {
+  const res = await fetch(`${ML_API_BASE}/api/ml/idea-match/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to match idea against existing drafts");
+  }
+
+  return res.json();
+}
+
+// ===== AI Idea Analysis =====
+
+export type AiIdeaAnalysis = {
+  score: number;
+  verdict: "Worth Building" | "Needs Refinement" | "Reconsider";
+  summary: string;
+  feasibility: { label: "High" | "Medium" | "Low"; note: string };
+  competition: { label: "High" | "Medium" | "Low"; note: string };
+  complexity: { label: "High" | "Medium" | "Low"; note: string };
+  scalability: { label: "High" | "Medium" | "Low"; note: string };
+  market: { headline: string; note: string };
+  recommendations: string[];
+  techStack: {
+    frontend: string;
+    backend: string;
+    database: string;
+    ai: string;
+    hosting: string;
+  };
+  roadmap: {
+    week: string;
+    label: string;
+  }[];
+  finalNote: string;
+};
+
+export async function getIdeaAnalysis(input: {
+  projectName?: string;
+  pitch: string;
+  context: string;
+}): Promise<AiIdeaAnalysis> {
+  const res = await fetch(`${ML_API_BASE}/api/ml/idea-analysis/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to get AI analysis for this idea");
+  }
+
+  const data = await res.json();
+  return data.analysis;
+}
