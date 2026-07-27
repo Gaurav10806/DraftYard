@@ -32,4 +32,4 @@ def get_db():
 
 def get_burials_collection():
     """Mongoose model 'Burial' -> collection 'burials' by default pluralization."""
-    return get_db()["burials"]
+    return get_db()["drafts"]

@@ -12,9 +12,15 @@ How it works:
   (e.g. "invoicing", "aquarium") count for more.
 - Cosine similarity between the query's word-vector and a draft's
   word-vector is mathematically zero unless they share at least one
-  word — so a draft with zero shared words can never appear, and a
-  draft that shares several specific words ranks above one that only
-  shares one common word.
+  *exact* word — so on its own this would miss compound vocabulary
+  like "healthtech" when someone types "health".
+- To cover that, drafts with zero exact-word overlap get a second
+  pass: substring containment in either direction (query word inside
+  a draft word, or vice versa), for words long enough that the match
+  is meaningful (see MIN_SUBSTRING_LEN). These are weaker signals than
+  an exact shared word, so they're always bucketed "Low" priority via
+  a capped synthetic score, and the matched draft-side word is shown
+  so it's clear *why* it surfaced (e.g. "health" -> "healthtech").
 - No model training is required for this: TF-IDF is fit fresh on the
   current corpus + query on every request (this is fast even for
   thousands of drafts). If DraftYard's draft count grows very large,
@@ -35,6 +41,18 @@ MAX_MATCHES = 50
 # (highest TF-IDF weight first).
 MAX_KEYWORDS_SHOWN = 8
 
+# Minimum word length for substring (partial-word) matching. Below this,
+# containment checks throw up too much noise (e.g. "art" inside "start",
+# "smart", "cart" — all unrelated).
+MIN_SUBSTRING_LEN = 4
+
+# Synthetic score for substring-only matches (no exact word shared).
+# Deliberately capped under the "Medium" threshold in _priority — a
+# partial-word hit is always a weaker signal than a real shared word,
+# so it should never outrank an exact-overlap match.
+SUBSTRING_SCORE_PER_WORD = 0.02
+SUBSTRING_SCORE_CAP = 0.10
+
 
 def _priority(score: float) -> str:
     """Bucket a raw TF-IDF cosine score into a priority label. These
@@ -46,6 +64,24 @@ def _priority(score: float) -> str:
     if score >= 0.12:
         return "Medium"
     return "Low"
+
+
+def _substring_overlap(query_words: set, draft_words: set) -> set:
+    """Words from `draft_words` that contain, or are contained in, some
+    word in `query_words` (excluding exact matches, which are already
+    handled by the TF-IDF pass). Returns the draft-side words so the
+    match reason stays human-readable, e.g. querying "health" against a
+    draft containing "healthtech" returns {"healthtech"}."""
+    hits = set()
+    for qw in query_words:
+        if len(qw) < MIN_SUBSTRING_LEN:
+            continue
+        for dw in draft_words:
+            if dw == qw or len(dw) < MIN_SUBSTRING_LEN:
+                continue
+            if qw in dw or dw in qw:
+                hits.add(dw)
+    return hits
 
 
 def _draft_text(doc: dict) -> str:
@@ -118,21 +154,30 @@ def idea_match(request):
     query_words = set(analyzer(query_text))
     vocab_idf = dict(zip(vectorizer.get_feature_names_out(), vectorizer.idf_))
 
-    ranked = sorted(
-        zip(docs, corpus_texts, similarities),
-        key=lambda triple: triple[2],
-        reverse=True,
-    )
-    # "Any shared word" is the filter — a similarity > 0 already means
-    # at least one non-stopword is shared between query and draft.
-    above_floor = [(d, t, s) for d, t, s in ranked if s > 0][:MAX_MATCHES]
+    # Build (doc, text, score, matched_keywords) for every draft: exact
+    # TF-IDF overlap where it exists, otherwise fall back to substring
+    # (partial-word) overlap with a capped synthetic score.
+    candidates = []
+    for d, text, s in zip(docs, corpus_texts, similarities):
+        draft_words = set(analyzer(text))
+        s = float(s)
+
+        if s > 0:
+            shared = draft_words & query_words
+            keywords = sorted(shared, key=lambda w: vocab_idf.get(w, 0), reverse=True)
+        else:
+            substring_hits = _substring_overlap(query_words, draft_words)
+            if not substring_hits:
+                continue  # zero exact overlap and zero substring overlap — not a match
+            s = min(SUBSTRING_SCORE_CAP, SUBSTRING_SCORE_PER_WORD * len(substring_hits))
+            keywords = sorted(substring_hits)
+
+        candidates.append((d, s, keywords[:MAX_KEYWORDS_SHOWN]))
+
+    ranked = sorted(candidates, key=lambda triple: triple[1], reverse=True)[:MAX_MATCHES]
 
     matches = []
-    for d, text, s in above_floor:
-        draft_words = set(analyzer(text))
-        shared = draft_words & query_words
-        top_shared = sorted(shared, key=lambda w: vocab_idf.get(w, 0), reverse=True)[:MAX_KEYWORDS_SHOWN]
-
+    for d, s, keywords in ranked:
         matches.append({
             "id": str(d.get("_id")),
             "projectName": "Anonymous submission" if d.get("isAnonymous") else d.get("projectName"),
@@ -141,10 +186,10 @@ def idea_match(request):
             "techStack": d.get("techStack", []),
             "currentStage": d.get("currentStage"),
             "failureReason": d.get("failureReason"),
-            "similarity": round(float(s), 4),
-            "similarityPct": round(float(s) * 100, 1),
-            "priority": _priority(float(s)),
-            "matchedKeywords": top_shared,
+            "similarity": round(s, 4),
+            "similarityPct": round(s * 100, 1),
+            "priority": _priority(s),
+            "matchedKeywords": keywords,
         })
 
     return Response({
