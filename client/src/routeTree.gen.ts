@@ -9,81 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WorkspaceRouteImport } from './routes/workspace'
-import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as NewDraftRouteImport } from './routes/new-draft'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as InsightsLabRouteImport } from './routes/insights-lab'
-import { Route as InsightsRouteImport } from './routes/insights'
-import { Route as IdeaReviewRouteImport } from './routes/idea-review'
-import { Route as FeedRouteImport } from './routes/feed'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WorkspaceSetupSlugRouteImport } from './routes/workspace-setup.$slug'
+import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FeedRouteImport } from './routes/feed'
+import { Route as IdeaReviewRouteImport } from './routes/idea-review'
+import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as InsightsLabRouteImport } from './routes/insights-lab'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as NewDraftRouteImport } from './routes/new-draft'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
+import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as ProjectSlugRouteImport } from './routes/project.$slug'
+import { Route as WorkspaceSetupSlugRouteImport } from './routes/workspace-setup.$slug'
 
-const WorkspaceRoute = WorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StackIntelligenceRoute = StackIntelligenceRouteImport.update({
-  id: '/stack-intelligence',
-  path: '/stack-intelligence',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewDraftRoute = NewDraftRouteImport.update({
-  id: '/new-draft',
-  path: '/new-draft',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InsightsLabRoute = InsightsLabRouteImport.update({
-  id: '/insights-lab',
-  path: '/insights-lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InsightsRoute = InsightsRouteImport.update({
-  id: '/insights',
-  path: '/insights',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IdeaReviewRoute = IdeaReviewRouteImport.update({
-  id: '/idea-review',
-  path: '/idea-review',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeedRoute = FeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiAssistantRoute = AiAssistantRouteImport.update({
@@ -91,19 +36,74 @@ const AiAssistantRoute = AiAssistantRouteImport.update({
   path: '/ai-assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkspaceSetupSlugRoute = WorkspaceSetupSlugRouteImport.update({
-  id: '/workspace-setup/$slug',
-  path: '/workspace-setup/$slug',
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IdeaReviewRoute = IdeaReviewRouteImport.update({
+  id: '/idea-review',
+  path: '/idea-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsLabRoute = InsightsLabRouteImport.update({
+  id: '/insights-lab',
+  path: '/insights-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewDraftRoute = NewDraftRouteImport.update({
+  id: '/new-draft',
+  path: '/new-draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StackIntelligenceRoute = StackIntelligenceRouteImport.update({
+  id: '/stack-intelligence',
+  path: '/stack-intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceRoute = WorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectSlugRoute = ProjectSlugRouteImport.update({
   id: '/project/$slug',
   path: '/project/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceSetupSlugRoute = WorkspaceSetupSlugRouteImport.update({
+  id: '/workspace-setup/$slug',
+  path: '/workspace-setup/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -240,88 +240,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/workspace': {
-      id: '/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof WorkspaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stack-intelligence': {
-      id: '/stack-intelligence'
-      path: '/stack-intelligence'
-      fullPath: '/stack-intelligence'
-      preLoaderRoute: typeof StackIntelligenceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new-draft': {
-      id: '/new-draft'
-      path: '/new-draft'
-      fullPath: '/new-draft'
-      preLoaderRoute: typeof NewDraftRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/insights-lab': {
-      id: '/insights-lab'
-      path: '/insights-lab'
-      fullPath: '/insights-lab'
-      preLoaderRoute: typeof InsightsLabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/insights': {
-      id: '/insights'
-      path: '/insights'
-      fullPath: '/insights'
-      preLoaderRoute: typeof InsightsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/idea-review': {
-      id: '/idea-review'
-      path: '/idea-review'
-      fullPath: '/idea-review'
-      preLoaderRoute: typeof IdeaReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/feed': {
-      id: '/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof FeedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-assistant': {
@@ -331,18 +254,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/workspace-setup/$slug': {
-      id: '/workspace-setup/$slug'
-      path: '/workspace-setup/$slug'
-      fullPath: '/workspace-setup/$slug'
-      preLoaderRoute: typeof WorkspaceSetupSlugRouteImport
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/idea-review': {
+      id: '/idea-review'
+      path: '/idea-review'
+      fullPath: '/idea-review'
+      preLoaderRoute: typeof IdeaReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights-lab': {
+      id: '/insights-lab'
+      path: '/insights-lab'
+      fullPath: '/insights-lab'
+      preLoaderRoute: typeof InsightsLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-draft': {
+      id: '/new-draft'
+      path: '/new-draft'
+      fullPath: '/new-draft'
+      preLoaderRoute: typeof NewDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stack-intelligence': {
+      id: '/stack-intelligence'
+      path: '/stack-intelligence'
+      fullPath: '/stack-intelligence'
+      preLoaderRoute: typeof StackIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace': {
+      id: '/workspace'
+      path: '/workspace'
+      fullPath: '/workspace'
+      preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/project/$slug': {
@@ -350,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/project/$slug'
       fullPath: '/project/$slug'
       preLoaderRoute: typeof ProjectSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace-setup/$slug': {
+      id: '/workspace-setup/$slug'
+      path: '/workspace-setup/$slug'
+      fullPath: '/workspace-setup/$slug'
+      preLoaderRoute: typeof WorkspaceSetupSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

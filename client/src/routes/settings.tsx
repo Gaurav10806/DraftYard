@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Camera,
   Save,
@@ -30,6 +31,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { fetchUserProfile, updateUserProfile } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("draftyard_token") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Helper: fetch a JSON file download and trigger browser save
+async function downloadJSON(url: string, filename: string) {
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Download failed");
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -159,12 +184,98 @@ function ActionRow({
 // ---------------- Page ----------------
 
 function SettingsPage() {
-  const [fullName, setFullName] = useState("Gaurav Soni");
-  const [username, setUsername] = useState("@gauravsoni");
-  const [bio, setBio] = useState(
-    "Full Stack Developer passionate about building products that solve real world problems.",
-  );
-  const [email, setEmail] = useState("gauravsoni10806@gmail.com");
+  const { user: authUser } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: userProfile, isLoading } = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: fetchUserProfile,
+    enabled: !!authUser,
+  });
+
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [email, setEmail] = useState("");
+
+  // Populate fields once profile loads
+  useEffect(() => {
+    if (userProfile) {
+      setFullName(userProfile.fullName || "");
+      setUsername(userProfile.username || "");
+      setBio(userProfile.bio || "");
+      setEmail((userProfile as any).email || authUser?.email || "");
+    }
+  }, [userProfile, authUser]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => updateUserProfile({ fullName, username, bio }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["user-profile"], updated);
+      toast.success("Profile updated successfully!");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const initials = fullName
+    ? fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : (email ? email[0].toUpperCase() : "U");
+
+  // Data & Privacy handlers
+  const [exporting, setExporting] = useState(false);
+  const [exportingProjects, setExportingProjects] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      await downloadJSON(`${API_BASE}/user/export`, "draftyard-my-data.json");
+      toast.success("Your data has been downloaded!");
+    } catch {
+      toast.error("Failed to export data. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDownloadProjects = async () => {
+    setExportingProjects(true);
+    try {
+      await downloadJSON(`${API_BASE}/user/export-projects`, "draftyard-my-projects.json");
+      toast.success("Your projects have been downloaded!");
+    } catch {
+      toast.error("Failed to download projects. Please try again.");
+    } finally {
+      setExportingProjects(false);
+    }
+  };
+
+  const handleClearAIChat = async () => {
+    setClearingChat(true);
+    try {
+      // Clear all AI chat keys from localStorage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes("ai-chat") || key.includes("aiChat") || key.includes("chat-history"))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+
+      // Also notify server
+      await fetch(`${API_BASE}/user/ai-chat-history`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      toast.success("AI chat history cleared!");
+    } catch {
+      toast.error("Failed to clear chat history.");
+    } finally {
+      setClearingChat(false);
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -188,13 +299,16 @@ function SettingsPage() {
               <div className="grid gap-6 lg:grid-cols-2">
                 {/* Profile Settings */}
                 <SectionCard title="Profile Settings">
+                  {isLoading ? (
+                    <div className="py-8 text-center text-sm text-muted-foreground">Loading profile...</div>
+                  ) : (
                   <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
                     <div className="flex flex-col items-center gap-3 sm:items-start">
                       <div className="relative">
                         <Avatar className="h-28 w-28 ring-4 ring-background">
                           <AvatarImage src="" alt={fullName} />
                           <AvatarFallback className="bg-primary/12 text-2xl font-semibold text-primary">
-                            GS
+                            {initials}
                           </AvatarFallback>
                         </Avatar>
                       </div>
@@ -212,6 +326,7 @@ function SettingsPage() {
                           id="fullName"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Your full name"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -222,6 +337,7 @@ function SettingsPage() {
                           id="username"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
+                          placeholder="your_username"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -234,6 +350,7 @@ function SettingsPage() {
                           value={bio}
                           onChange={(e) => setBio(e.target.value)}
                           className="resize-none"
+                          placeholder="Tell us about yourself..."
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -244,16 +361,25 @@ function SettingsPage() {
                           id="email"
                           type="email"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          disabled
+                          className="opacity-60 cursor-not-allowed"
                         />
+                        <p className="text-[11px] text-muted-foreground">Email cannot be changed.</p>
                       </div>
                       <div className="flex justify-end">
-                        <Button size="sm" className="gap-1.5">
-                          <Save className="h-3.5 w-3.5" /> Save Changes
+                        <Button
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => saveMutation.mutate()}
+                          disabled={saveMutation.isPending}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          {saveMutation.isPending ? "Saving..." : "Save Changes"}
                         </Button>
                       </div>
                     </div>
                   </div>
+                  )}
                 </SectionCard>
 
                 {/* Account */}
@@ -368,18 +494,21 @@ function SettingsPage() {
                   <div className="flex flex-col gap-1">
                     <ActionRow
                       icon={Download}
-                      title="Export My Data"
+                      title={exporting ? "Exporting..." : "Export My Data"}
                       description="Download all your data"
+                      onClick={handleExportData}
                     />
                     <ActionRow
                       icon={FolderDown}
-                      title="Download My Projects"
+                      title={exportingProjects ? "Downloading..." : "Download My Projects"}
                       description="Download all your projects and data"
+                      onClick={handleDownloadProjects}
                     />
                     <ActionRow
                       icon={MessageSquareOff}
-                      title="Clear AI Chat History"
+                      title={clearingChat ? "Clearing..." : "Clear AI Chat History"}
                       description="Clear all AI assistant conversations"
+                      onClick={handleClearAIChat}
                     />
                   </div>
                   <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-background/40 p-3 text-xs text-muted-foreground">
