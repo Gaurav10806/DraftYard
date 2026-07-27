@@ -84,8 +84,19 @@ export const Route = createFileRoute("/project/$slug")({
   }),
   loader: async ({ params }) => {
     try {
-      const serverDrafts = await fetchFeed();
-      const draft = serverDrafts.find((d) => slugify(d.projectName) === params.slug);
+      // Fetch all drafts (paginated) to find the one matching the slug
+      let allDrafts: Draft[] = [];
+      let page = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const result = await fetchFeed({ page, limit: 50 });
+        allDrafts = allDrafts.concat(result.data);
+        hasMore = result.pagination.hasMore;
+        page++;
+      }
+      
+      const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug);
       if (draft) return { draft };
     } catch (e) {
       console.warn("Failed to load drafts from server, falling back to static:", e);
@@ -195,9 +206,10 @@ function ProjectPage() {
   const [bookmarked, setBookmarked] = useState(false);
   const { user } = useAuth();
 
-  // Ownership: logged-in user matches submittedBy, OR ownerToken matches
+  // Ownership: logged-in user matches submittedBy._id, OR ownerToken matches
+  // draft.submittedBy is an object { _id, name, username, avatar }
   const isOwner =
-    (user && draft.submittedBy && draft.submittedBy === user._id) ||
+    (user && draft.submittedBy && typeof draft.submittedBy === 'object' && '_id' in draft.submittedBy && draft.submittedBy._id === user._id) ||
     (draft.ownerToken && draft.ownerToken === getOwnerToken());
 
   // Request to Join state

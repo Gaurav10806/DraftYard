@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { slugify } from "./project.$slug";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Bell,
@@ -11,8 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Eye,
   Flame,
   Hand,
+  Heart,
   Info,
   LogOut,
   Search,
@@ -22,6 +24,7 @@ import {
   UserCircle,
   Users,
   X,
+  AlertCircle,
 } from "lucide-react";
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -58,9 +61,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { drafts, type Draft } from "@/data/drafts";
 import { useAuth } from "@/lib/auth-context";
+import { useDrafts } from "@/hooks/use-drafts";
+import { likeDraft, recordView } from "@/lib/api";
+import type { FeedPage } from "@/hooks/use-drafts";
 import { toast } from "sonner";
+import type { Draft } from "@/lib/api";
 
 
 export const Route = createFileRoute("/feed")({
@@ -83,18 +89,16 @@ export const Route = createFileRoute("/feed")({
 });
 
 // ————————————————————————————————————————————————————————————————
-// Derived demo data (built off the existing drafts dataset)
+// Utilities
 // ————————————————————————————————————————————————————————————————
 
-type FeedDraft = Draft & {
+// Type alias for component props
+type FeedDraft = Draft;
+
+type EnrichedDraft = Draft & {
   id: string;
-  upvotes: number;
   contributors: number;
   timeAgo: string;
-  aiInsight: string;
-  revivalScore: number;
-  stallAnalyzed: boolean;
-  stage: string;
 };
 
 const AVATAR_TINTS = [
@@ -114,109 +118,158 @@ function hashStr(s: string) {
   return Math.abs(h);
 }
 
-function stageLabel(stage: string | undefined): string {
-  const s = (stage ?? "building").toLowerCase();
-  if (s.includes("idea")) return "Idea";
-  if (s.includes("plan")) return "Planning";
-  if (s.includes("proto")) return "Prototype";
-  if (s.includes("almost")) return "Building";
-  if (s.includes("launch")) return "Shipped";
-  return "Building";
+function formatTimeAgo(dateString?: string): string {
+  if (!dateString) return "recently";
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return `${months}mo ago`;
+  } catch {
+    return "recently";
+  }
 }
 
-function aiInsightFor(d: Draft): string {
-  return "Strong concept and early traction. Needs product direction and a small revival team.";
+function enrichDrafts(drafts: Draft[]): EnrichedDraft[] {
+  return drafts.map((d, i) => {
+    const h = hashStr(d.projectName);
+    return {
+      ...d,
+      id: d._id || `${i}-${d.projectName}`,
+      contributors: 1 + (h % 8),
+      timeAgo: formatTimeAgo(d.createdAt),
+    };
+  });
 }
-
-const STALL_PATTERN_POOL = [
-  "Scope Creep",
-  "Solo Burnout",
-  "Lack of Consistency",
-  "Waiting on Data",
-  "Perfectionism Trap",
-  "Lost Motivation",
-  "Team Fell Apart",
-  "Technical Blocker",
-];
-
-function stallPatternFor(d: Draft, h: number): string {
-  const why = (d.failureReason ?? d.whyItDied ?? "").toLowerCase();
-  if (/scope|feature|kept adding/.test(why)) return "Scope Creep";
-  if (/burnout|burned|alone|solo/.test(why)) return "Solo Burnout";
-  if (/motivation|interest|boring/.test(why)) return "Lost Motivation";
-  if (/team|cofounder|co-founder/.test(why)) return "Team Fell Apart";
-  if (/time|exam|semester|job|internship|deadline/.test(why)) return "Lack of Consistency";
-  if (/data|dataset|accuracy/.test(why)) return "Waiting on Data";
-  if (/api|bug|technical|cost|gpu/.test(why)) return "Technical Blocker";
-  if (/perfect|polish/.test(why)) return "Perfectionism Trap";
-  return STALL_PATTERN_POOL[h % STALL_PATTERN_POOL.length];
-}
-
-const FEED: (FeedDraft & { stallPattern: string })[] = drafts.map((d, i) => {
-  const h = hashStr(d.projectName);
-  return {
-    ...d,
-    id: `${i}-${d.projectName}`,
-    upvotes: 40 + (h % 850),
-    contributors: 1 + (h % 8),
-    timeAgo:
-      i % 5 === 0 ? "1 day ago" : i % 4 === 0 ? "3 days ago" : i % 3 === 0 ? "2 months in" : "3 months in",
-    aiInsight: aiInsightFor(d),
-    revivalScore: 55 + (h % 45),
-    stallAnalyzed: h % 3 !== 0,
-    stage: stageLabel(d.currentStage),
-    stallPattern: stallPatternFor(d, h),
-  };
-});
-
-const TRENDING = [...FEED].sort((a, b) => b.upvotes - a.upvotes).slice(0, 8);
-
-const TOTAL_DRAFTS = 1248;
-const OPEN_FOR_REVIVAL = 392;
-const REVIVED_WEEK = 57;
-const AVG_REVIVAL = 78;
-
-const STALL_PATTERNS = [
-  { label: "Scope Creep Syndrome", value: 34 },
-  { label: "Solo Burnout", value: 28 },
-  { label: "Lack of Consistency", value: 16 },
-  { label: "Waiting on Data", value: 12 },
-  { label: "Perfectionism Trap", value: 10 },
-];
-
-const TECH_OPTIONS = ["React", "Node.js", "Next.js", "Python", "Flutter", "TypeScript", "PostgreSQL", "MongoDB"];
-const STAGE_OPTIONS = ["Idea", "Prototype", "Building", "Almost complete", "Shipped"];
-const DOMAIN_OPTIONS = ["web", "mobile", "ml", "gaming", "productivity"];
-const TEAM_OPTIONS = ["solo", "2-3", "4+"];
-const STALL_OPTIONS = ["Scope Creep", "Solo Burnout", "Lack of Consistency", "Waiting on Data", "Perfectionism"];
 
 // ————————————————————————————————————————————————————————————————
 // Page
 // ————————————————————————————————————————————————————————————————
 
 function FeedPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTechStack, setSelectedTechStack] = useState<string[]>([]);
+  const [selectedStages, setSelectedStages] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"newest" | "mostviewed" | "mostliked" | "recentlyupdated">("newest");
   const [tab, setTab] = useState<"all" | "open" | "recent" | "revived">("all");
-  const [query, setQuery] = useState("");
-  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
-  const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
-  const [raiseTarget, setRaiseTarget] = useState<string | null>(null);
 
+  // Build filters object
+  const filters = {
+    search: searchQuery,
+    techStack: selectedTechStack.length > 0 ? selectedTechStack : undefined,
+    stage: selectedStages.length > 0 ? selectedStages : undefined,
+    category: selectedCategory || undefined,
+    status: selectedStatus || undefined,
+    openForRevival: tab === "open" ? true : undefined,
+    sort: tab === "revived" ? "recentlyupdated" : tab === "recent" ? "oldest" : sortBy,
+  };
+
+  const {
+    data,
+    isLoading,
+    error,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useDrafts(filters);
+
+  // Flatten pages into single array
+  const allDrafts = useMemo(() => {
+    if (!data?.pages) return [];
+    const drafts = (data.pages as FeedPage[]).flatMap((page) => page.data || []);
+    // De-duplicate by _id
+    const seen = new Set<string>();
+    return drafts.filter(d => {
+      const id = d._id || d.id;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [data]);
+
+  const enriched = useMemo(() => enrichDrafts(allDrafts), [allDrafts]);
+
+  // Calculate dynamic statistics from real data
+  const totalDraftsCount = useMemo(() => enriched.length, [enriched]);
+
+  const totalCommunityInteractions = useMemo(() => {
+    return enriched.reduce((sum, d) => (sum + (d.likes || 0) + (d.views || 0) + (d.raisedHands?.length || 0)), 0);
+  }, [enriched]);
+
+  const totalLikes = useMemo(() => {
+    return enriched.reduce((sum, d) => sum + (d.likes || 0), 0);
+  }, [enriched]);
+
+  const avgRevivalScore = useMemo(() => {
+    if (enriched.length === 0) return 0;
+    const totalScore = enriched.reduce((sum, d) => sum + (d.revivalScore || 0), 0);
+    return Math.round(totalScore / enriched.length);
+  }, [enriched]);
+
+  // Stall patterns derived from failure reasons (top 5)
+  const stallPatterns = useMemo(() => {
+    const reasonCounts = new Map<string, number>();
+    enriched.forEach(d => {
+      if (d.failureReason) {
+        reasonCounts.set(d.failureReason, (reasonCounts.get(d.failureReason) || 0) + 1);
+      }
+    });
+    const sorted = Array.from(reasonCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({
+        label,
+        value: Math.round((count / Math.max(enriched.length, 1)) * 100)
+      }));
+    
+    // Ensure at least 5 items for display
+    const defaultPatterns = [
+      { label: "Unclear Requirements", value: 0 },
+      { label: "Resource Constraints", value: 0 },
+      { label: "Lack of Time", value: 0 },
+      { label: "Scope Creep", value: 0 },
+      { label: "Lost Interest", value: 0 },
+    ];
+    
+    return sorted.length > 0 ? sorted : defaultPatterns;
+  }, [enriched]);
+
+  // Apply local tab-based sorting only
   const visible = useMemo(() => {
-    let list = FEED;
-    if (tab === "open") list = list.filter((d) => d.raisedHands && d.raisedHands.length > 0);
-    if (tab === "recent") list = [...list].reverse();
-    if (tab === "revived") list = [...list].sort((a, b) => b.revivalScore - a.revivalScore);
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (d) =>
-          d.projectName.toLowerCase().includes(q) ||
-          d.oneLiner.toLowerCase().includes(q) ||
-          d.techStack.some((t) => t.toLowerCase().includes(q)),
-      );
+    let list = enriched;
+    if (tab === "recent") {
+      list = [...list].reverse();
+    } else if (tab === "revived") {
+      list = [...list].sort((a, b) => b.revivalScore - a.revivalScore);
     }
-    return list.slice(0, 9);
-  }, [tab, query]);
+    return list;
+  }, [tab, enriched]);
+
+  const trending = useMemo(() => [...enriched].sort((a, b) => {
+    // Sort by likes first (descending)
+    if ((b.likes || 0) !== (a.likes || 0)) {
+      return (b.likes || 0) - (a.likes || 0);
+    }
+    // Then by views (descending)
+    if ((b.views || 0) !== (a.views || 0)) {
+      return (b.views || 0) - (a.views || 0);
+    }
+    // Then by recency (descending)
+    const aDate = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const bDate = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    return bDate - aDate;
+  }).slice(0, 8), [enriched]);
 
   const toggleBookmark = (id: string) =>
     setBookmarks((prev) => {
@@ -231,6 +284,31 @@ function FeedPage() {
       return next;
     });
 
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
+  const [raiseTarget, setRaiseTarget] = useState<string | null>(null);
+
+  // Ref for infinite scroll sentinel
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return (
     <SidebarProvider>
       <div className="feed-page flex min-h-screen w-full bg-background text-foreground leading-[1.5] dark:bg-[#0d0d14]">
@@ -239,22 +317,53 @@ function FeedPage() {
           <FeedTopBar />
 
           <motion.main
-            className="flex-1 p-4 sm:p-6"
+            className="flex-1 p-4 sm:p-6 overflow-y-auto"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
+            {error && (
+              <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <div>
+                  <h3 className="font-semibold text-destructive">Failed to load drafts</h3>
+                  <p className="text-sm text-destructive/80">Please try refreshing the page</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
               {/* Left column */}
               <div className="min-w-0">
-                <HeroHeader />
+                <HeroHeader draftsCount={totalDraftsCount} isLoading={isLoading} totalInteractions={totalCommunityInteractions} avgRevival={avgRevivalScore} />
                 <div className="h-8" />
-                <TrendingCarousel
-                  bookmarks={bookmarks}
-                  onBookmark={toggleBookmark}
+                {enriched.length > 0 && (
+                  <>
+                    <TrendingCarousel
+                      drafts={trending}
+                      bookmarks={bookmarks}
+                      onBookmark={toggleBookmark}
+                      isLoading={isLoading}
+                    />
+                    <div className="h-6" />
+                  </>
+                )}
+                <FilterBar 
+                  tab={tab} 
+                  onTab={setTab}
+                  query={searchQuery} 
+                  onQuery={setSearchQuery}
+                  selectedTechStack={selectedTechStack}
+                  onTechStackChange={setSelectedTechStack}
+                  selectedStages={selectedStages}
+                  onStagesChange={setSelectedStages}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  selectedStatus={selectedStatus}
+                  onStatusChange={setSelectedStatus}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
                 />
-                <div className="h-6" />
-                <FilterBar tab={tab} onTab={setTab} query={query} onQuery={setQuery} />
                 <div className="h-6" />
                 <FeedGrid
                   items={visible}
@@ -263,20 +372,36 @@ function FeedPage() {
                   onBookmark={toggleBookmark}
                   onUpvote={toggleUpvote}
                   onRaise={(projectName) => setRaiseTarget(projectName)}
+                  isLoading={isLoading}
                 />
-                <div className="flex items-center justify-between pt-6 text-sm text-muted-foreground">
-                  <span>
-                    Showing 1 – {visible.length} of {TOTAL_DRAFTS.toLocaleString()} drafts
-                  </span>
-                  <Button className="rounded-full">Load more drafts</Button>
-                  <span className="hidden md:block" />
-                </div>
+                
+                {/* Infinite scroll sentinel */}
+                {hasNextPage && (
+                  <div ref={observerTarget} className="mt-8 flex justify-center">
+                    {isFetchingNextPage ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Loading more drafts...
+                      </div>
+                    ) : (
+                      <Button onClick={() => fetchNextPage()} variant="outline" className="rounded-full">
+                        Load More
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {!hasNextPage && allDrafts.length > 0 && (
+                  <div className="mt-8 text-center text-sm text-muted-foreground">
+                    You've reached the end ({enriched.length} drafts loaded)
+                  </div>
+                )}
               </div>
 
               {/* Right sidebar */}
               <aside className="space-y-4">
-                <InsightsCard />
-                <StallPatternsCard />
+                <InsightsCard draftsCount={totalDraftsCount} totalInteractions={totalCommunityInteractions} avgRevival={avgRevivalScore} />
+                <StallPatternsCard patterns={stallPatterns} />
                 <SpotlightCard />
               </aside>
             </div>
@@ -566,12 +691,11 @@ function HeroNetwork() {
   );
 }
 
-function HeroHeader() {
+function HeroHeader({ draftsCount, isLoading, totalInteractions, avgRevival }: { draftsCount: number; isLoading: boolean; totalInteractions: number; avgRevival: number }) {
   const stats = [
-    { label: "Total Drafts", value: TOTAL_DRAFTS.toLocaleString() },
-    { label: "Open for Revival", value: OPEN_FOR_REVIVAL.toString() },
-    { label: "Revived This Week", value: REVIVED_WEEK.toString() },
-    { label: "Avg. Revival Rate", value: `${AVG_REVIVAL}%`, trend: "+12%" },
+    { label: "Total Drafts", value: draftsCount.toLocaleString() },
+    { label: "Community Interactions", value: totalInteractions.toLocaleString() },
+    { label: "Avg. Revival Score", value: avgRevival.toString() },
   ];
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f] sm:p-8">
@@ -619,14 +743,20 @@ function HeroHeader() {
 // ————————————————————————————————————————————————————————————————
 
 function TrendingCarousel({
+  drafts,
   bookmarks,
   onBookmark,
+  isLoading,
 }: {
+  drafts: EnrichedDraft[];
   bookmarks: Set<string>;
   onBookmark: (id: string) => void;
+  isLoading: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
+
+  if (isLoading || drafts.length === 0) return null;
 
   return (
     <section>
@@ -661,7 +791,7 @@ function TrendingCarousel({
           ref={ref}
           className="scrollbar-none flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth px-6 pb-2 [-webkit-overflow-scrolling:touch]"
         >
-          {TRENDING.map((d, i) => (
+          {drafts.map((d, i) => (
             <TrendingCard
               key={d.id}
               draft={d}
@@ -829,17 +959,47 @@ function FilterBar({
   onTab,
   query,
   onQuery,
+  selectedTechStack,
+  onTechStackChange,
+  selectedStages,
+  onStagesChange,
+  selectedCategory,
+  onCategoryChange,
+  selectedStatus,
+  onStatusChange,
+  sortBy,
+  onSortChange,
 }: {
   tab: "all" | "open" | "recent" | "revived";
   onTab: (t: "all" | "open" | "recent" | "revived") => void;
   query: string;
   onQuery: (v: string) => void;
+  selectedTechStack: string[];
+  onTechStackChange: (v: string[]) => void;
+  selectedStages: string[];
+  onStagesChange: (v: string[]) => void;
+  selectedCategory: string;
+  onCategoryChange: (v: string) => void;
+  selectedStatus: string;
+  onStatusChange: (v: string) => void;
+  sortBy: "newest" | "mostviewed" | "mostliked" | "recentlyupdated";
+  onSortChange: (v: "newest" | "mostviewed" | "mostliked" | "recentlyupdated") => void;
 }) {
   const TABS: { id: typeof tab; label: string }[] = [
     { id: "all", label: "All Drafts" },
     { id: "open", label: "Open for Revival" },
     { id: "recent", label: "Recently Stalled" },
     { id: "revived", label: "Most Revived" },
+  ];
+
+  const TECH_OPTIONS = ["React", "Node.js", "Next.js", "Python", "Flutter", "TypeScript", "PostgreSQL", "MongoDB"];
+  const STAGE_OPTIONS = ["Idea only", "Prototype", "50% done", "Almost complete", "Launched but abandoned"];
+  const CATEGORY_OPTIONS = ["web", "mobile", "ml", "game", "hardware", "other"];
+  const SORT_OPTIONS = [
+    { id: "newest" as const, label: "Newest" },
+    { id: "mostviewed" as const, label: "Most Viewed" },
+    { id: "mostliked" as const, label: "Most Liked" },
+    { id: "recentlyupdated" as const, label: "Recently Updated" },
   ];
 
   return (
@@ -874,33 +1034,52 @@ function FilterBar({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <FilterDropdown label="Tech Stack" options={TECH_OPTIONS} />
-        <FilterDropdown label="Stage" options={STAGE_OPTIONS} />
-        <FilterDropdown label="Domain" options={DOMAIN_OPTIONS} />
-        <FilterDropdown label="Team Size" options={TEAM_OPTIONS} />
-        <FilterDropdown label="Stall Pattern" options={STALL_OPTIONS} />
+        <MultiSelectDropdown 
+          label="Tech Stack" 
+          options={TECH_OPTIONS}
+          selected={selectedTechStack}
+          onChange={onTechStackChange}
+        />
+        <MultiSelectDropdown 
+          label="Stage" 
+          options={STAGE_OPTIONS}
+          selected={selectedStages}
+          onChange={onStagesChange}
+        />
+        <SingleSelectDropdown 
+          label="Category" 
+          options={CATEGORY_OPTIONS}
+          selected={selectedCategory}
+          onChange={onCategoryChange}
+        />
         <div className="ml-auto">
-          <FilterDropdown label="Sort: Most Upvoted" options={["Most Upvoted", "Newest", "Highest Revival Score"]} single />
+          <SingleSelectDropdown 
+            label={`Sort: ${SORT_OPTIONS.find(s => s.id === sortBy)?.label || 'Newest'}`}
+            options={SORT_OPTIONS.map(s => s.id)}
+            selected={sortBy}
+            onChange={(v) => onSortChange(v as typeof sortBy)}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function FilterDropdown({
+function MultiSelectDropdown({
   label,
   options,
-  single,
+  selected,
+  onChange,
 }: {
   label: string;
   options: string[];
-  single?: boolean;
+  selected: string[];
+  onChange: (v: string[]) => void;
 }) {
-  const [selected, setSelected] = useState<string[]>(single ? [options[0]] : []);
   const toggle = (o: string) => {
-    if (single) return setSelected([o]);
-    setSelected((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
+    onChange(selected.includes(o) ? selected.filter((x) => x !== o) : [...selected, o]);
   };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -909,7 +1088,7 @@ function FilterDropdown({
           size="sm"
           className="h-8 gap-1.5 rounded-full border-border/60 bg-background/70 text-xs font-medium"
         >
-          {label}
+          {selected.length > 0 ? `${label} (${selected.length})` : label}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
@@ -931,6 +1110,46 @@ function FilterDropdown({
   );
 }
 
+function SingleSelectDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  selected: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 rounded-full border-border/60 bg-background/70 text-xs font-medium"
+        >
+          {label}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuLabel className="text-xs">{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {options.map((o) => (
+          <DropdownMenuItem
+            key={o}
+            onClick={() => onChange(o)}
+            className={`text-xs ${selected === o ? 'bg-primary/10' : ''}`}
+          >
+            {o}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // ————————————————————————————————————————————————————————————————
 // Feed grid
 // ————————————————————————————————————————————————————————————————
@@ -942,14 +1161,41 @@ function FeedGrid({
   onBookmark,
   onUpvote,
   onRaise,
+  isLoading,
 }: {
-  items: FeedDraft[];
+  items: EnrichedDraft[];
   bookmarks: Set<string>;
   upvoted: Set<string>;
   onBookmark: (id: string) => void;
   onUpvote: (id: string) => void;
   onRaise: (projectName: string) => void;
+  isLoading: boolean;
 }) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="rounded-2xl border border-border/60 bg-card p-4 animate-pulse">
+            <div className="h-32 bg-muted rounded" />
+            <div className="mt-4 h-4 w-24 bg-muted rounded" />
+            <div className="mt-2 h-3 w-full bg-muted rounded" />
+            <div className="mt-4 h-2 w-full bg-muted rounded" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="col-span-full rounded-2xl border border-dashed border-border/60 p-12 text-center">
+        <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground" />
+        <h3 className="mt-3 font-semibold">No drafts found</h3>
+        <p className="text-sm text-muted-foreground">Try adjusting your filters or search</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((d, i) => (
@@ -1013,7 +1259,7 @@ function FeedCard({
   onRaise,
   index,
 }: {
-  draft: FeedDraft;
+  draft: FeedDraft & { stallPattern?: string; aiInsight?: string; stallAnalyzed?: boolean };
   tint: string;
   bookmarked: boolean;
   upvoted: boolean;
@@ -1022,8 +1268,62 @@ function FeedCard({
   onRaise: () => void;
   index: number;
 }) {
+  const { isAuthenticated } = useAuth();
+  const [likes, setLikes] = useState(draft.likes || 0);
+  const [liked, setLiked] = useState(draft.liked || false);
+  const [isLoadingLike, setIsLoadingLike] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const viewedRef = useRef(false);
+
+  // Update local state when draft data changes (e.g., after refresh)
+  useEffect(() => {
+    setLikes(draft.likes || 0);
+    setLiked(draft.liked || false);
+  }, [draft.likes, draft.liked, draft._id]);
+
+  // Track view when card becomes visible
+  useEffect(() => {
+    if (!cardRef.current || viewedRef.current) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting && !viewedRef.current) {
+          viewedRef.current = true;
+          // Record view asynchronously
+          recordView(draft._id || draft.id, `session-${Math.random()}`).catch(() => {
+            // Silently fail if view tracking fails
+          });
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [draft._id, draft.id]);
+
+  const handleLike = async () => {
+    try {
+      setIsLoadingLike(true);
+      // Optimistic update
+      setLiked(!liked);
+      setLikes(liked ? likes - 1 : likes + 1);
+      
+      // Call backend - it will invalidate cache
+      await likeDraft(draft._id || draft.id);
+    } catch (err) {
+      // Revert on error
+      setLiked(!liked);
+      setLikes(liked ? likes + 1 : likes - 1);
+      toast.error("Failed to update like");
+    } finally {
+      setIsLoadingLike(false);
+    }
+  };
+
   return (
     <motion.article
+      ref={cardRef}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
@@ -1044,8 +1344,10 @@ function FeedCard({
               </h3>
               <button
                 onClick={onBookmark}
+                disabled={!isAuthenticated}
                 aria-label="Bookmark"
-                className="mt-0.5 text-muted-foreground transition-colors hover:text-[var(--feed-accent)]"
+                title={!isAuthenticated ? "Sign in to bookmark" : ""}
+                className="mt-0.5 text-muted-foreground transition-colors hover:text-[var(--feed-accent)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {bookmarked ? (
                   <BookmarkCheck className="h-3.5 w-3.5" />
@@ -1063,7 +1365,7 @@ function FeedCard({
           variant="outline"
           className="shrink-0 rounded-full border-border/60 bg-background/60 text-[10px] font-medium dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
         >
-          {draft.stage}
+          {draft.currentStage}
         </Badge>
       </div>
 
@@ -1079,55 +1381,39 @@ function FeedCard({
         ))}
       </div>
 
-      {/* Stall pattern tag */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="feed-stall-tag inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-          <span className="feed-stall-dot h-1.5 w-1.5 rounded-full bg-amber-500" />
-          Stall Pattern: {(draft as FeedDraft & { stallPattern?: string }).stallPattern ?? "Unknown"}
+      {/* Tags and metrics */}
+      <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Eye className="h-3 w-3" /> {(draft.views || 0).toLocaleString()} views
         </span>
+        <span className="flex items-center gap-1">
+          <Heart className="h-3 w-3" /> {likes.toLocaleString()} likes
+        </span>
+        {draft.tags && draft.tags.length > 0 && (
+          <span className="line-clamp-1">{draft.tags.join(", ")}</span>
+        )}
       </div>
 
-      {/* AI Insight + Revival Score */}
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1 border-l-2 border-[var(--feed-accent)] pl-[10px]">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--feed-accent)]">
-            <Sparkles className="h-3 w-3" /> AI Insight
-          </div>
-          <p className="mt-1 line-clamp-2 text-xs italic leading-[1.5] text-muted-foreground">
-            {draft.aiInsight}
-          </p>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <RevivalRing value={draft.revivalScore} />
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
-            Revival
-          </span>
-        </div>
-      </div>
-
-      {draft.stallAnalyzed && (
-        <div className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--feed-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--feed-accent)]">
-          🧬 Stall DNA analyzed
-        </div>
-      )}
-
-      {/* Bottom: upvote + action buttons */}
+      {/* Bottom: like + bookmark + action buttons */}
       <div className="mt-auto flex flex-col gap-3 pt-1">
         <div className="flex items-center justify-between gap-2">
           <button
-            onClick={onUpvote}
-            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition-all duration-[180ms] ${
-              upvoted
-                ? "bg-[var(--feed-accent)] text-white shadow-[0_0_18px_var(--feed-glow-rgba-soft)]"
-                : "bg-[var(--feed-accent)]/10 text-[var(--feed-accent)] hover:bg-[var(--feed-accent)]/20"
+            onClick={handleLike}
+            disabled={isLoadingLike}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition-all duration-[180ms] disabled:opacity-50 ${
+              liked
+                ? "bg-red-500/20 text-red-600 dark:text-red-400"
+                : "bg-muted/50 text-muted-foreground hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400"
             }`}
           >
-            ▲ {draft.upvotes + (upvoted ? 1 : 0)} upvotes
+            <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-current' : ''}`} /> {likes}
           </button>
           <Button
             onClick={onRaise}
             size="sm"
             className="h-7 gap-1 rounded-full px-2.5 text-[11px] font-semibold"
+            disabled={!isAuthenticated}
+            title={!isAuthenticated ? "Sign in to raise hand" : ""}
           >
             <Hand className="h-3 w-3" /> Raise Hand
           </Button>
@@ -1151,12 +1437,11 @@ function FeedCard({
 // Right sidebar cards
 // ————————————————————————————————————————————————————————————————
 
-function InsightsCard() {
+function InsightsCard({ draftsCount, totalInteractions, avgRevival }: { draftsCount: number; totalInteractions: number; avgRevival: number }) {
   const rows = [
-    { label: "Projects Today", value: "142", trend: "+18%" },
-    { label: "Open Roles", value: OPEN_FOR_REVIVAL.toString(), trend: "+24%" },
-    { label: "Most Revived This Week", value: REVIVED_WEEK.toString(), trend: "View" },
-    { label: "Avg. Revival Score", value: `71 /100`, trend: "+12%" },
+    { label: "Projects Available", value: draftsCount.toString(), trend: "Live" },
+    { label: "Community Interactions", value: totalInteractions.toString(), trend: "Active" },
+    { label: "Avg. Revival Score", value: avgRevival.toString(), trend: "↑" },
   ];
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
@@ -1185,14 +1470,14 @@ function InsightsCard() {
   );
 }
 
-function StallPatternsCard() {
+function StallPatternsCard({ patterns }: { patterns: Array<{ label: string; value: number }> }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
       <h3 className="flex items-center gap-1.5 font-display text-sm font-semibold tracking-tight">
         Top Stall Patterns (ML) <Info className="h-3 w-3 text-muted-foreground" />
       </h3>
       <ul className="mt-4 space-y-3">
-        {STALL_PATTERNS.map((p) => (
+        {patterns.map((p) => (
           <li key={p.label} className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="text-foreground">{p.label}</span>

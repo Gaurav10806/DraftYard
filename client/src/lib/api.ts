@@ -2,22 +2,53 @@ export type Draft = {
   _id?: string;
   projectName: string;
   oneLiner: string;
+  description?: string;
+  category?: string;
   domain: string;
   techStack: string[];
   teamSize: string;
   currentStage: string;
+  status?: string;
   failureReason: string;
   developmentMethodology?: string;
   timeSpent: { value: number; unit: string };
+  estimatedTime?: string;
+  difficulty?: string;
   isAnonymous: boolean;
   projectLink?: string;
   upvotes?: number;
+  likes?: number;
+  liked?: boolean;
   views?: number;
   bookmarks?: number;
+  bookmarked?: boolean;
   lastWorkedOn?: Date | null;
   ownerToken?: string | null;
-  submittedBy?: string | null;
-  raisedHands?: { name: string; message: string; contact: string; createdAt: string }[];
+  submittedBy?: {
+    _id?: string;
+    name?: string;
+    username?: string;
+    avatar?: string;
+  } | null;
+  collaborators?: Array<{
+    _id?: string;
+    name?: string;
+    username?: string;
+    avatar?: string;
+  }>;
+  tags?: string[];
+  openForRevival?: boolean;
+  raisedHands?: {
+    name: string;
+    message: string;
+    contact: string;
+    userId?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  revivalScore: number;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
@@ -27,8 +58,37 @@ function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function fetchFeed(): Promise<Draft[]> {
-  const res = await fetch(`${API_BASE}/feed`);
+export async function fetchFeed(filters?: {
+  search?: string;
+  category?: string;
+  techStack?: string[];
+  stage?: string[];
+  status?: string;
+  openForRevival?: boolean;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: Draft[]; pagination: { page: number; limit: number; total: number; pages: number; hasMore: boolean } }> {
+  const params = new URLSearchParams();
+  
+  if (filters?.search) params.append('search', filters.search);
+  if (filters?.category) params.append('category', filters.category);
+  if (filters?.techStack?.length) {
+    filters.techStack.forEach(tech => params.append('techStack', tech));
+  }
+  if (filters?.stage?.length) {
+    filters.stage.forEach(s => params.append('stage', s));
+  }
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.openForRevival) params.append('openForRevival', 'true');
+  if (filters?.sort) params.append('sort', filters.sort);
+  if (filters?.page) params.append('page', filters.page.toString());
+  if (filters?.limit) params.append('limit', filters.limit.toString());
+
+  const queryString = params.toString();
+  const url = queryString ? `${API_BASE}/feed?${queryString}` : `${API_BASE}/feed`;
+  
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to load feed");
   return res.json();
 }
@@ -362,17 +422,84 @@ export async function removeSkill(skill: string): Promise<UserProfile> {
   return res.json();
 }
 
-// ===== Collaborations =====
+// ===== Draft Actions =====
 
-export async function joinCollaboration(draftId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/draft/${draftId}/collaborate`, {
-    method: "POST",
+export async function likeDraft(draftId: string): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/like`, {
+    method: "PATCH",
     headers: { ...getAuthHeaders() },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? "Failed to join collaboration");
+    throw new Error(err.error ?? "Failed to like draft");
   }
+  return res.json();
+}
+
+export async function bookmarkDraft(draftId: string): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/bookmark`, {
+    method: "PATCH",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to bookmark draft");
+  }
+  return res.json();
+}
+
+export async function recordView(draftId: string, sessionId: string): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/view`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ sessionId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to record view");
+  }
+  return res.json();
+}
+
+export async function raiseHandOnDraft(draftId: string, data: { name: string; message: string; contact: string }): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/raise-hand`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to raise hand");
+  }
+  return res.json();
+}
+
+export async function toggleOpenForRevival(draftId: string): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/open`, {
+    method: "PATCH",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to toggle open for revival");
+  }
+  return res.json();
+}
+
+export async function getDraftStatus(draftId: string): Promise<{ liked: boolean; bookmarked: boolean; raised: boolean }> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/status`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    return { liked: false, bookmarked: false, raised: false };
+  }
+  return res.json();
 }
 
 export async function leaveCollaboration(draftId: string): Promise<void> {

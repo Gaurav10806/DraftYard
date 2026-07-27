@@ -42,8 +42,19 @@ export const Route = createFileRoute("/workspace-setup/$slug")({
   head: () => ({ meta: [{ title: "Workspace Setup · DraftYard" }] }),
   loader: async ({ params }) => {
     try {
-      const serverDrafts = await fetchFeed();
-      const draft = serverDrafts.find((d) => slugify(d.projectName) === params.slug);
+      // Fetch all drafts to find by slug
+      let allDrafts: any[] = [];
+      let page = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const result = await fetchFeed({ page, limit: 50 });
+        allDrafts = allDrafts.concat(result.data);
+        hasMore = result.pagination.hasMore;
+        page++;
+      }
+      
+      const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug);
       if (draft) return { draft };
     } catch {
       /* fallback */

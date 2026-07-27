@@ -14,7 +14,12 @@ export function ActiveDraftCard() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { data: myDrafts } = useMyDrafts();
-  const { data: serverDrafts } = useDrafts();
+  const { data: serverData } = useDrafts();
+
+  // Extract drafts array from infinite query response
+  const serverDrafts = Array.isArray(serverData?.pages)
+    ? serverData.pages.flatMap((page: any) => page.data || [])
+    : [];
 
   // Prefer the user's own most-recent draft when logged in
   const d = (isAuthenticated && myDrafts && myDrafts.length > 0)

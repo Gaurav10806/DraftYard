@@ -84,7 +84,7 @@ export const Route = createFileRoute("/workspace")({
     const draftId = params.draftId;
     
     if (!draftId) {
-      return { workspace: null, draft: null };
+      return { workspace: null, draft: null, draftId: undefined };
     }
 
     let workspace: WorkspaceData | null = null;
@@ -92,8 +92,11 @@ export const Route = createFileRoute("/workspace")({
 
     try {
       workspace = await fetchWorkspace(draftId);
-      const serverDrafts = await fetchFeed();
-      draft = serverDrafts.find((d) => d._id === draftId) ?? null;
+      // Fetch directly by ID - use an endpoint that fetches a single draft
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:5000/api"}/draft/${draftId}`);
+      if (res.ok) {
+        draft = await res.json();
+      }
     } catch {
       workspace = null;
       draft = null;
