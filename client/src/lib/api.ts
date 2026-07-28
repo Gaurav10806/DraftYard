@@ -109,6 +109,7 @@ export type NewDraft = {
   teamSize: string;
   currentStage: string;
   failureReason: string;
+  lastWorkedOn?: string;
   developmentMethodology?: string;
   timeSpent: { value: number; unit: string };
   projectLink: string;

@@ -9,6 +9,7 @@ import { stageToProgress } from "@/lib/drafts-insights";
 import { slugify } from "@/routes/project.$slug";
 import { useMyDrafts, useDrafts } from "@/hooks/use-drafts";
 import { useAuth } from "@/lib/auth-context";
+import { navigateToWorkspace } from "@/lib/api";
 
 export function ActiveDraftCard() {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ export function ActiveDraftCard() {
       </div>
 
       <Button
-        onClick={() => navigate({ to: "/project/$slug", params: { slug: slugify(d.projectName) } })}
+        onClick={() => navigateToWorkspace(d._id || d.projectName, d.projectName, navigate, (msg) => toast.error(msg))}
         className="mt-7 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-[180ms] hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5 group-hover:shadow-lg"
       >
         Open Draft

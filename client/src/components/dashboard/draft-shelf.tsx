@@ -13,6 +13,7 @@ import { stageToProgress } from "@/lib/drafts-insights";
 import { slugify } from "@/routes/project.$slug";
 import { useDrafts, useMyDrafts } from "@/hooks/use-drafts";
 import { useAuth } from "@/lib/auth-context";
+import { navigateToWorkspace } from "@/lib/api";
 
 export function DraftShelf() {
   const navigate = useNavigate();
@@ -41,9 +42,9 @@ export function DraftShelf() {
 
   const isLoading = myLoading || serverLoading;
 
-  const openDraft = (id: string) => {
+  const openDraft = (id: string, name: string) => {
     if (!id) return;
-    navigate({ to: "/project/$slug", params: { slug: id } });
+    navigateToWorkspace(id, name, navigate, (msg) => toast.error(msg));
   };
 
   return (
@@ -116,7 +117,7 @@ export function DraftShelf() {
               return (
                 <div
                   key={d._id || d.projectName}
-                  onClick={() => openDraft(d._id || d.projectName)}
+                  onClick={() => openDraft(d._id || d.projectName, d.projectName)}
                   className="group/card relative snap-start shrink-0 w-64 cursor-pointer rounded-2xl border border-border/60 bg-background p-4 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-xl hover:border-primary/50 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent),0_18px_40px_-18px_color-mix(in_oklab,var(--primary)_40%,transparent)]"
                 >
                   <div className="flex items-center justify-between">
@@ -143,7 +144,7 @@ export function DraftShelf() {
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem onClick={() => openDraft(d._id || d.projectName)}>
+                        <DropdownMenuItem onClick={() => openDraft(d._id || d.projectName, d.projectName)}>
                           Open
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -196,7 +197,7 @@ export function DraftShelf() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        openDraft(d._id || d.projectName);
+                        openDraft(d._id || d.projectName, d.projectName);
                       }}
                       className="flex-1 rounded-lg bg-gradient-to-r from-primary to-primary/85 px-2 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"
                     >

@@ -4,13 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createDraft, navigateToWorkspace } from "@/lib/api";
+import { createDraft } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -18,13 +16,11 @@ import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { getOwnerToken } from "@/lib/owner-token";
-import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   ChevronRight,
   ChevronLeft,
-  CalendarIcon,
   X,
   Search,
   Sparkles,
@@ -253,13 +249,8 @@ function NewDraftForm() {
       queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
       toast.success("Draft created successfully.");
       
-      // Navigate to workspace home, then to workspace detail for the new draft
-      if (createdDraft._id) {
-        navigateToWorkspace(createdDraft._id, createdDraft.projectName, navigate, (msg) => toast.error(msg));
-      } else {
-        // Fallback if _id is not available
-        navigate({ to: "/workspace" });
-      }
+      // Navigate to dashboard after successful draft creation
+      navigate({ to: "/dashboard" });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to create draft");
