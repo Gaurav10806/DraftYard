@@ -338,23 +338,21 @@ function IdeaReviewShell() {
       matchError = err instanceof Error ? err.message : "Couldn't reach the matching service.";
     }
 
-    // No DraftYard drafts resemble this idea, so there's no community
-    // data to lean on — ask a real LLM to analyze the idea directly
-    // instead of falling back to simulated numbers.
+    // Always ask the LLM to analyze the idea directly — whether or not
+    // matching drafts were found. When matches exist, the AI analysis
+    // supplements the community data instead of replacing it.
     let aiAnalysis: AiIdeaAnalysis | null = null;
     let aiAnalysisError: string | null = null;
-    if (matches.length === 0) {
-      try {
-        aiAnalysis = await getIdeaAnalysis({
-          projectName: form.name,
-          pitch: form.pitch,
-          context: form.context,
-        });
-      } catch (err) {
-        console.error("AI analysis failed:", err);
-        aiAnalysisError =
-          err instanceof Error ? err.message : "Couldn't reach the AI analysis service.";
-      }
+    try {
+      aiAnalysis = await getIdeaAnalysis({
+        projectName: form.name,
+        pitch: form.pitch,
+        context: form.context,
+      });
+    } catch (err) {
+      console.error("AI analysis failed:", err);
+      aiAnalysisError =
+        err instanceof Error ? err.message : "Couldn't reach the AI analysis service.";
     }
 
     const report = generateReport(form, matches, matchError, aiAnalysis, aiAnalysisError);
