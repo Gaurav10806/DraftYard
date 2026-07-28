@@ -96,12 +96,12 @@ export const Route = createFileRoute("/project/$slug")({
         page++;
       }
       
-      const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug);
+      const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug || d._id === params.slug || (d as any).id === params.slug);
       if (draft) return { draft };
     } catch (e) {
       console.warn("Failed to load drafts from server, falling back to static:", e);
     }
-    const staticDraft = drafts.find((d) => slugify(d.projectName) === params.slug);
+    const staticDraft = drafts.find((d) => slugify(d.projectName) === params.slug || (d as any).id === params.slug || (d as any)._id === params.slug);
     if (!staticDraft) throw notFound();
     // Cast static draft to API Draft shape (no _id/submittedBy — ownership check will be false)
     return { draft: staticDraft as Draft };
@@ -920,18 +920,27 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
       {/* Why it stalled */}
       <Card>
         <CardTitle icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}>Why It Stalled</CardTitle>
-        <ul className="mt-3 space-y-2 text-sm">
-          {["Lack of frontend polish", "State management issues", "Team busy with college placements"].map(
-            (r) => (
-              <li key={r} className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                <span className="text-muted-foreground">{r}</span>
-              </li>
-            ),
-          )}
-        </ul>
+        {draft.failureReason ? (
+          <div className="mt-3 rounded-lg border border-rose-500/25 bg-rose-500/10 p-3 text-sm text-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-500 dark:text-rose-400 mb-1">
+              Reason from Drafts DB
+            </p>
+            <p className="text-muted-foreground">{draft.failureReason}</p>
+          </div>
+        ) : (
+          <ul className="mt-3 space-y-2 text-sm">
+            {["Lack of frontend polish", "State management issues", "Team busy with college placements"].map(
+              (r) => (
+                <li key={r} className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                  <span className="text-muted-foreground">{r}</span>
+                </li>
+              ),
+            )}
+          </ul>
+        )}
         <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-600 ring-1 ring-rose-500/30 dark:text-rose-300">
-          <AlertTriangle className="h-3 w-3" /> Detected by AI
+          <AlertTriangle className="h-3 w-3" /> {draft.failureReason ? "Database Record" : "Detected by AI"}
         </div>
       </Card>
 

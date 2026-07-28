@@ -28,7 +28,9 @@ import {
   Radar,
   Clock,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
+import { slugify } from "@/routes/project.$slug";
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
@@ -167,8 +169,8 @@ function generateReport(
 
   const community: CommunityInsights | null = hasCommunity
     ? {
-        similarCount: 14,
-        outcomes: { completed: 5, active: 3, abandoned: 6 },
+        similarCount: matches.length,
+        outcomes: { completed: Math.max(0, Math.round(matches.length * 0.35)), active: Math.max(0, Math.round(matches.length * 0.25)), abandoned: Math.max(1, matches.length - Math.round(matches.length * 0.6)) },
         stoppingPoints: [
           { label: "Authentication", pct: 29 },
           { label: "AI Cost / Limits", pct: 21 },
@@ -639,7 +641,7 @@ function ReportView({ report }: { report: Report }) {
             <MetaRow
               icon={<Layers3 className="h-4 w-4" />}
               label="Similar Projects Found"
-              value={report.community ? String(report.community.similarCount) : "0"}
+              value={report.community ? String(report.matches ? report.matches.length : report.community.similarCount) : "0"}
             />
             <MetaRow
               icon={<Clock className="h-4 w-4" />}
@@ -826,6 +828,8 @@ const PRIORITY_STYLES: Record<
 };
 
 function MatchedDraftsSection({ matches, error }: { matches: DraftMatch[]; error: string | null }) {
+  const [selectedMatch, setSelectedMatch] = useState<DraftMatch | null>(null);
+
   if (error) {
     return (
       <section className="rounded-2xl border border-dashed border-rose-500/40 bg-rose-500/5 p-6 text-center">
@@ -938,7 +942,8 @@ function MatchedDraftsSection({ matches, error }: { matches: DraftMatch[]; error
                 <span>{m.currentStage}</span>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  onClick={() => setSelectedMatch(m)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 cursor-pointer"
                 >
                   View Draft
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -948,6 +953,109 @@ function MatchedDraftsSection({ matches, error }: { matches: DraftMatch[]; error
           );
         })}
       </div>
+
+      {/* Draft Details Dialog */}
+      <Dialog open={!!selectedMatch} onOpenChange={(open) => !open && setSelectedMatch(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {selectedMatch && (
+            <div>
+              <DialogHeader>
+                <div className="flex items-center justify-between gap-2 pr-6">
+                  <DialogTitle className="font-display text-xl font-bold text-foreground">
+                    {selectedMatch.projectName}
+                  </DialogTitle>
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${PRIORITY_STYLES[selectedMatch.priority].chip}`}
+                  >
+                    {selectedMatch.priority} Priority
+                  </span>
+                </div>
+                <DialogDescription className="mt-1 text-xs text-muted-foreground">
+                  Domain: <span className="font-medium text-foreground capitalize">{selectedMatch.domain}</span> • Stage: <span className="font-medium text-foreground">{selectedMatch.currentStage}</span>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-4 space-y-4 text-sm">
+                {/* Match strength */}
+                <div className="rounded-xl border border-border/70 bg-muted/30 p-3.5">
+                  <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                    <span>Similarity Match</span>
+                    <span className="font-bold text-foreground">{selectedMatch.similarityPct}%</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${PRIORITY_STYLES[selectedMatch.priority].bar}`}
+                      style={{ width: `${Math.max(5, selectedMatch.similarityPct)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* One-liner */}
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description / Pitch</h4>
+                  <p className="mt-1 text-sm text-foreground/90 leading-relaxed">{selectedMatch.oneLiner}</p>
+                </div>
+
+                {/* Reason why it died */}
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-500 dark:text-rose-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    Reason Why It Died (Failure Reason)
+                  </div>
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-foreground">
+                    {selectedMatch.failureReason || "No specific failure reason recorded."}
+                  </p>
+                </div>
+
+                {/* Matched Keywords */}
+                {selectedMatch.matchedKeywords?.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Matched Keywords</h4>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {selectedMatch.matchedKeywords.map((w) => (
+                        <span
+                          key={w}
+                          className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                        >
+                          {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tech Stack */}
+                {selectedMatch.techStack?.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tech Stack</h4>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {selectedMatch.techStack.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full border border-border/80 bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-foreground/80"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-border/60 pt-4">
+                <Button variant="outline" size="sm" onClick={() => setSelectedMatch(null)}>
+                  Close
+                </Button>
+                <Button asChild size="sm" className="gap-1.5">
+                  <Link to="/project/$slug" params={{ slug: slugify(selectedMatch.projectName) }}>
+                    View Full Project Page <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
