@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { getInitials } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Camera,
@@ -217,9 +218,7 @@ function SettingsPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const initials = fullName
-    ? fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : (email ? email[0].toUpperCase() : "U");
+ const initials = getInitials(fullName, email);
 
   // Data & Privacy handlers
   const [exporting, setExporting] = useState(false);

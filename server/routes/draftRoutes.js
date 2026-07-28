@@ -325,6 +325,126 @@ router.get('/draft/:id', async (req, res) => {
   }
 });
 
+router.patch('/draft/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { currentStage } = req.body;
+    const draft = await Draft.findById(id);
+    if (!draft) return res.status(404).json({ error: 'Draft not found' });
+
+    // Verify workspace membership (only owner can update stage)
+    if (draft.submittedBy?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Only the workspace owner can update this draft' });
+    }
+
+    const previousStage = draft.currentStage;
+    if (currentStage && currentStage !== previousStage) {
+      draft.currentStage = currentStage;
+      await draft.save();
+
+      // Log in ActivityLog
+      const ActivityLog = require('../models/ActivityLog');
+      const initials = req.user.name ? req.user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'US';
+      await ActivityLog.create({
+        draftId: id,
+        user: req.user._id,
+        userName: req.user.name || req.user.username || req.user.email,
+        userInitials: initials.slice(0, 2),
+        action: `updated stage to ${currentStage}`
+      });
+    }
+
+    res.json(draft);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/draft/:id/collaborate - Add a collaborator to a draft
+router.post('/draft/:id/collaborate', requireAuth, async (req, res) => {
+  try {
+    const draftId = req.params.id;
+    const userId = req.user._id;
+
+    const draft = await Draft.findById(draftId);
+    if (!draft) {
+      return res.status(404).json({ error: 'Draft not found' });
+    }
+
+    // Check if already a collaborator
+    if (draft.collaborators.includes(userId)) {
+      return res.status(400).json({ error: 'You are already a collaborator on this draft' });
+    }
+
+    // Add user to collaborators
+    await Draft.findByIdAndUpdate(draftId, {
+      $addToSet: { collaborators: userId }
+    });
+
+    // Also register in TeamMember
+    const TeamMember = require('../models/TeamMember');
+    const existingMember = await TeamMember.findOne({ draftId, userId });
+    if (!existingMember) {
+      await TeamMember.create({
+        draftId,
+        userId,
+        role: 'Contributor'
+      });
+    }
+
+    // Log in ActivityLog
+    const ActivityLog = require('../models/ActivityLog');
+    const initials = req.user.name ? req.user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'US';
+    await ActivityLog.create({
+      draftId: draftId,
+      user: userId,
+      userName: req.user.name || req.user.username || req.user.email,
+      userInitials: initials.slice(0, 2),
+      action: 'joined as contributor'
+    });
+
+    res.json({ message: 'Successfully joined as collaborator' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/draft/:id/collaborate - Remove yourself as collaborator
+router.delete('/draft/:id/collaborate', requireAuth, async (req, res) => {
+  try {
+    const draftId = req.params.id;
+    const userId = req.user._id;
+
+    await Draft.findByIdAndUpdate(draftId, {
+      $pull: { collaborators: userId }
+    });
+
+    res.json({ message: 'Successfully left collaboration' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// GET /api/user/collaborations - Get all drafts user is collaborating on
+router.get('/user/collaborations', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    const collaborations = await Draft.find({ 
+      collaborators: userId 
+    })
+    .populate('submittedBy', 'fullName username email')
+    .populate('collaborators', 'fullName username email avatar')
+    .sort({ updatedAt: -1 });
+
+    res.json(collaborations);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // PATCH /api/draft/:id/like -> like/unlike a draft
 router.patch('/draft/:id/like', optionalAuth, async (req, res) => {
   try {
@@ -565,6 +685,104 @@ router.get('/draft/:id/status', requireAuth, async (req, res) => {
     res.json({ liked, bookmarked, raised });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/compass-feed/:mode - Real data for each compass mode
+router.get('/compass-feed/:mode', async (req, res) => {
+  try {
+    const mode = req.params.mode;
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    if (mode === 'Collaborate') {
+      const openCollabs = await Draft.countDocuments({ raisedHands: { $exists: true, $ne: [] } });
+      const newContributors = await require('../models/User').countDocuments({ createdAt: { $gte: weekAgo } });
+      const topCollabDrafts = await Draft.find({ raisedHands: { $exists: true, $ne: [] } })
+        .sort({ createdAt: -1 })
+        .limit(1)
+        .select('projectName');
+
+      return res.json({
+        items: [
+          { key: 'openCollabs', title: 'Open Collaborations', sub: `${openCollabs} projects seeking help`, route: '/feed' },
+          { key: 'newContributors', title: 'New Contributors', sub: `${newContributors} joined this week`, route: '/feed' },
+          { key: 'teamFormations', title: 'Top Revival Projects', sub: topCollabDrafts[0]?.projectName ? `"${topCollabDrafts[0].projectName}"` : 'Browse revival projects', route: '/feed' },
+        ],
+        cta: { label: 'Open Revival Board', route: '/feed' }
+      });
+    }
+
+    if (mode === 'Explore') {
+      const totalDrafts = await Draft.countDocuments();
+      const allStacks = await Draft.aggregate([
+        { $unwind: '$techStack' },
+        { $group: { _id: '$techStack', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 3 }
+      ]);
+      const topStacks = allStacks.map(s => s._id).join(', ') || 'React, Node.js';
+      const recentCount = await Draft.countDocuments({ createdAt: { $gte: weekAgo } });
+
+      return res.json({
+        items: [
+          { key: 'trending', title: 'Trending Drafts', sub: `${recentCount} new drafts this week`, route: '/feed' },
+          { key: 'featured', title: 'Featured Ideas', sub: `${totalDrafts} total community drafts`, route: '/feed' },
+          { key: 'stacks', title: 'Rising Tech Stacks', sub: topStacks ? topStacks + ' trending' : 'React, Node.js trending', route: '/feed' },
+        ],
+        cta: { label: 'Explore More', route: '/feed' }
+      });
+    }
+
+    if (mode === 'Learn') {
+      const totalDrafts = await Draft.countDocuments();
+      const stalledCount = await Draft.countDocuments({ currentStage: { $in: ['Idea only', 'Prototype'] } });
+      const stallPct = totalDrafts > 0 ? Math.round((stalledCount / totalDrafts) * 100) : 0;
+      const recentDrafts = await Draft.countDocuments({ createdAt: { $gte: weekAgo } });
+
+      return res.json({
+        items: [
+          { key: 'weekly', title: 'Weekly Highlights', sub: `${recentDrafts} drafts added this week`, route: '/insights' },
+          { key: 'insights', title: 'Community Insights', sub: `${totalDrafts} projects analyzed`, route: '/insights' },
+          { key: 'mistakes', title: 'Common Mistakes', sub: `${stallPct}% of projects stall early`, route: '/insights-lab' },
+        ],
+        cta: { label: 'Open Insights', route: '/insights' }
+      });
+    }
+
+    if (mode === 'Build') {
+      const activeThisWeek = await Draft.countDocuments({ updatedAt: { $gte: weekAgo } });
+      const milestones = await Draft.countDocuments({ currentStage: 'Almost complete' });
+      const totalDrafts = await Draft.countDocuments();
+
+      return res.json({
+        items: [
+          { key: 'activity', title: 'Live Build Activity', sub: `${activeThisWeek} drafts updated this week`, route: '/feed' },
+          { key: 'resumed', title: 'In Progress', sub: `${totalDrafts} total projects in community`, route: '/feed' },
+          { key: 'milestones', title: 'Milestones Hit', sub: `${milestones} drafts almost complete`, route: '/feed' },
+        ],
+        cta: { label: 'View Activity', route: '/feed' }
+      });
+    }
+
+    if (mode === 'Publish') {
+      const launched = await Draft.countDocuments({ currentStage: 'Launched but abandoned' });
+      const withRaisedHands = await Draft.countDocuments({ 'raisedHands.0': { $exists: true } });
+      const topDraft = await Draft.findOne({ upvotes: { $gt: 0 } }).sort({ upvotes: -1 }).select('projectName upvotes');
+
+      return res.json({
+        items: [
+          { key: 'launches', title: 'Recent Launches', sub: `${launched} projects launched`, route: '/feed' },
+          { key: 'revivals', title: 'Revival Stories', sub: `${withRaisedHands} projects with revival interest`, route: '/feed' },
+          { key: 'top', title: 'Top Performers', sub: topDraft ? `"${topDraft.projectName}" — ${topDraft.upvotes} upvotes` : 'See top drafts', route: '/feed' },
+        ],
+        cta: { label: 'View Showcase', route: '/feed' }
+      });
+    }
+
+    res.status(400).json({ error: 'Unknown mode' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

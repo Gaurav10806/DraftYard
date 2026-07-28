@@ -67,24 +67,22 @@ router.post('/workspace', optionalAuth, async (req, res) => {
 // GET /api/workspace/:draftId - Fetch workspace for a specific draft
 router.get('/workspace/:draftId', optionalAuth, async (req, res) => {
   try {
-    const { draftId } = req.params;
+    console.log("draftId:", req.params.draftId);
 
-    const workspace = await Workspace.findOne({ draftId }).populate('draftId');
+    const workspace = await Workspace.findOne({
+      draftId: req.params.draftId,
+    }).populate("draftId");
+
+    console.log("workspace:", workspace);
+
     if (!workspace) {
-      return res.status(404).json({ error: 'Workspace not found for this draft' });
-    }
-
-    // Verify ownership: if authenticated and draft belongs to user, allow read
-    // Otherwise, only allow if this is the draft owner
-    const draft = workspace.draftId;
-    if (req.user) {
-      if (draft.submittedBy?.toString() !== req.user._id.toString()) {
-        // For now, allow anyone to read. In future, could restrict this.
-      }
+      console.log("NOT FOUND");
+      return res.status(404).json({ error: "Workspace not found for this draft" });
     }
 
     res.json(workspace);
   } catch (err) {
+    console.log(err);
     res.status(400).json({ error: err.message });
   }
 });

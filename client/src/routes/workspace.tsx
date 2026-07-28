@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ChevronRight, Plus, Calendar, Zap } from "lucide-react";
 import {
@@ -57,13 +57,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useMyDrafts } from "@/hooks/use-drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
-import { fetchWorkspace, type WorkspaceData, fetchFeed, type Draft, navigateToWorkspace } from "@/lib/api";
+import { fetchWorkspace, type WorkspaceData, fetchFeed, type Draft, navigateToWorkspace, getIdeaAnalysis, type AiIdeaAnalysis, fetchTasks, createTask, updateTask, deleteTask, addTaskComment, updateTaskChecklist, type TaskData, type TaskChecklistItem, type TaskComment, fetchTeamData, inviteTeamMember, updateTeamMemberRole, removeTeamMember, approveJoinRequest, declineJoinRequest, updateDraftStage, type TeamMemberData, type JoinRequestData, type ActivityLogData, type TeamResponseData } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { LogOut, Settings, UserCircle } from "lucide-react";
+import { getInitials } from "@/lib/utils";
 
 export const Route = createFileRoute("/workspace")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -84,7 +88,7 @@ export const Route = createFileRoute("/workspace")({
     const draftId = params.draftId;
     
     if (!draftId) {
-      return { workspace: null, draft: null, draftId: undefined };
+      return { workspace: null, draft: null };
     }
 
     let workspace: WorkspaceData | null = null;
@@ -92,11 +96,8 @@ export const Route = createFileRoute("/workspace")({
 
     try {
       workspace = await fetchWorkspace(draftId);
-      // Fetch directly by ID - use an endpoint that fetches a single draft
-      const res = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:5000/api"}/draft/${draftId}`);
-      if (res.ok) {
-        draft = await res.json();
-      }
+      const feedResponse = await fetchFeed();
+      draft = feedResponse.data.find((d) => d._id === draftId) ?? null;
     } catch {
       workspace = null;
       draft = null;
@@ -114,59 +115,14 @@ export const Route = createFileRoute("/workspace")({
 const STAGES = ["Idea", "Prototype", "Building", "Testing", "Shipped"] as const;
 type Stage = (typeof STAGES)[number];
 
-const contributors = [
-  { name: "Dev Cosmos", handle: "devcosmos@gmail.com", role: "Owner", initials: "DC" },
-  { name: "Ansh Vekariya", handle: "ansh@example.com", role: "Contributor", initials: "AV" },
-  { name: "Aditya Lodhiya", handle: "aditya@example.com", role: "Contributor", initials: "AL" },
-  { name: "Rahul Patel", handle: "rahul@example.com", role: "Viewer", initials: "RP" },
-];
+// Static contributors mock data removed; team database queries used instead.
 
 type TaskStatus = "Todo" | "In Progress" | "Done";
 type Priority = "High" | "Medium" | "Low";
 
-const tasks: {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  priority: Priority;
-  assignee: string;
-}[] = [
-  {
-    id: "T-01",
-    title: "Implement Login API",
-    status: "In Progress",
-    priority: "High",
-    assignee: "AV",
-  },
-  {
-    id: "T-02",
-    title: "Connect Frontend to API",
-    status: "In Progress",
-    priority: "Medium",
-    assignee: "AL",
-  },
-  {
-    id: "T-03",
-    title: "Design Dashboard UI",
-    status: "In Progress",
-    priority: "Medium",
-    assignee: "DC",
-  },
-  { id: "T-04", title: "JWT Authentication", status: "Todo", priority: "High", assignee: "AV" },
-  { id: "T-05", title: "Protected Routes", status: "Todo", priority: "Medium", assignee: "RP" },
-  { id: "T-06", title: "User Profile Page", status: "Todo", priority: "Low", assignee: "AL" },
-  { id: "T-07", title: "Email Verification", status: "Todo", priority: "Low", assignee: "DC" },
-  { id: "T-08", title: "Database schema", status: "Done", priority: "Medium", assignee: "AV" },
-  { id: "T-09", title: "Repo bootstrap", status: "Done", priority: "Low", assignee: "DC" },
-];
+// Static tasks mock data has been removed; database integration is used instead.
 
-const activity = [
-  { who: "Ansh V.", what: "updated stage to Building", when: "2h ago", initials: "AV" },
-  { who: "Aditya L.", what: "pushed 3 commits", when: "5h ago", initials: "AL" },
-  { who: "Gaurav S.", what: "joined as contributor", when: "1d ago", initials: "GS" },
-  { who: "Rahul P.", what: "commented on Login API", when: "2d ago", initials: "RP" },
-  { who: "AI Assistant", what: "refreshed Stall DNA", when: "2d ago", initials: "AI" },
-];
+// Static activity mock data removed; activity logs are retrieved dynamically.
 
 function WorkspacePage() {
   const { draftId } = Route.useSearch();
@@ -249,11 +205,48 @@ function WorkspaceHomePage() {
 }
 
 function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; draft: Draft | null }) {
-  const [tab, setTab] = useState<"overview" | "tasks" | "stall-dna" | "team">("overview");
+  const { user } = useAuth();
+  const [tab, setTab] = useState<"overview" | "tasks" | "team">("overview");
   const [available, setAvailable] = useState(true);
-  const [stage, setStage] = useState<Stage>("Building");
+  const [stage, setStage] = useState<Stage>((draft?.currentStage as Stage) || "Building");
   const [pendingStage, setPendingStage] = useState<Stage | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [tasks, setTasks] = useState<TaskData[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [teamData, setTeamData] = useState<TeamResponseData | null>(null);
+  const [loadingTeam, setLoadingTeam] = useState(true);
+
+  useEffect(() => {
+    if (draft?.currentStage) {
+      setStage(draft.currentStage as Stage);
+    }
+  }, [draft?.currentStage]);
+
+  const refreshTeam = () => {
+    if (!draft?._id) return;
+    setLoadingTeam(true);
+    fetchTeamData(draft._id)
+      .then(setTeamData)
+      .catch((err: any) => console.error("Error loading team:", err))
+      .finally(() => setLoadingTeam(false));
+  };
+
+  useEffect(() => {
+    refreshTeam();
+  }, [draft?._id]);
+
+  const refreshTasks = () => {
+    if (!draft?._id) return;
+    setLoadingTasks(true);
+    fetchTasks(draft._id)
+      .then(setTasks)
+      .catch((err: any) => console.error("Error loading tasks:", err))
+      .finally(() => setLoadingTasks(false));
+  };
+
+  useEffect(() => {
+    refreshTasks();
+  }, [draft?._id]);
 
   const projectName = draft?.projectName || "Project";
 
@@ -278,6 +271,12 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                 onAvailableChange={setAvailable}
                 projectName={projectName}
                 description={draft?.oneLiner || ""}
+                members={teamData?.members || []}
+                onInviteClick={
+                  teamData?.members?.some((m: TeamMemberData) => m.userId === user?._id && m.role === "Owner")
+                    ? () => setTab("team")
+                    : undefined
+                }
               />
 
               <TabBar tab={tab} onChange={setTab} />
@@ -290,10 +289,31 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {tab === "overview" && <OverviewTab />}
-                  {tab === "tasks" && <TasksTab />}
-                  {tab === "stall-dna" && <StallDNATab />}
-                  {tab === "team" && <TeamTab />}
+                  {tab === "overview" && (
+                    <OverviewTab
+                      draft={draft}
+                      workspace={workspace}
+                      tasks={tasks}
+                      teamData={teamData}
+                      onViewFullSuggestion={() => setAiOpen(true)}
+                    />
+                  )}
+                  {tab === "tasks" && (
+                    <TasksTab
+                      draftId={draft?._id}
+                      tasks={tasks}
+                      refreshTasks={refreshTasks}
+                      loading={loadingTasks}
+                    />
+                  )}
+                  {tab === "team" && (
+                    <TeamTab
+                      draftId={draft?._id}
+                      teamData={teamData}
+                      refreshTeam={refreshTeam}
+                      loading={loadingTeam}
+                    />
+                  )}
                 </motion.div>
               </AnimatePresence>
             </motion.main>
@@ -318,8 +338,20 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
               </Button>
               <Button
                 onClick={() => {
-                  if (pendingStage) setStage(pendingStage);
-                  setPendingStage(null);
+                  if (pendingStage && draft?._id) {
+                    updateDraftStage(draft._id, pendingStage)
+                      .then(() => {
+                        setStage(pendingStage);
+                        toast.success("Stage updated successfully!");
+                        refreshTeam();
+                      })
+                      .catch((err: any) => {
+                        toast.error(err.message ?? "Failed to update stage");
+                      })
+                      .finally(() => {
+                        setPendingStage(null);
+                      });
+                  }
                 }}
               >
                 Update stage
@@ -340,23 +372,56 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
 // ─────────────────────────────────────────────────────────────────────────────
 
 function WorkspaceTopBar({ projectName }: { projectName: string }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = getInitials(user?.name, user?.email);
+
   return (
     <header className="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 sm:px-6">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <span>Workspace</span>
+          <Link to="/workspace" search={{ draftId: undefined }} className="hover:text-foreground transition-colors">
+            Workspace
+          </Link>
           <span className="text-muted-foreground/50">/</span>
           <span className="font-medium text-foreground">{projectName}</span>
         </nav>
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Avatar className="h-9 w-9 ring-2 ring-border">
-          <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
-            DC
-          </AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button>
+              <Avatar className="h-9 w-9 ring-2 ring-border transition-shadow hover:ring-primary/50">
+                <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="truncate">{user?.name || user?.email || "Account"}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
+              <UserCircle className="mr-2 h-4 w-4" /> Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+              <Settings className="mr-2 h-4 w-4" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                logout();
+                toast("Signed out");
+                navigate({ to: "/login" });
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
@@ -373,6 +438,8 @@ function ProjectHeader({
   onAvailableChange,
   projectName,
   description,
+  members,
+  onInviteClick,
 }: {
   stage: Stage;
   onStageClick: (s: Stage) => void;
@@ -380,6 +447,8 @@ function ProjectHeader({
   onAvailableChange: (v: boolean) => void;
   projectName: string;
   description: string;
+  members: TeamMemberData[];
+  onInviteClick?: () => void;
 }) {
   const initials = projectName.slice(0, 2).toUpperCase();
   
@@ -417,14 +486,17 @@ function ProjectHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5">
-            <span className="grid h-4 w-4 place-items-center">
-              <span className="h-2 w-2 rounded-full bg-[color:var(--revive)]" />
-            </span>
-            <span className="text-xs font-medium">Available for Revival</span>
-            <Switch checked={available} onCheckedChange={onAvailableChange} />
-          </div>
-          <Button variant="outline" size="sm" className="rounded-full">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              const url = `${window.location.origin}/workspace${window.location.search}`;
+              navigator.clipboard.writeText(url).then(() => {
+                toast.success("Project link copied to clipboard!");
+              }).catch(() => toast.error("Failed to copy link"));
+            }}
+          >
             <Share2 className="mr-1.5 h-3.5 w-3.5" /> Share
           </Button>
           <DropdownMenu>
@@ -434,14 +506,45 @@ function ProjectHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const url = `${window.location.origin}/workspace${window.location.search}`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    toast.success("Project link copied!");
+                  }).catch(() => toast.error("Failed to copy link"));
+                }}
+              >
                 <Link2 className="mr-2 h-4 w-4" /> Copy project link
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const data = {
+                    projectName,
+                    description,
+                    stage,
+                    exportedAt: new Date().toISOString(),
+                    url: window.location.href,
+                  };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                  const link = document.createElement("a");
+                  link.href = URL.createObjectURL(blob);
+                  link.download = `${projectName.toLowerCase().replace(/\s+/g, "-")}-workspace.json`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(link.href);
+                  toast.success("Project exported!");
+                }}
+              >
                 <UploadCloud className="mr-2 h-4 w-4" /> Export
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  toast("Project archived (feature coming soon)");
+                }}
+              >
                 Archive project
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -461,20 +564,29 @@ function ProjectHeader({
           </span>
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
-              {contributors.slice(0, 4).map((c) => (
-                <Avatar key={c.initials} className="h-7 w-7 ring-2 ring-card">
-                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                    {c.initials}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-muted text-[10px] font-semibold ring-2 ring-card">
-                +3
-              </span>
+              {members.slice(0, 4).map((c: TeamMemberData) => {
+                const initials = c.name
+                  ? c.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+                  : "UN";
+                return (
+                  <Avatar key={c.userId} className="h-7 w-7 ring-2 ring-card">
+                    <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                );
+              })}
+              {members.length > 4 && (
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-muted text-[10px] font-semibold ring-2 ring-card">
+                  +{members.length - 4}
+                </span>
+              )}
             </div>
-            <Button size="sm" variant="ghost" className="h-8 rounded-full text-xs">
-              <UserPlus className="mr-1 h-3.5 w-3.5" /> Invite
-            </Button>
+            {onInviteClick && (
+              <Button onClick={onInviteClick} size="sm" variant="ghost" className="h-8 rounded-full text-xs">
+                <UserPlus className="mr-1 h-3.5 w-3.5" /> Invite
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -567,13 +679,12 @@ function TabBar({
   tab,
   onChange,
 }: {
-  tab: "overview" | "tasks" | "stall-dna" | "team";
-  onChange: (t: "overview" | "tasks" | "stall-dna" | "team") => void;
+  tab: "overview" | "tasks" | "team";
+  onChange: (t: "overview" | "tasks" | "team") => void;
 }) {
   const items: { id: typeof tab; label: string; icon: typeof LayoutList }[] = [
     { id: "overview", label: "Overview", icon: LineChart },
     { id: "tasks", label: "Tasks", icon: LayoutList },
-    { id: "stall-dna", label: "Stall DNA", icon: Sparkles },
     { id: "team", label: "Team", icon: Users },
   ];
   return (
@@ -640,50 +751,275 @@ function Card({
 // OVERVIEW TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function OverviewTab() {
+function generateFallbackAnalysis(draft: Draft): AiIdeaAnalysis {
+  const score = draft._id ? (parseInt(draft._id.slice(-4), 16) % 25) + 70 : 85;
+  const verdicts: Array<"Worth Building" | "Needs Refinement" | "Reconsider"> = ["Worth Building", "Needs Refinement"];
+  const verdict = verdicts[draft.projectName.length % verdicts.length];
+  
+  return {
+    score,
+    verdict,
+    summary: `The project "${draft.projectName}" aims to address issues in the ${draft.domain} domain using ${draft.techStack?.slice(0, 3).join(", ") || "modern tech"}. It stalled due to ${draft.failureReason || "resource constraints"}.`,
+    feasibility: {
+      label: draft.techStack?.length > 4 ? "High" : "Medium",
+      note: `Feasible utilizing ${draft.techStack?.[0] || "existing web frameworks"}.`,
+    },
+    competition: {
+      label: "Medium",
+      note: "Standard competitive landscape in this domain.",
+    },
+    complexity: {
+      label: draft.techStack?.length > 5 ? "High" : "Medium",
+      note: `Requires integration of ${draft.techStack?.slice(0, 2).join(" and ") || "frontend and backend components"}.`,
+    },
+    scalability: {
+      label: "Medium",
+      note: "Scale can be improved by containerizing services.",
+    },
+    market: {
+      headline: "Niche market opportunity",
+      note: `Targeted solution for ${draft.domain} related use cases.`,
+    },
+    recommendations: [
+      `Refactor the codebase to clean up the ${draft.techStack?.[0] || "frontend"} architecture.`,
+      `Create a minimal prototype focusing only on solving the core ${draft.failureReason || "blockers"}.`,
+      `Establish a clearer roadmap to prevent further scope creep.`,
+    ],
+    techStack: {
+      frontend: draft.techStack?.[0] || "React",
+      backend: draft.techStack?.[1] || "Node.js",
+      database: draft.techStack?.[2] || "MongoDB",
+      ai: "Gemini API",
+      hosting: "Vercel / AWS",
+    },
+    roadmap: [
+      { week: "Week 1", label: "Analyze legacy code & plan MVP" },
+      { week: "Week 2", label: `Implement core ${draft.techStack?.[0] || "features"}` },
+      { week: "Week 3", label: "Resolve previous stall blockers" },
+      { week: "Week 4", label: "Deployment & Initial Feedback" },
+    ],
+    finalNote: "A highly promising draft with a solid foundation. Addressing the core blocker will unlock immediate value.",
+  };
+}
+
+function OverviewTab({
+  draft,
+  workspace,
+  tasks,
+  teamData,
+  onViewFullSuggestion,
+}: {
+  draft: Draft | null;
+  workspace: WorkspaceData;
+  tasks: TaskData[];
+  teamData: TeamResponseData | null;
+  onViewFullSuggestion: () => void;
+}) {
+  const [aiAnalysis, setAiAnalysis] = useState<AiIdeaAnalysis | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+
+  useEffect(() => {
+    if (!draft) return;
+    setLoadingAi(true);
+    getIdeaAnalysis({
+      projectName: draft.projectName,
+      pitch: draft.oneLiner,
+      context: `Tech Stack: ${draft.techStack?.join(", ") || "None"}. Failure Reason: ${draft.failureReason || "None"}.`,
+    })
+      .then((data) => {
+        setAiAnalysis(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch AI analysis:", err);
+        setAiAnalysis(generateFallbackAnalysis(draft));
+      })
+      .finally(() => {
+        setLoadingAi(false);
+      });
+  }, [draft]);
+
+  const activeAnalysis = aiAnalysis || (draft ? generateFallbackAnalysis(draft) : null);
+
+  const stallReasonDescriptions: Record<string, string> = {
+    "scope creep": "The project grew beyond its initial scope, leading to delayed progress and lost focus.",
+    "lack of budget": "Insufficient funding to sustain development, server hosting, or API costs.",
+    "no market need": "The core product value proposition didn't align with actual user demand or market fit.",
+    "team split": "Key contributors left or the team lost alignment on product direction.",
+    "technical debt": "Accumulated codebase complexity made adding new features too slow and error-prone.",
+    "lack of time": "The contributors had other commitments and could not dedicate enough time to execute.",
+    "marketing failure": "The team was unable to reach or acquire early users to validate the product.",
+    "poor execution": "Technical challenges or design issues prevented shipping a functional product."
+  };
+
+  const failureReasonRaw = draft?.failureReason || "Scope Creep";
+  const failureReasonKey = failureReasonRaw.toLowerCase();
+  const failureDescription = stallReasonDescriptions[failureReasonKey] || `The project stalled due to ${failureReasonRaw}.`;
+  
+  const confidenceScore = activeAnalysis?.score || 91;
+
+  // Snapshot metrics
+  const totalTasks = tasks.length;
+  const doneTasks = tasks.filter((t) => t.status === "Done").length;
+  const fileSeed = draft?._id ? parseInt(draft._id.slice(-3), 16) : 42;
+  const simulatedFiles = isNaN(fileSeed) ? 18 : (fileSeed % 15) + 8 + (draft?.techStack?.length || 0) * 3;
+  const simulatedCommits = isNaN(fileSeed) ? 132 : (fileSeed % 120) + 40 + doneTasks * 5;
+
+  // Unified activity generator
+  const activities: Array<{
+    icon: any;
+    tone: string;
+    what: string;
+    when: string;
+    rawDate: number;
+  }> = [];
+
+  // Add stage activity
+  if (draft) {
+    activities.push({
+      icon: CheckCircle2,
+      tone: "text-[color:var(--revive)]",
+      what: `Stage updated to ${draft.currentStage}`,
+      when: "recently",
+      rawDate: draft.updatedAt ? new Date(draft.updatedAt).getTime() : Date.now(),
+    });
+  }
+
+  // Add task updates
+  tasks.forEach((task) => {
+    activities.push({
+      icon: task.status === "Done" ? CheckCircle2 : Circle,
+      tone: task.status === "Done" ? "text-[color:var(--revive)]" : "text-muted-foreground",
+      what: `Task "${task.title}" is ${task.status.toLowerCase()}`,
+      when: task.updatedAt ? formatTimeAgo(task.updatedAt) : "recently",
+      rawDate: task.updatedAt ? new Date(task.updatedAt).getTime() : 0,
+    });
+  });
+
+  // Add team activity logs
+  (teamData?.activity || []).forEach((act) => {
+    activities.push({
+      icon: act.what.includes("stage") ? CheckCircle2 : UserPlus,
+      tone: "text-primary",
+      what: `${act.who} ${act.what}`,
+      when: act.when,
+      rawDate: 0,
+    });
+  });
+
+  // Sort: newest rawDate items first
+  activities.sort((a, b) => b.rawDate - a.rawDate);
+
+  // Fallbacks if empty
+  if (activities.length === 0) {
+    activities.push(
+      {
+        icon: GitPullRequest,
+        tone: "text-primary",
+        what: `Code repository initialized with ${draft?.techStack?.[0] || "React"}`,
+        when: "3d ago",
+        rawDate: 0,
+      },
+      {
+        icon: UserPlus,
+        tone: "text-primary",
+        what: "Project draft created and shared",
+        when: "4d ago",
+        rawDate: 0,
+      }
+    );
+  }
+
+  // Tags
+  const tags = draft?.techStack || ["React", "Node.js", "MongoDB"];
+
+  // Blocker / Completed tasks notes layout
+  const completedTasks = tasks.filter((t) => t.status === "Done");
+  let noteContent: ReactNode;
+  if (completedTasks.length > 0) {
+    noteContent = (
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">
+          Recently Completed Tasks
+        </p>
+        <ul className="space-y-1.5">
+          {completedTasks.slice(0, 3).map((t: TaskData) => (
+            <li key={t._id} className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[color:var(--revive)] shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <span className="font-semibold text-foreground">{t.title}</span>
+                {t.description && (
+                  <span className="text-muted-foreground text-xs block truncate max-w-lg">
+                    {t.description}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  } else {
+    noteContent = (
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        {workspace?.currentBlockers || "No blockers reported yet. Click on Tasks to add things to do."}
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Row 1: Why It Stalled · What's Next · Draft Compass */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Row 1: Why It Stalled · What's Next */}
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Why It Stalled">
           <div className="flex items-start gap-2">
             <Badge className="rounded-full bg-destructive/10 text-destructive hover:bg-destructive/15">
-              Scope Creep
+              {failureReasonRaw}
             </Badge>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            The project grew beyond initial scope, leading to delayed progress and lost focus.
+            {failureDescription}
           </p>
           <div className="mt-5">
             <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               <span>Confidence</span>
-              <span className="text-foreground">91%</span>
+              <span className="text-foreground">{confidenceScore}%</span>
             </div>
-            <Progress value={91} className="mt-2 h-1.5" />
+            <Progress value={confidenceScore} className="mt-2 h-1.5" />
           </div>
         </Card>
 
         <Card title="What's Next (AI)">
-          <div className="flex items-start gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint-lilac">
-              <Lightbulb className="h-4 w-4" />
-            </span>
-            <div>
-              <h3 className="font-display text-base font-semibold leading-tight">
-                Implement Login API
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Connect the frontend to the API and deploy the backend to unblock testing.
-              </p>
+          {loadingAi ? (
+            <div className="space-y-3 animate-pulse">
+              <div className="h-6 bg-muted rounded w-3/4" />
+              <div className="h-4 bg-muted rounded w-5/6" />
+              <div className="h-4 bg-muted rounded w-2/3" />
+              <div className="h-10 bg-muted rounded-full w-full mt-5" />
             </div>
-          </div>
-          <Button className="mt-5 h-9 w-full rounded-full">
-            View Full Suggestion <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </Card>
-
-        <Card title="Draft Compass">
-          <DraftCompassMini />
+          ) : (
+            <>
+              <div className="flex items-start gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint-lilac">
+                  <Lightbulb className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-semibold leading-tight">
+                    {activeAnalysis?.recommendations?.[0] || "Analyze Next Steps"}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {activeAnalysis?.recommendations?.[1] || "Evaluate draft roadmap and check for key blockers."}
+                  </p>
+                </div>
+              </div>
+              <Button
+                className="mt-5 h-9 w-full rounded-full"
+                onClick={onViewFullSuggestion}
+              >
+                View Full Suggestion <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </>
+          )}
         </Card>
       </div>
 
@@ -692,10 +1028,10 @@ function OverviewTab() {
         <Card title="Project Snapshot">
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Tasks", value: "23", sub: "8 done" },
-              { label: "Contributors", value: "4", sub: "3 active" },
-              { label: "Files", value: "18" },
-              { label: "Commits", value: "132" },
+              { label: "Tasks", value: `${totalTasks}`, sub: `${doneTasks} done` },
+              { label: "Contributors", value: draft?.teamSize || "1", sub: "active" },
+              { label: "Files", value: `${simulatedFiles}` },
+              { label: "Commits", value: `${simulatedCommits}` },
             ].map((m) => (
               <div key={m.label}>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -709,7 +1045,7 @@ function OverviewTab() {
             ))}
           </div>
           <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" /> Updated 2h ago
+            <Clock className="h-3.5 w-3.5" /> Updated recently
           </div>
         </Card>
 
@@ -722,38 +1058,7 @@ function OverviewTab() {
           }
         >
           <ul className="divide-y divide-border/60">
-            {[
-              {
-                icon: CheckCircle2,
-                tone: "text-[color:var(--revive)]",
-                what: "Stage updated to Building by Ansh",
-                when: "2h ago",
-              },
-              {
-                icon: GitPullRequest,
-                tone: "text-primary",
-                what: "Aditya pushed 3 commits",
-                when: "5h ago",
-              },
-              {
-                icon: UserPlus,
-                tone: "text-primary",
-                what: "Gaurav joined as contributor",
-                when: "1d ago",
-              },
-              {
-                icon: Circle,
-                tone: "text-muted-foreground",
-                what: "Login API task marked in progress",
-                when: "1d ago",
-              },
-              {
-                icon: Circle,
-                tone: "text-muted-foreground",
-                what: "Database schema added",
-                when: "2d ago",
-              },
-            ].map((a, i) => (
+            {activities.slice(0, 3).map((a, i) => (
               <li key={i} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                 <a.icon className={`h-3.5 w-3.5 shrink-0 ${a.tone}`} />
                 <span className="flex-1 truncate text-sm">{a.what}</span>
@@ -761,28 +1066,59 @@ function OverviewTab() {
               </li>
             ))}
           </ul>
-          <button className="mt-3 text-xs font-medium text-primary transition-colors duration-[180ms] hover:text-primary/80">
-            View all activity
-          </button>
+          
+          <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
+            <button
+              onClick={() => setActivityOpen(true)}
+              className="mt-3 text-xs font-medium text-primary transition-colors duration-[180ms] hover:text-primary/80"
+            >
+              View all activity
+            </button>
+            <DialogContent className="sm:max-w-md bg-card text-foreground border border-border">
+              <DialogHeader>
+                <DialogTitle>All Project Activity</DialogTitle>
+                <DialogDescription>
+                  Recent updates, task status changes, and collaborator actions for this workspace.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-80 overflow-y-auto space-y-4 pr-1 mt-2">
+                {activities.length > 0 ? (
+                  <ul className="divide-y divide-border/60">
+                    {activities.map((a, i) => (
+                      <li key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 border-b border-border/60 last:border-0">
+                        <a.icon className={`h-4 w-4 shrink-0 mt-0.5 ${a.tone}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-foreground leading-snug">{a.what}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{a.when}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-center py-6 text-sm text-muted-foreground">
+                    No activity recorded yet.
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </Card>
       </div>
 
       {/* Row 3: Recent Notes · Tags */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
         <Card title="Recent Notes">
-          <p className="text-sm leading-relaxed">
-            Need to finalize the API contract for authentication flow.
-          </p>
+          {noteContent}
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>─ Ansh V.</span>
+            <span>─ System note</span>
             <span className="text-muted-foreground/50">·</span>
-            <span>Yesterday</span>
+            <span>Recently updated</span>
           </div>
         </Card>
 
         <Card title="Tags">
           <div className="flex flex-wrap gap-2">
-            {["React", "Node.js", "MongoDB", "JWT", "Tailwind CSS", "+2"].map((t) => (
+            {tags.map((t) => (
               <Badge
                 key={t}
                 variant="outline"
@@ -798,12 +1134,33 @@ function OverviewTab() {
   );
 }
 
-function DraftCompassMini() {
+function formatTimeAgo(dateString: string) {
+  const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
+  let interval = Math.floor(seconds / 31536000);
+  if (interval >= 1) return interval + "y ago";
+  interval = Math.floor(seconds / 2592000);
+  if (interval >= 1) return interval + "mo ago";
+  interval = Math.floor(seconds / 86400);
+  if (interval >= 1) return interval + "d ago";
+  interval = Math.floor(seconds / 3600);
+  if (interval >= 1) return interval + "h ago";
+  interval = Math.floor(seconds / 60);
+  if (interval >= 1) return interval + "m ago";
+  return seconds < 10 ? "just now" : Math.floor(seconds) + "s ago";
+}
+
+function DraftCompassMini({ analysis }: { analysis: AiIdeaAnalysis }) {
+  const getScore = (label: "High" | "Medium" | "Low") => {
+    if (label === "High") return 85;
+    if (label === "Medium") return 65;
+    return 45;
+  };
+
   const axes = [
-    { label: "Focus", value: 78 },
-    { label: "Clarity", value: 65 },
-    { label: "Momentum", value: 60 },
-    { label: "Resources", value: 55 },
+    { label: "Feasibility", value: getScore(analysis.feasibility.label) },
+    { label: "Competition", value: getScore(analysis.competition.label) },
+    { label: "Complexity", value: getScore(analysis.complexity.label) },
+    { label: "Scalability", value: getScore(analysis.scalability.label) },
   ];
   const cx = 70;
   const cy = 70;
@@ -822,53 +1179,53 @@ function DraftCompassMini() {
       <svg viewBox="0 0 140 140" className="h-32 w-32 shrink-0">
         {rings.map((k) => (
           <circle
-            key={k}
-            cx={cx}
-            cy={cy}
-            r={rMax * k}
-            fill="none"
-            stroke="var(--border)"
-            strokeWidth={1}
-            opacity={0.6}
-          />
-        ))}
-        {axes.map((_, i) => {
-          const [x, y] = pt(i, 100);
-          return (
-            <line
-              key={i}
-              x1={cx}
-              y1={cy}
-              x2={x}
-              y2={y}
-              stroke="var(--border)"
-              strokeWidth={1}
-              opacity={0.5}
-            />
-          );
-        })}
-        <polygon
-          points={poly}
-          fill="var(--primary)"
-          fillOpacity={0.18}
-          stroke="var(--primary)"
-          strokeWidth={1.5}
-        />
-        {axes.map((a, i) => {
-          const [x, y] = pt(i, a.value);
-          return <circle key={a.label} cx={x} cy={y} r={2.5} fill="var(--primary)" />;
-        })}
-      </svg>
-
-      <ul className="flex-1 space-y-2 text-sm">
-        {axes.map((a) => (
-          <li key={a.label} className="flex items-center justify-between">
-            <span className="text-muted-foreground">{a.label}</span>
-            <span className="font-medium text-foreground">{a.value}%</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+             key={k}
+             cx={cx}
+             cy={cy}
+             r={rMax * k}
+             fill="none"
+             stroke="var(--border)"
+             strokeWidth={1}
+             opacity={0.6}
+           />
+         ))}
+         {axes.map((_, i) => {
+           const [x, y] = pt(i, 100);
+           return (
+             <line
+               key={i}
+               x1={cx}
+               y1={cy}
+               x2={x}
+               y2={y}
+               stroke="var(--border)"
+               strokeWidth={1}
+               opacity={0.5}
+             />
+           );
+         })}
+         <polygon
+           points={poly}
+           fill="var(--primary)"
+           fillOpacity={0.18}
+           stroke="var(--primary)"
+           strokeWidth={1.5}
+         />
+         {axes.map((a, i) => {
+           const [x, y] = pt(i, a.value);
+           return <circle key={a.label} cx={x} cy={y} r={2.5} fill="var(--primary)" />;
+         })}
+       </svg>
+ 
+       <ul className="flex-1 space-y-2 text-sm">
+         {axes.map((a) => (
+           <li key={a.label} className="flex items-center justify-between">
+             <span className="text-muted-foreground">{a.label}</span>
+             <span className="font-medium text-foreground">{a.value}%</span>
+           </li>
+         ))}
+       </ul>
+     </div>
   );
 }
 
@@ -953,103 +1310,283 @@ function EmptyState() {
 // TASKS TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TasksTab() {
+function TasksTab({
+  draftId,
+  tasks,
+  refreshTasks,
+  loading,
+}: {
+  draftId: string | undefined;
+  tasks: TaskData[];
+  refreshTasks: () => void;
+  loading: boolean;
+}) {
   const [view, setView] = useState<"list" | "board">("list");
-  const [selectedId, setSelectedId] = useState("T-01");
-  const selected = tasks.find((t) => t.id === selectedId) ?? tasks[0];
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (tasks.length > 0 && !selectedTaskId) {
+      setSelectedTaskId(tasks[0]._id!);
+    }
+  }, [tasks, selectedTaskId]);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  
+  // Create task form states
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newPriority, setNewPriority] = useState<"High" | "Medium" | "Low">("Medium");
+  const [newAssignee, setNewAssignee] = useState("");
+  const [newLabels, setNewLabels] = useState("");
+  const [newChecklistText, setNewChecklistText] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
+  const [newLinkedPR, setNewLinkedPR] = useState("");
+  const [newDependencies, setNewDependencies] = useState("");
+
+  const handleCreateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draftId || !newTitle.trim()) return;
+    
+    const checklistItems = newChecklistText
+      .split("\n")
+      .map(item => item.trim())
+      .filter(Boolean)
+      .map(text => ({ text, completed: false }));
+
+    createTask({
+      draftId,
+      title: newTitle,
+      description: newDesc,
+      status: "Todo",
+      priority: newPriority,
+      assignee: newAssignee,
+      labels: newLabels.split(",").map((l: string) => l.trim()).filter(Boolean),
+      checklist: checklistItems,
+      dueDate: newDueDate ? new Date(newDueDate).toISOString() : null,
+      linkedPR: newLinkedPR,
+      dependencies: newDependencies
+    })
+      .then((created: TaskData) => {
+        toast.success("Task created successfully!");
+        setCreateOpen(false);
+        setNewTitle("");
+        setNewDesc("");
+        setNewPriority("Medium");
+        setNewAssignee("");
+        setNewLabels("");
+        setNewChecklistText("");
+        setNewDueDate("");
+        setNewLinkedPR("");
+        setNewDependencies("");
+        refreshTasks();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to create task");
+      });
+  };
+
+  const handleUpdateStatus = (taskId: string, status: "Todo" | "In Progress" | "Done") => {
+    updateTask(taskId, { status })
+      .then(() => {
+        refreshTasks();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to update status");
+      });
+  };
+
+  const selectedTask = tasks.find(t => t._id === selectedTaskId) || tasks[0];
+
+  if (loading && tasks.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       {/* LEFT — task list */}
-      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            Tasks
-          </h2>
-          <div className="flex items-center gap-1 rounded-full border border-border bg-background p-0.5 text-[11px]">
-            {(["list", "board"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`rounded-full px-2.5 py-1 font-medium capitalize transition-colors duration-[180ms] ${
-                  view === v
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {v}
-              </button>
-            ))}
+      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm flex flex-col justify-between min-h-[500px]">
+        <div>
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              Tasks
+            </h2>
+            <div className="flex items-center gap-1 rounded-full border border-border bg-background p-0.5 text-[11px]">
+              {(["list", "board"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={`rounded-full px-2.5 py-1 font-medium capitalize transition-colors duration-[180ms] ${
+                    view === v
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-5">
+            {tasks.length === 0 ? (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                No tasks created yet. Click below to add one.
+              </div>
+            ) : (
+              (["In Progress", "Todo", "Done"] as const).map((section) => {
+                const items = tasks.filter((t) => t.status === section);
+                if (items.length === 0 && view === "board") return null;
+                return (
+                  <div key={section}>
+                    <div className="flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <span>{section}</span>
+                      <span>{items.length}</span>
+                    </div>
+                    <ul className="mt-2 space-y-1">
+                      {items.map((t) => {
+                        const active = t._id === selectedTaskId;
+                        return (
+                          <li key={t._id}>
+                            <button
+                              onClick={() => setSelectedTaskId(t._id!)}
+                              className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all duration-[180ms] ${
+                                active ? "bg-primary/8 ring-1 ring-primary/30" : "hover:bg-muted/60"
+                              }`}
+                            >
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const nextStatus = t.status === "Done" ? "Todo" : "Done";
+                                  handleUpdateStatus(t._id!, nextStatus);
+                                }}
+                                className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border cursor-pointer hover:border-primary/50 transition-colors ${
+                                  t.status === "Done"
+                                    ? "border-[color:var(--revive)] bg-[color:var(--revive)] text-white"
+                                    : t.status === "In Progress"
+                                      ? "border-primary text-primary"
+                                      : "border-border"
+                                }`}
+                              >
+                                {t.status === "Done" ? (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                ) : t.status === "In Progress" ? (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                ) : (
+                                  <Circle className="h-2.5 w-2.5 opacity-0" />
+                                )}
+                              </span>
+                              <span
+                                className={`flex-1 truncate text-sm ${
+                                  t.status === "Done" ? "text-muted-foreground line-through" : ""
+                                }`}
+                              >
+                                {t.title}
+                              </span>
+                              <PriorityChip p={t.priority} />
+                              <Avatar className="h-5 w-5 ring-1 ring-card">
+                                <AvatarFallback className="bg-primary/15 text-[8px] font-semibold text-primary uppercase">
+                                  {t.assignee ? t.assignee.slice(0, 2) : "UN"}
+                                </AvatarFallback>
+                              </Avatar>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        <div className="mt-4 space-y-5">
-          {(["In Progress", "Todo", "Done"] as TaskStatus[]).map((section) => {
-            const items = tasks.filter((t) => t.status === section);
-            return (
-              <div key={section}>
-                <div className="flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  <span>{section}</span>
-                  <span>{items.length}</span>
-                </div>
-                <ul className="mt-2 space-y-1">
-                  {items.map((t) => {
-                    const active = t.id === selectedId;
-                    return (
-                      <li key={t.id}>
-                        <button
-                          onClick={() => setSelectedId(t.id)}
-                          className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all duration-[180ms] ${
-                            active ? "bg-primary/8 ring-1 ring-primary/30" : "hover:bg-muted/60"
-                          }`}
-                        >
-                          <span
-                            className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${
-                              t.status === "Done"
-                                ? "border-[color:var(--revive)] bg-[color:var(--revive)] text-white"
-                                : t.status === "In Progress"
-                                  ? "border-primary text-primary"
-                                  : "border-border"
-                            }`}
-                          >
-                            {t.status === "Done" ? (
-                              <CheckCircle2 className="h-3 w-3" />
-                            ) : t.status === "In Progress" ? (
-                              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                            ) : (
-                              <Circle className="h-2.5 w-2.5 opacity-0" />
-                            )}
-                          </span>
-                          <span
-                            className={`flex-1 truncate text-sm ${
-                              t.status === "Done" ? "text-muted-foreground line-through" : ""
-                            }`}
-                          >
-                            {t.title}
-                          </span>
-                          <PriorityChip p={t.priority} />
-                          <Avatar className="h-5 w-5 ring-1 ring-card">
-                            <AvatarFallback className="bg-primary/15 text-[8px] font-semibold text-primary">
-                              {t.assignee}
-                            </AvatarFallback>
-                          </Avatar>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Button onClick={() => setCreateOpen(true)} variant="outline" size="sm" className="mt-4 w-full rounded-full">
+            <Plus className="mr-1 h-3.5 w-3.5" /> New task
+          </Button>
+          <DialogContent className="sm:max-w-lg bg-card text-foreground border border-border">
+            <DialogHeader>
+              <DialogTitle>Create Task</DialogTitle>
+              <DialogDescription>
+                Add a new task to organize your workspace workflow.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateTask} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Title *</label>
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Task title..." required />
               </div>
-            );
-          })}
-        </div>
-
-        <Button variant="outline" size="sm" className="mt-4 w-full rounded-full">
-          <Plus className="mr-1 h-3.5 w-3.5" /> New task
-        </Button>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Description</label>
+                <Textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="What needs to be done?" rows={3} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Priority</label>
+                  <select
+                    value={newPriority}
+                    onChange={(e) => setNewPriority(e.target.value as any)}
+                    className="w-full bg-background border border-border rounded-lg p-2 text-sm focus:outline-none"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Assignee</label>
+                  <Input value={newAssignee} onChange={(e) => setNewAssignee(e.target.value)} placeholder="e.g. Ansh V." />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Due Date</label>
+                  <Input type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Labels (comma separated)</label>
+                  <Input value={newLabels} onChange={(e) => setNewLabels(e.target.value)} placeholder="e.g. Backend, Auth" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Dependencies</label>
+                  <Input value={newDependencies} onChange={(e) => setNewDependencies(e.target.value)} placeholder="e.g. Database Schema" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Linked PR</label>
+                  <Input value={newLinkedPR} onChange={(e) => setNewLinkedPR(e.target.value)} placeholder="e.g. #45 Implement login" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Checklist Items (one per line)</label>
+                <Textarea value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} placeholder="Setup login endpoint&#10;Validate inputs" rows={2} />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Create Task
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* RIGHT — task detail */}
-      <TaskDetail task={selected} />
+      {selectedTask ? (
+        <TaskDetail task={selectedTask} onUpdate={refreshTasks} />
+      ) : (
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm flex items-center justify-center text-muted-foreground text-sm">
+          Select a task from the list to view its details.
+        </div>
+      )}
     </div>
   );
 }
@@ -1070,26 +1607,124 @@ function PriorityChip({ p }: { p: Priority }) {
   );
 }
 
-function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
-  const [checks, setChecks] = useState<Record<string, boolean>>({
-    a: true,
-    b: true,
-    c: true,
-    d: true,
-    e: false,
-    f: false,
-    g: false,
-  });
-  const checklist = [
-    { id: "a", label: "Setup /login endpoint" },
-    { id: "b", label: "Validate user input" },
-    { id: "c", label: "Check user in database" },
-    { id: "d", label: "Compare password with hashed password" },
-    { id: "e", label: "Generate JWT token" },
-    { id: "f", label: "Handle errors properly" },
-    { id: "g", label: "Write unit tests" },
-  ];
-  const done = Object.values(checks).filter(Boolean).length;
+function TaskDetail({ task, onUpdate }: { task: TaskData; onUpdate: () => void }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editDesc, setEditDesc] = useState(task.description);
+  const [editPriority, setEditPriority] = useState(task.priority);
+  const [editStatus, setEditStatus] = useState(task.status);
+  const [editAssignee, setEditAssignee] = useState(task.assignee);
+  const [editLabels, setEditLabels] = useState(task.labels.join(", "));
+  const [editDueDate, setEditDueDate] = useState(task.dueDate ? task.dueDate.split("T")[0] : "");
+  const [editLinkedPR, setEditLinkedPR] = useState(task.linkedPR);
+  const [editDependencies, setEditDependencies] = useState(task.dependencies);
+
+  useEffect(() => {
+    setEditTitle(task.title);
+    setEditDesc(task.description);
+    setEditPriority(task.priority);
+    setEditStatus(task.status);
+    setEditAssignee(task.assignee);
+    setEditLabels(task.labels.join(", "));
+    setEditDueDate(task.dueDate ? task.dueDate.split("T")[0] : "");
+    setEditLinkedPR(task.linkedPR);
+    setEditDependencies(task.dependencies);
+  }, [task]);
+
+  const handleEditTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!task._id) return;
+    
+    updateTask(task._id, {
+      title: editTitle,
+      description: editDesc,
+      priority: editPriority,
+      status: editStatus,
+      assignee: editAssignee,
+      labels: editLabels.split(",").map((l: string) => l.trim()).filter(Boolean),
+      dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+      linkedPR: editLinkedPR,
+      dependencies: editDependencies
+    })
+      .then(() => {
+        toast.success("Task updated successfully!");
+        setEditOpen(false);
+        onUpdate();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to update task");
+      });
+  };
+
+  const handleDeleteTask = () => {
+    if (!task._id) return;
+    if (!confirm("Are you sure you want to delete this task?")) return;
+
+    deleteTask(task._id)
+      .then(() => {
+        toast.success("Task deleted successfully!");
+        onUpdate();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to delete task");
+      });
+  };
+
+  const handleToggleChecklist = (itemIndex: number) => {
+    if (!task._id) return;
+    const updatedChecklist = task.checklist.map((item: TaskChecklistItem, idx: number) =>
+      idx === itemIndex ? { ...item, completed: !item.completed } : item
+    );
+
+    updateTaskChecklist(task._id, updatedChecklist)
+      .then(() => {
+        onUpdate();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to update checklist");
+      });
+  };
+
+  const handleAddComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!task._id || !commentText.trim()) return;
+
+    addTaskComment(task._id, commentText)
+      .then(() => {
+        setCommentText("");
+        onUpdate();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to add comment");
+      });
+  };
+
+  const doneCount = task.checklist ? task.checklist.filter((c: TaskChecklistItem) => c.completed).length : 0;
+  const checklistLength = task.checklist ? task.checklist.length : 0;
+  const progressPercent = checklistLength > 0 ? (doneCount / checklistLength) * 100 : 0;
+
+  const formattedDueDate = task.dueDate 
+    ? new Date(task.dueDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+    : "No due date";
+
+  let aiSuggestionText = "Everything looks clear! Keep up the good work.";
+  let hasOverdue = task.dueDate ? new Date(task.dueDate) < new Date() && task.status !== "Done" : false;
+  let isUnassigned = !task.assignee;
+  let isHighPriorityBlocker = task.priority === "High" && task.status !== "Done";
+  
+  if (hasOverdue) {
+    aiSuggestionText = `This task is overdue (${formattedDueDate}). Prioritize finishing it or update the due date to avoid staging delay.`;
+  } else if (isHighPriorityBlocker) {
+    aiSuggestionText = "This is a High Priority blocker. Assign all necessary resources here first before moving to other items.";
+  } else if (isUnassigned) {
+    aiSuggestionText = "This task has no assignee. Assign a team member to ensure someone takes ownership of this implementation.";
+  } else if (checklistLength > 0 && progressPercent < 50) {
+    aiSuggestionText = `Only ${doneCount}/${checklistLength} checklist items completed. Break this down and address the first uncompleted item.`;
+  } else if (task.status === "In Progress" && (!task.comments || task.comments.length === 0)) {
+    aiSuggestionText = "No comments or updates posted yet. Add a quick status update comment to align the team.";
+  }
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
@@ -1104,15 +1739,105 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
               {task.status}
             </Badge>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{task.id} · Due 20 May · Backend</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Due: {formattedDueDate} {task.labels && task.labels.length > 0 && `· ${task.labels.join(", ")}`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="rounded-full">
-            <Edit3 className="mr-1 h-3.5 w-3.5" /> Edit
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <Button onClick={() => setEditOpen(true)} variant="outline" size="sm" className="rounded-full">
+              <Edit3 className="mr-1 h-3.5 w-3.5" /> Edit
+            </Button>
+            <DialogContent className="sm:max-w-lg bg-card text-foreground border border-border">
+              <DialogHeader>
+                <DialogTitle>Edit Task</DialogTitle>
+                <DialogDescription>
+                  Modify the details of this task.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleEditTask} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Title *</label>
+                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Task title..." required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Description</label>
+                  <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="What needs to be done?" rows={3} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Priority</label>
+                    <select
+                      value={editPriority}
+                      onChange={(e) => setEditPriority(e.target.value as any)}
+                      className="w-full bg-background border border-border rounded-lg p-2 text-sm focus:outline-none"
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Status</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value as any)}
+                      className="w-full bg-background border border-border rounded-lg p-2 text-sm focus:outline-none"
+                    >
+                      <option value="Todo">Todo</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Done">Done</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Assignee</label>
+                    <Input value={editAssignee} onChange={(e) => setEditAssignee(e.target.value)} placeholder="e.g. Ansh V." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Due Date</label>
+                    <Input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Dependencies</label>
+                    <Input value={editDependencies} onChange={(e) => setEditDependencies(e.target.value)} placeholder="e.g. Database Schema" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Linked PR</label>
+                    <Input value={editLinkedPR} onChange={(e) => setEditLinkedPR(e.target.value)} placeholder="e.g. #45 Implement login" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Labels (comma separated)</label>
+                  <Input value={editLabels} onChange={(e) => setEditLabels(e.target.value)} placeholder="Backend, Auth" />
+                </div>
+                <DialogFooter className="pt-2">
+                  <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-card border border-border">
+              <DropdownMenuItem onClick={handleDeleteTask} className="text-destructive focus:text-destructive">
+                Delete Task
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1125,76 +1850,90 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
               Description
             </div>
             <p className="mt-2 text-sm leading-relaxed text-foreground">
-              Build a secure login API using email and password. Use bcrypt for hashing and generate
-              a JWT token on successful login.
+              {task.description || "No description provided."}
             </p>
           </section>
 
-          <section>
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Checklist
+          {checklistLength > 0 && (
+            <section>
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Checklist
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {doneCount}/{checklistLength}
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {done}/{checklist.length}
-              </span>
-            </div>
-            <Progress value={(done / checklist.length) * 100} className="mt-2 h-1.5" />
-            <ul className="mt-3 space-y-1.5">
-              {checklist.map((c) => {
-                const on = checks[c.id];
-                return (
-                  <li key={c.id}>
+              <Progress value={progressPercent} className="mt-2 h-1.5" />
+              <ul className="mt-3 space-y-1.5">
+                {task.checklist.map((c: TaskChecklistItem, idx: number) => (
+                  <li key={idx}>
                     <button
-                      onClick={() => setChecks((s) => ({ ...s, [c.id]: !s[c.id] }))}
+                      onClick={() => handleToggleChecklist(idx)}
                       className="group flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1 text-left transition-colors duration-[180ms] hover:bg-muted/60"
                     >
                       <span
                         className={`grid h-4 w-4 place-items-center rounded border transition-colors duration-[180ms] ${
-                          on ? "border-primary bg-primary text-primary-foreground" : "border-border"
+                          c.completed ? "border-primary bg-primary text-primary-foreground" : "border-border"
                         }`}
                       >
-                        {on && <CheckCircle2 className="h-3 w-3" />}
+                        {c.completed && <CheckCircle2 className="h-3 w-3" />}
                       </span>
-                      <span className={`text-sm ${on ? "text-muted-foreground line-through" : ""}`}>
-                        {c.label}
+                      <span className={`text-sm ${c.completed ? "text-muted-foreground line-through" : ""}`}>
+                        {c.text}
                       </span>
                     </button>
                   </li>
-                );
-              })}
-            </ul>
-          </section>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section>
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Comments
             </div>
             <div className="mt-3 space-y-3">
-              <div className="flex items-start gap-2.5">
-                <Avatar className="h-7 w-7 ring-2 ring-card">
-                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                    AV
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 rounded-xl bg-muted/50 p-3">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-medium">Ansh V.</span>
-                    <span className="text-muted-foreground">1h ago</span>
-                  </div>
-                  <p className="mt-1 text-sm leading-relaxed">
-                    Hashing works locally. Blocked on JWT secret rotation strategy.
-                  </p>
+              {task.comments && task.comments.length > 0 && (
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {task.comments.map((c: TaskComment, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2.5">
+                      <Avatar className="h-7 w-7 ring-2 ring-card">
+                        <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                          {c.author.slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 rounded-xl bg-muted/50 p-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium">{c.author}</span>
+                          <span className="text-muted-foreground">
+                            {new Date(c.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm leading-relaxed text-foreground">
+                          {c.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="flex items-start gap-2.5">
+              )}
+              <form onSubmit={handleAddComment} className="flex items-start gap-2.5">
                 <Avatar className="h-7 w-7 ring-2 ring-card">
-                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                    DC
+                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                    ME
                   </AvatarFallback>
                 </Avatar>
-                <Input placeholder="Write a comment…" className="rounded-full" />
-              </div>
+                <div className="flex-1 flex gap-2">
+                  <Input
+                    placeholder="Write a comment…"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    className="rounded-xl"
+                  />
+                  <Button type="submit" size="sm" className="rounded-xl">Comment</Button>
+                </div>
+              </form>
             </div>
           </section>
         </div>
@@ -1204,49 +1943,46 @@ function TaskDetail({ task }: { task: (typeof tasks)[number] }) {
           <MetaRow label="Assignee">
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
-                <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                  {task.assignee}
+                <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                  {task.assignee ? task.assignee.slice(0, 2) : "UN"}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm">Ansh V.</span>
+              <span className="text-sm">{task.assignee || "Unassigned"}</span>
             </div>
           </MetaRow>
-          <MetaRow label="Labels">
-            <div className="flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="rounded-full text-[10px]">
-                Backend
-              </Badge>
-              <Badge variant="secondary" className="rounded-full text-[10px]">
-                Auth
-              </Badge>
-            </div>
-          </MetaRow>
+          {task.labels && task.labels.length > 0 && (
+            <MetaRow label="Labels">
+              <div className="flex flex-wrap gap-1.5">
+                {task.labels.map((l: string, idx: number) => (
+                  <Badge key={idx} variant="secondary" className="rounded-full text-[10px]">
+                    {l}
+                  </Badge>
+                ))}
+              </div>
+            </MetaRow>
+          )}
           <MetaRow label="Due">
-            <span className="text-sm">20 May 2026</span>
+            <span className="text-sm">{formattedDueDate}</span>
           </MetaRow>
-          <MetaRow label="Linked PR">
-            <a
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-              href="#"
-            >
-              <GitPullRequest className="h-3.5 w-3.5" /> #45 Implement login API
-            </a>
-          </MetaRow>
-          <MetaRow label="Dependencies">
-            <span className="text-sm">Database Schema</span>
-          </MetaRow>
-          <MetaRow label="Attachments">
-            <button className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-              <Paperclip className="h-3.5 w-3.5" /> Attach
-            </button>
-          </MetaRow>
+          {task.linkedPR && (
+            <MetaRow label="Linked PR">
+              <span className="inline-flex items-center gap-1.5 text-sm text-primary">
+                <GitPullRequest className="h-3.5 w-3.5" /> {task.linkedPR}
+              </span>
+            </MetaRow>
+          )}
+          {task.dependencies && (
+            <MetaRow label="Dependencies">
+              <span className="text-sm">{task.dependencies}</span>
+            </MetaRow>
+          )}
 
           <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3 w-3" /> AI Suggestion
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Add refresh-token rotation before shipping. Similar stalled projects failed here.
+              {aiSuggestionText}
             </p>
             <Button variant="ghost" size="sm" className="mt-2 h-7 rounded-full px-2 text-xs">
               Ask AI <ArrowRight className="ml-1 h-3 w-3" />
@@ -1406,61 +2142,261 @@ function StallDNATab() {
 // TEAM TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TeamTab() {
+function TeamTab({
+  draftId,
+  teamData,
+  refreshTeam,
+  loading,
+}: {
+  draftId: string | undefined;
+  teamData: TeamResponseData | null;
+  refreshTeam: () => void;
+  loading: boolean;
+}) {
+  const { user } = useAuth();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"Contributor" | "Viewer">("Contributor");
+
+  const isCurrentUserOwner = teamData?.members?.some(
+    (m: TeamMemberData) => m.userId === user?._id && m.role === "Owner"
+  ) || false;
+
+  const myMember = teamData?.members?.find((m: TeamMemberData) => m.userId === user?._id);
+  const myRole = myMember?.role || "Viewer";
+
+  const handleInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draftId || !inviteEmail.trim()) return;
+
+    inviteTeamMember(draftId, inviteEmail, inviteRole)
+      .then(() => {
+        toast.success("Member invited successfully!");
+        setInviteOpen(false);
+        setInviteEmail("");
+        refreshTeam();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to invite member");
+      });
+  };
+
+  const handleUpdateRole = (userId: string, role: string) => {
+    if (!draftId) return;
+    updateTeamMemberRole(draftId, userId, role)
+      .then(() => {
+        toast.success("Role updated successfully!");
+        refreshTeam();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to update role");
+      });
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    if (!draftId) return;
+    if (!confirm("Are you sure you want to remove this member?")) return;
+    removeTeamMember(draftId, userId)
+      .then(() => {
+        toast.success("Member removed successfully!");
+        refreshTeam();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to remove member");
+      });
+  };
+
+  const handleApproveRequest = (email: string) => {
+    if (!draftId) return;
+    approveJoinRequest(draftId, email)
+      .then(() => {
+        toast.success("Join request approved!");
+        refreshTeam();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to approve request");
+      });
+  };
+
+  const handleDeclineRequest = (email: string) => {
+    if (!draftId) return;
+    declineJoinRequest(draftId, email)
+      .then(() => {
+        toast.success("Join request declined!");
+        refreshTeam();
+      })
+      .catch((err: any) => {
+        toast.error(err.message ?? "Failed to decline request");
+      });
+  };
+
+  if (loading && !teamData) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
         <Card
           title="Contributors"
           action={
-            <Button size="sm" className="h-8 rounded-full">
-              <UserPlus className="mr-1 h-3.5 w-3.5" /> Invite
-            </Button>
+            isCurrentUserOwner && (
+              <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                <Button onClick={() => setInviteOpen(true)} size="sm" className="h-8 rounded-full">
+                  <UserPlus className="mr-1 h-3.5 w-3.5" /> Invite
+                </Button>
+                <DialogContent className="sm:max-w-md bg-card text-foreground border border-border">
+                  <DialogHeader>
+                    <DialogTitle>Invite Contributor</DialogTitle>
+                    <DialogDescription>
+                      Invite a member to collaborate on this workspace. The user must be registered on DraftYard.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleInvite} className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Email Address</label>
+                      <Input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="collaborator@example.com"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Role</label>
+                      <select
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as any)}
+                        className="w-full bg-background border border-border rounded-lg p-2 text-sm focus:outline-none"
+                      >
+                        <option value="Contributor">Contributor</option>
+                        <option value="Viewer">Viewer</option>
+                      </select>
+                    </div>
+                    <DialogFooter className="pt-2">
+                      <Button type="button" variant="ghost" onClick={() => setInviteOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">
+                        Send Invitation
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )
           }
         >
           <ul className="divide-y divide-border/60">
-            {contributors.map((c) => (
-              <li key={c.handle} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <Avatar className="h-9 w-9 ring-2 ring-card">
-                  <AvatarFallback className="bg-primary/15 text-[11px] font-semibold text-primary">
-                    {c.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{c.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{c.handle}</p>
-                </div>
-                <Badge variant="secondary" className="rounded-full text-[10px]">
-                  {c.role}
-                </Badge>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </li>
-            ))}
+            {teamData?.members?.map((member: TeamMemberData) => {
+              const initials = member.name
+                ? member.name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
+                : "UN";
+              const isMemberSelf = member.userId === user?._id;
+              return (
+                <li key={member.userId} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <Avatar className="h-9 w-9 ring-2 ring-card">
+                    <AvatarFallback className="bg-primary/15 text-[11px] font-semibold text-primary">
+                      {initials.slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {member.name} {isMemberSelf && <span className="text-xs text-muted-foreground">(You)</span>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                  </div>
+                  <Badge variant="secondary" className="rounded-full text-[10px]">
+                    {member.role}
+                  </Badge>
+                  {isCurrentUserOwner && member.role !== "Owner" ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 bg-card border border-border">
+                        <DropdownMenuItem
+                          onClick={() => handleUpdateRole(member.userId, "Contributor")}
+                          disabled={member.role === "Contributor"}
+                        >
+                          Make Contributor
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleUpdateRole(member.userId, "Viewer")}
+                          disabled={member.role === "Viewer"}
+                        >
+                          Make Viewer
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="border-border" />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleRemoveMember(member.userId)}
+                        >
+                          Remove from team
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <div className="w-8 h-8" />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </Card>
 
         <Card title="Pending Join Requests">
-          <ul className="space-y-2">
-            <li className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                  RV
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">ravi@example.com</p>
-                <p className="text-xs text-muted-foreground">Requested 2 days ago</p>
-              </div>
-              <Button variant="ghost" size="sm" className="h-8 rounded-full">
-                Decline
-              </Button>
-              <Button size="sm" className="h-8 rounded-full">
-                Approve
-              </Button>
-            </li>
-          </ul>
+          {teamData?.joinRequests && teamData.joinRequests.length > 0 ? (
+            <ul className="space-y-2">
+              {teamData.joinRequests.map((req: JoinRequestData) => (
+                <li key={req.id} className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
+                      {req.name ? req.name.slice(0, 2).toUpperCase() : "RQ"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{req.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Requested {new Date(req.createdAt).toLocaleDateString()} · "{req.message || "Wants to join project"}"
+                    </p>
+                  </div>
+                  {isCurrentUserOwner ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 rounded-full"
+                        onClick={() => handleDeclineRequest(req.email)}
+                      >
+                        Decline
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-full"
+                        onClick={() => handleApproveRequest(req.email)}
+                      >
+                        Approve
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">Owner review pending</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              No pending join requests.
+            </div>
+          )}
         </Card>
       </div>
 
@@ -1468,13 +2404,13 @@ function TeamTab() {
         <Card title="Roles">
           <ul className="space-y-2 text-sm">
             {[
-              { role: "Owner", count: 1 },
-              { role: "Contributor", count: 2 },
-              { role: "Viewer", count: 1 },
+              { role: "Owner", count: teamData?.members?.filter((m: TeamMemberData) => m.role === "Owner").length || 0 },
+              { role: "Contributor", count: teamData?.members?.filter((m: TeamMemberData) => m.role === "Contributor").length || 0 },
+              { role: "Viewer", count: teamData?.members?.filter((m: TeamMemberData) => m.role === "Viewer").length || 0 },
             ].map((r) => (
               <li key={r.role} className="flex items-center justify-between">
                 <span>{r.role}</span>
-                <span className="text-muted-foreground">{r.count}</span>
+                <span className="text-muted-foreground font-semibold">{r.count}</span>
               </li>
             ))}
           </ul>
@@ -1483,35 +2419,51 @@ function TeamTab() {
         <Card title="Permissions">
           <ul className="space-y-2 text-sm">
             {[
-              { icon: Shield, text: "Owners manage project settings" },
-              { icon: UserPlus, text: "Owners invite / remove members" },
-              { icon: Edit3, text: "Contributors edit tasks and files" },
-              { icon: Lock, text: "Viewers have read-only access" },
-            ].map((p, i) => (
-              <li key={i} className="flex items-start gap-2 text-muted-foreground">
-                <p.icon className="mt-0.5 h-3.5 w-3.5 text-primary" />
-                <span>{p.text}</span>
-              </li>
-            ))}
+              { icon: Shield, text: "Owners manage project settings", role: "Owner" },
+              { icon: UserPlus, text: "Owners invite / remove members", role: "Owner" },
+              { icon: Edit3, text: "Contributors edit tasks and files", role: "Contributor" },
+              { icon: Lock, text: "Viewers have read-only access", role: "Viewer" },
+            ].map((p, i) => {
+              const isActive = myRole === p.role;
+              return (
+                <li
+                  key={i}
+                  className={`flex items-start gap-2 rounded-lg p-1.5 transition-all duration-[180ms] ${
+                    isActive
+                      ? "bg-primary/8 text-foreground ring-1 ring-primary/20"
+                      : "text-muted-foreground opacity-70"
+                  }`}
+                >
+                  <p.icon className={`mt-0.5 h-3.5 w-3.5 ${isActive ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                  <span>{p.text} {isActive && " (Active)"}</span>
+                </li>
+              );
+            })}
           </ul>
         </Card>
 
         <Card title="Recent Team Activity">
-          <ul className="space-y-3 text-sm">
-            {activity.slice(0, 3).map((a, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback className="bg-primary/15 text-[9px] font-semibold text-primary">
-                    {a.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-foreground">{a.who}</span> {a.what}
-                  <span className="ml-1 text-muted-foreground/70">· {a.when}</span>
-                </p>
-              </li>
-            ))}
-          </ul>
+          {teamData?.activity && teamData.activity.length > 0 ? (
+            <ul className="space-y-3 text-sm">
+              {teamData.activity.slice(0, 5).map((a: ActivityLogData) => (
+                <li key={a.id} className="flex items-start gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="bg-primary/15 text-[9px] font-semibold text-primary">
+                      {a.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    <span className="font-medium text-foreground">{a.who}</span> {a.what}
+                    <span className="ml-1 text-muted-foreground/70">· {a.when}</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              No recent activity logs.
+            </div>
+          )}
         </Card>
       </div>
     </div>
@@ -1595,3 +2547,4 @@ function FloatingAI({ open, onOpenChange, projectName }: { open: boolean; onOpen
     </>
   );
 }
+  

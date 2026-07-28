@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
@@ -54,13 +55,9 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const displayName = user?.name || user?.email?.split("@")[0] || "there";
-  const initials = user?.email
-    ? user.email.slice(0, 2).toUpperCase()
-    : user?.name
-      ? user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
-      : "DY";
-
-  useEffect(() => {
+   const initials = getInitials(user?.name, user?.email);
+  
+   useEffect(() => {
     const h = new Date().getHours();
     setGreeting(h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
   }, []);

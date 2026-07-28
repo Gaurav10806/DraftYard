@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { getInitials } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -363,12 +364,7 @@ function ProjectTopBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const initials = (() => {
-    if (user?.email) {
-      return user.email.slice(0, 2).toUpperCase();
-    }
-    return "DY";
-  })();
+ const initials = getInitials(user?.name, user?.email);
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 sm:px-6">

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { slugify } from "./project.$slug";
 import { motion, AnimatePresence } from "framer-motion";
+import { getInitials } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -426,11 +427,7 @@ function FeedTopBar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const initials = user?.email
-    ? user.email.slice(0, 2).toUpperCase()
-    : user?.name
-      ? user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
-      : "DY";
+  const initials = getInitials(user?.name, user?.email);
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 sm:px-6">

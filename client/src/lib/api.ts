@@ -58,40 +58,40 @@ function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function fetchFeed(filters?: {
-  search?: string;
-  category?: string;
-  techStack?: string[];
-  stage?: string[];
-  status?: string;
-  openForRevival?: boolean;
-  sort?: string;
-  page?: number;
-  limit?: number;
-}): Promise<{ data: Draft[]; pagination: { page: number; limit: number; total: number; pages: number; hasMore: boolean } }> {
-  const params = new URLSearchParams();
-  
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.category) params.append('category', filters.category);
-  if (filters?.techStack?.length) {
-    filters.techStack.forEach(tech => params.append('techStack', tech));
-  }
-  if (filters?.stage?.length) {
-    filters.stage.forEach(s => params.append('stage', s));
-  }
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.openForRevival) params.append('openForRevival', 'true');
-  if (filters?.sort) params.append('sort', filters.sort);
-  if (filters?.page) params.append('page', filters.page.toString());
-  if (filters?.limit) params.append('limit', filters.limit.toString());
+  export async function fetchFeed(filters?: {
+    search?: string;
+    category?: string;
+    techStack?: string[];
+    stage?: string[];
+    status?: string;
+    openForRevival?: boolean;
+    sort?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: Draft[]; pagination: { page: number; limit: number; total: number; pages: number; hasMore: boolean } }> {
+    const params = new URLSearchParams();
+    
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.techStack?.length) {
+      filters.techStack.forEach(tech => params.append('techStack', tech));
+    }
+    if (filters?.stage?.length) {
+      filters.stage.forEach(s => params.append('stage', s));
+    }
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.openForRevival) params.append('openForRevival', 'true');
+    if (filters?.sort) params.append('sort', filters.sort);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
 
-  const queryString = params.toString();
-  const url = queryString ? `${API_BASE}/feed?${queryString}` : `${API_BASE}/feed`;
-  
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to load feed");
-  return res.json();
-}
+    const queryString = params.toString();
+    const url = queryString ? `${API_BASE}/feed?${queryString}` : `${API_BASE}/feed`;
+    
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to load feed");
+    return res.json();
+  }
 
 export async function fetchMyDrafts(): Promise<Draft[]> {
   const res = await fetch(`${API_BASE}/drafts/mine`, {
@@ -227,6 +227,257 @@ export async function updateWorkspace(draftId: string, data: Partial<WorkspaceDa
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to update workspace");
+  }
+  return res.json();
+}
+
+// ===== Task APIs =====
+
+export type TaskChecklistItem = {
+  _id?: string;
+  text: string;
+  completed: boolean;
+};
+
+export type TaskComment = {
+  _id?: string;
+  author: string;
+  avatar?: string;
+  text: string;
+  createdAt: string;
+};
+
+export type TaskData = {
+  _id?: string;
+  draftId: string;
+  title: string;
+  description: string;
+  status: "Todo" | "In Progress" | "Done";
+  priority: "High" | "Medium" | "Low";
+  dueDate?: string | null;
+  assignee: string;
+  labels: string[];
+  checklist: TaskChecklistItem[];
+  comments: TaskComment[];
+  dependencies: string;
+  linkedPR: string;
+  attachments: string[];
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export async function fetchTasks(draftId: string): Promise<TaskData[]> {
+  const res = await fetch(`${API_BASE}/tasks/${draftId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to load tasks");
+  }
+  return res.json();
+}
+
+export async function createTask(data: Partial<TaskData>): Promise<TaskData> {
+  const res = await fetch(`${API_BASE}/tasks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to create task");
+  }
+  return res.json();
+}
+
+export async function updateTask(taskId: string, data: Partial<TaskData>): Promise<TaskData> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update task");
+  }
+  return res.json();
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to delete task");
+  }
+}
+
+export async function addTaskComment(taskId: string, text: string): Promise<TaskData> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to add comment");
+  }
+  return res.json();
+}
+
+export async function updateTaskChecklist(taskId: string, checklist: TaskChecklistItem[]): Promise<TaskData> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}/checklist`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ checklist }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update checklist");
+  }
+  return res.json();
+}
+
+// ===== Team APIs =====
+
+export type TeamMemberData = {
+  userId: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: "Owner" | "Contributor" | "Viewer";
+};
+
+export type JoinRequestData = {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+};
+
+export type ActivityLogData = {
+  id: string;
+  who: string;
+  what: string;
+  when: string;
+  initials: string;
+};
+
+export type TeamResponseData = {
+  members: TeamMemberData[];
+  joinRequests: JoinRequestData[];
+  activity: ActivityLogData[];
+};
+
+export async function fetchTeamData(draftId: string): Promise<TeamResponseData> {
+  const res = await fetch(`${API_BASE}/team/${draftId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to load team data");
+  }
+  return res.json();
+}
+
+export async function inviteTeamMember(draftId: string, email: string, role: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/team/${draftId}/invite`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ email, role }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to invite member");
+  }
+}
+
+export async function updateTeamMemberRole(draftId: string, userId: string, role: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/team/${draftId}/member/${userId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update role");
+  }
+}
+
+export async function removeTeamMember(draftId: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/team/${draftId}/member/${userId}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to remove member");
+  }
+}
+
+export async function approveJoinRequest(draftId: string, email: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/team/${draftId}/request/approve`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to approve request");
+  }
+}
+
+export async function declineJoinRequest(draftId: string, email: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/team/${draftId}/request/decline`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to decline request");
+  }
+}
+
+export async function updateDraftStage(draftId: string, currentStage: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ currentStage }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update draft stage");
   }
   return res.json();
 }
@@ -763,5 +1014,11 @@ export async function renameReview(reviewId: string, projectName: string): Promi
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to rename review");
   }
+  return res.json();
+}
+
+export async function fetchCompassFeed(mode: string): Promise<CompassFeedData> {
+  const res = await fetch(`${API_BASE}/compass-feed/${mode}`);
+  if (!res.ok) throw new Error("Failed to load compass feed");
   return res.json();
 }

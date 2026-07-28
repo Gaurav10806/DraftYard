@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-
+const taskRoutes = require("./routes/taskRoutes");
+const teamRoutes = require("./routes/teamRoutes");
 const connectDB = require("./config/db");
 
 dotenv.config();
@@ -30,6 +31,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api", workspaceRoutes);
 app.use("/api", userRoutes);
 app.use("/api", reviewRoutes);
+app.use("/api", taskRoutes);
+app.use("/api", teamRoutes);
 
 app.get("/", (req, res) => {
   res.send("DraftYard API is running 🚀");
