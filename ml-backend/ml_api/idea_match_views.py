@@ -32,7 +32,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .mongo_utils import get_burials_collection
+from .mongo_utils import get_burials_collection, get_workspaces_collection
 
 # Hard cap so a large database can't return hundreds of rows at once.
 MAX_MATCHES = 50
@@ -84,17 +84,35 @@ def _substring_overlap(query_words: set, draft_words: set) -> set:
     return hits
 
 
-def _draft_text(doc: dict) -> str:
-    """Combine every meaningful text field on a draft into one string,
-    so matching isn't limited to the one-liner alone."""
+def _draft_text(doc: dict, ws: dict = None) -> str:
+    """Combine every meaningful text field on a draft and its associated workspace document into one string,
+    so matching checks both the draft metadata and workspace long descriptions, features, blockers, tasks, etc."""
     parts = [
         doc.get("projectName", ""),
         doc.get("oneLiner", ""),
+        doc.get("description", ""),
+        doc.get("category", ""),
+        doc.get("domain", ""),
         " ".join(doc.get("techStack") or []),
+        " ".join(doc.get("tags") or []),
         doc.get("failureReason", ""),
         doc.get("developmentMethodology", ""),
         doc.get("salvageable", ""),
     ]
+    if ws:
+        parts.extend([
+            ws.get("longDescription", ""),
+            ws.get("featuresCompleted", ""),
+            ws.get("currentBlockers", ""),
+            ws.get("externalLinks", ""),
+        ])
+        tasks = ws.get("tasks") or []
+        if isinstance(tasks, list):
+            parts.extend([t.get("title", "") for t in tasks if isinstance(t, dict)])
+        milestones = ws.get("milestones") or []
+        if isinstance(milestones, list):
+            parts.extend([m.get("label", "") for m in milestones if isinstance(m, dict)])
+
     return " ".join(p for p in parts if p)
 
 
@@ -105,6 +123,8 @@ def idea_match(request):
     Returns every draft that shares at least one significant word with
     the query, ranked by TF-IDF weighted word-overlap (highest first),
     each tagged with a priority bucket and the matched keywords.
+    Matches across draft metadata as well as workspace long descriptions,
+    completed features, blockers, tasks, and milestones.
     """
     project_name = (request.data.get("projectName") or "").strip()
     pitch = (request.data.get("pitch") or "").strip()
@@ -120,16 +140,42 @@ def idea_match(request):
     docs = list(get_burials_collection().find(
         {},
         {
-            "projectName": 1, "oneLiner": 1, "domain": 1, "techStack": 1,
-            "currentStage": 1, "failureReason": 1, "developmentMethodology": 1,
-            "isAnonymous": 1,
+            "projectName": 1, "oneLiner": 1, "description": 1, "category": 1, "domain": 1,
+            "techStack": 1, "tags": 1, "currentStage": 1, "failureReason": 1,
+            "developmentMethodology": 1, "isAnonymous": 1,
         },
     ))
 
     if not docs:
         return Response({"query": query_text, "matchCount": 0, "matches": []})
 
-    corpus_texts = [_draft_text(d) for d in docs]
+    # Fetch workspace documents linked to drafts (by draftId) to include longDescription, blockers, etc.
+    workspaces_by_draft_id = {}
+    try:
+        ws_docs = list(get_workspaces_collection().find(
+            {},
+            {
+                "draftId": 1,
+                "longDescription": 1,
+                "featuresCompleted": 1,
+                "currentBlockers": 1,
+                "externalLinks": 1,
+                "tasks": 1,
+                "milestones": 1,
+            }
+        ))
+        for ws in ws_docs:
+            draft_id_val = ws.get("draftId")
+            if draft_id_val:
+                workspaces_by_draft_id[str(draft_id_val)] = ws
+    except Exception:
+        # Non-fatal fallback if workspaces collection doesn't exist yet
+        pass
+
+    corpus_texts = [
+        _draft_text(d, workspaces_by_draft_id.get(str(d.get("_id"))))
+        for d in docs
+    ]
 
     # Fit TF-IDF on the corpus + query together so the vocabulary
     # (and each word's importance) reflects both sides. Unigrams only,

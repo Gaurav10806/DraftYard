@@ -1,7 +1,9 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Draft = require('../models/draft');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const { requireAuth } = require('../middleware/authMiddleware');
 
 // GET /api/user/profile - Get current user's profile
@@ -236,91 +238,127 @@ router.delete('/user/skills', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/user/insights - Get user-specific insights for their selected project
+// GET /api/user/insights - Get real user-specific insights & community analysis
 router.get('/user/insights', requireAuth, async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Get all drafts by the authenticated user
+    // Get all drafts created by the authenticated user
     const userDrafts = await Draft.find({ submittedBy: userId });
+
+    // Query real similar community projects from MongoDB matching user's domains/tech stacks
+    const userDomains = Array.from(new Set(userDrafts.map(d => d.domain).filter(Boolean)));
+    const userTechs = Array.from(new Set(userDrafts.flatMap(d => d.techStack || [])));
+
+    const similarCommunityDrafts = await Draft.find({
+      submittedBy: { $ne: userId },
+      ...(userDomains.length > 0 ? { domain: { $in: userDomains } } : {})
+    })
+      .select('projectName domain currentStage failureReason upvotes raisedHands timeSpent')
+      .limit(4);
+
+    const formattedSimilar = similarCommunityDrafts.map(d => ({
+      name: d.projectName,
+      domain: d.domain,
+      success: d.currentStage === 'Shipped' || d.currentStage === 'Launched but abandoned' || d.currentStage === 'Almost complete',
+      timeToCompletion: d.timeSpent?.value ? `${d.timeSpent.value} ${d.timeSpent.unit || 'weeks'}` : '3 weeks',
+      reason: d.failureReason ? d.failureReason.slice(0, 45) : 'Stalled due to resource constraints',
+    }));
 
     if (userDrafts.length === 0) {
       return res.json({
         healthScore: 0,
         stallRisk: 0,
         completionProbability: 0,
-        improvements: [],
-        similarProjects: [],
+        improvements: [
+          { label: 'Create First Draft', impact: 'High', description: 'Submit your first draft to unlock tailored AI health & revival insights.' },
+          { label: 'Specify Tech Stack', impact: 'Medium', description: 'Adding complete tech stack tags improves community match accuracy.' },
+          { label: 'Define Stall Reasons', impact: 'Medium', description: 'Documenting project bottlenecks helps collaborators assist you effectively.' },
+        ],
+        similarProjects: formattedSimilar,
         revivalPotential: 0,
-        message: 'No drafts found',
+        totalDrafts: 0,
+        totalUpvotes: 0,
+        totalRaisedHands: 0,
+        topDomain: 'N/A',
+        topTech: 'N/A',
+        message: 'No drafts found for user',
       });
     }
 
-    // Calculate metrics from user's drafts
-    const metrics = calculateMetrics(userDrafts);
+    const totalDrafts = userDrafts.length;
 
-    res.json(metrics);
+    // Calculate Real Metrics
+    const completedDrafts = userDrafts.filter(d => d.currentStage === 'Shipped' || d.currentStage === 'Launched but abandoned' || d.currentStage === 'Almost complete').length;
+    const completionRate = (completedDrafts / totalDrafts) * 100;
+    
+    const totalUpvotes = userDrafts.reduce((sum, d) => sum + (d.upvotes || 0), 0);
+    const totalRaisedHands = userDrafts.reduce((sum, d) => sum + (d.raisedHands ? d.raisedHands.length : 0), 0);
+    const avgEngagement = userDrafts.reduce((sum, d) => sum + ((d.upvotes || 0) + (d.views || 0) + (d.bookmarks || 0)), 0) / totalDrafts;
+
+    const healthScore = Math.min(100, Math.max(10, Math.round(completionRate * 0.5 + Math.min(avgEngagement * 5, 50))));
+
+    // Stall Risk
+    const recentDrafts = userDrafts.filter(d => {
+      if (!d.lastWorkedOn) return d.currentStage !== 'Launched but abandoned';
+      const daysSinceUpdate = Math.floor((Date.now() - new Date(d.lastWorkedOn).getTime()) / (1000 * 60 * 60 * 24));
+      return daysSinceUpdate < 30;
+    }).length;
+
+    const stallRisk = Math.min(95, Math.max(15, Math.round(((totalDrafts - recentDrafts) / totalDrafts) * 100)));
+
+    // Completion Probability
+    const stageScores = {
+      'Idea only': 25,
+      'Prototype': 45,
+      '50% done': 65,
+      'Almost complete': 85,
+      'Launched but abandoned': 90,
+      'Shipped': 100,
+    };
+    const avgStageScore = userDrafts.reduce((sum, d) => sum + (stageScores[d.currentStage] || 35), 0) / totalDrafts;
+    const completionProbability = Math.min(98, Math.max(15, Math.round(avgStageScore * 0.65 + completionRate * 0.35)));
+
+    // Revival Potential
+    const avgRevivalScore = userDrafts.reduce((sum, d) => {
+      let score = 50;
+      if (d.techStack && d.techStack.length > 0) score += 10;
+      if (d.raisedHands && d.raisedHands.length > 0) score += 20;
+      if (d.upvotes > 3) score += 10;
+      if (d.failureReason && d.failureReason.length > 15) score += 10;
+      return sum + Math.min(score, 100);
+    }, 0) / totalDrafts;
+    const revivalPotential = Math.min(100, Math.max(20, Math.round(avgRevivalScore)));
+
+    // Top domain and tech stack
+    const domainCounts = {};
+    userDrafts.forEach(d => { if (d.domain) domainCounts[d.domain] = (domainCounts[d.domain] || 0) + 1; });
+    const topDomain = Object.keys(domainCounts).sort((a, b) => domainCounts[b] - domainCounts[a])[0] || 'Web';
+
+    const techCounts = {};
+    userDrafts.forEach(d => (d.techStack || []).forEach(t => { techCounts[t] = (techCounts[t] || 0) + 1; }));
+    const topTech = Object.keys(techCounts).sort((a, b) => techCounts[b] - techCounts[a])[0] || 'React';
+
+    // Improvements
+    const improvements = generateImprovements(userDrafts);
+
+    res.json({
+      healthScore,
+      stallRisk,
+      completionProbability,
+      revivalPotential,
+      totalDrafts,
+      totalUpvotes,
+      totalRaisedHands,
+      topDomain,
+      topTech,
+      improvements,
+      similarProjects: formattedSimilar.length > 0 ? formattedSimilar : findFallbackSimilar(userDrafts),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
-// Helper function to calculate insights from user's drafts
-function calculateMetrics(drafts) {
-  const totalDrafts = drafts.length;
-  
-  // Draft Health Score: based on completion rate and engagement
-  const completedDrafts = drafts.filter(d => d.currentStage === 'Launched but abandoned' || d.currentStage === 'Almost complete').length;
-  const completionRate = (completedDrafts / totalDrafts) * 100;
-  const avgEngagement = drafts.reduce((sum, d) => sum + (d.upvotes + d.views + d.bookmarks), 0) / totalDrafts;
-  const healthScore = Math.round((completionRate * 0.6 + Math.min(avgEngagement / 10, 100) * 0.4));
-
-  // Stall Risk: based on time since last activity, stage, and momentum
-  const recentDrafts = drafts.filter(d => {
-    if (!d.lastWorkedOn) return d.currentStage !== 'Launched but abandoned';
-    const daysSinceUpdate = Math.floor((Date.now() - d.lastWorkedOn) / (1000 * 60 * 60 * 24));
-    return daysSinceUpdate < 30;
-  }).length;
-  const stallRisk = Math.round(((totalDrafts - recentDrafts) / totalDrafts) * 100);
-
-  // Completion Probability: based on user's historical completion and current project stage distribution
-  const stageScores = {
-    'Idea only': 20,
-    'Prototype': 40,
-    '50% done': 60,
-    'Almost complete': 80,
-    'Launched but abandoned': 100,
-  };
-  const avgStageScore = drafts.reduce((sum, d) => sum + (stageScores[d.currentStage] || 0), 0) / totalDrafts;
-  const completionProbability = Math.round(avgStageScore * 0.7 + (completionRate * 0.3));
-
-  // Top Improvements: based on common patterns in failed projects
-  const improvements = generateImprovements(drafts);
-
-  // Similar Projects: find projects with similar characteristics
-  const similarProjects = findSimilarProjects(drafts);
-
-  // Revival Potential: score based on code existence, documentation, and interest
-  const avgRevivalScore = drafts.reduce((sum, d) => {
-    let score = 50; // base score
-    if (d.techStack.length > 0) score += 10;
-    if (d.raisedHands && d.raisedHands.length > 0) score += 15;
-    if (d.upvotes > 5) score += 10;
-    if (d.failureReason && d.failureReason.length > 20) score += 5;
-    return sum + Math.min(score, 100);
-  }, 0) / totalDrafts;
-  const revivalPotential = Math.round(avgRevivalScore);
-
-  return {
-    healthScore,
-    stallRisk,
-    completionProbability,
-    improvements,
-    similarProjects,
-    revivalPotential,
-    totalDrafts,
-  };
-}
 
 function generateImprovements(drafts) {
   const improvements = [];
@@ -330,33 +368,32 @@ function generateImprovements(drafts) {
   const multiTeamProjects = drafts.filter(d => d.teamSize === '4+').length;
   if (soloProjects > multiTeamProjects * 2) {
     improvements.push({
-      label: 'Team Size',
+      label: 'Team Collaboration',
       impact: 'High',
-      description: 'Your solo projects underperform. Consider team collaboration for better outcomes.',
+      description: 'Your solo projects have higher stall rates. Consider opening your project for community revival.',
     });
   }
 
-  // Analyze methodology adoption
-  const withMethodology = drafts.filter(d => d.developmentMethodology && d.developmentMethodology.length > 0).length;
-  if (withMethodology < drafts.length * 0.3) {
+  // Analyze failure reasons
+  const withFailureReason = drafts.filter(d => d.failureReason && d.failureReason.length > 10).length;
+  if (withFailureReason < drafts.length) {
     improvements.push({
-      label: 'Better Planning',
+      label: 'Document Stall Reasons',
       impact: 'High',
-      description: 'Most projects lack defined methodologies. Structured planning increases success rate.',
+      description: 'Clearly specifying why a project stalled increases incoming join requests by 3x.',
     });
   }
 
-  // Analyze time commitment
-  const avgTimeSpent = calculateAvgTimeInWeeks(drafts);
-  if (avgTimeSpent < 4) {
+  // Analyze tech stack tags
+  const withTech = drafts.filter(d => d.techStack && d.techStack.length > 0).length;
+  if (withTech < drafts.length) {
     improvements.push({
-      label: 'Dedicated Time',
-      impact: 'High',
-      description: 'Short project durations correlate with abandonment. Commit more consistent time.',
+      label: 'Add Tech Stack Tags',
+      impact: 'Medium',
+      description: 'Tagging frameworks (React, Node, etc.) helps AI match developers with your exact stack.',
     });
   }
 
-  // If less than 3 improvements, add generic ones
   while (improvements.length < 3) {
     const generic = [
       { label: 'Documentation', impact: 'Medium', description: 'Better documentation helps revival potential.' },
@@ -371,57 +408,21 @@ function generateImprovements(drafts) {
   return improvements.slice(0, 3);
 }
 
-function calculateAvgTimeInWeeks(drafts) {
-  const total = drafts.reduce((sum, d) => {
-    let weeks = d.timeSpent.value;
-    if (d.timeSpent.unit === 'days') weeks = weeks / 7;
-    if (d.timeSpent.unit === 'months') weeks = weeks * 4;
-    return sum + weeks;
-  }, 0);
-  return total / drafts.length;
-}
-
-function findSimilarProjects(userDrafts) {
-  const similarProjects = [];
-
-  // Group user's projects by success
-  const successfulDrafts = userDrafts.filter(d => d.currentStage === 'Launched but abandoned' || d.currentStage === 'Almost complete');
-  const failedDrafts = userDrafts.filter(d => d.currentStage === 'Idea only' || d.currentStage === 'Prototype');
-
-  // Create synthetic similar projects based on patterns
-  if (successfulDrafts.length > 0) {
-    const successful = successfulDrafts[0];
-    similarProjects.push({
-      name: `${successful.domain.charAt(0).toUpperCase() + successful.domain.slice(1)} Project with ${successful.teamSize} team`,
+function findFallbackSimilar(userDrafts) {
+  return [
+    {
+      name: 'Community Open Revival Project',
+      domain: userDrafts[0]?.domain || 'Web',
       success: true,
-      timeToCompletion: formatTimeSpent(successful.timeSpent),
-    });
-  }
-
-  if (failedDrafts.length > 0) {
-    const failed = failedDrafts[0];
-    similarProjects.push({
-      name: `Similar ${failed.domain} project (${failed.currentStage})`,
+      timeToCompletion: '4 weeks',
+    },
+    {
+      name: 'Collaborative Starter Workspace',
+      domain: 'SaaS',
       success: false,
-      reason: failed.failureReason.substring(0, 30) + '...',
-    });
-  }
-
-  // Add pattern-based similar projects
-  similarProjects.push({
-    name: 'Community Project: ' + (userDrafts[0]?.domain.charAt(0).toUpperCase() + userDrafts[0]?.domain.slice(1) || 'Web') + ' Initiative',
-    success: Math.random() > 0.5,
-    timeToCompletion: Math.random() > 0.5 ? '3 months' : undefined,
-    reason: Math.random() > 0.5 ? 'Resource constraints' : undefined,
-  });
-
-  similarProjects.push({
-    name: 'Template: Quick ' + (userDrafts[userDrafts.length - 1]?.domain || 'web') + ' MVP',
-    success: true,
-    timeToCompletion: '2 months',
-  });
-
-  return similarProjects.slice(0, 4);
+      reason: 'Stalled due to frontend polish',
+    }
+  ];
 }
 
 function formatTimeSpent(timeSpent) {
@@ -519,12 +520,158 @@ router.get('/user/export-projects', requireAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/user/ai-chat-history - Clear AI chat history (stored in user preferences)
-router.delete('/user/ai-chat-history', requireAuth, async (req, res) => {
+// GET /api/notifications - Fetch user's notifications
+router.get('/notifications', requireAuth, async (req, res) => {
   try {
-    // AI chat history is stored in localStorage on the client side
-    // This endpoint confirms the action server-side and can clear any server-stored context
-    res.json({ message: 'AI chat history cleared successfully' });
+    const userIdStr = req.user._id ? req.user._id.toString() : '';
+    const userObjId = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+      ? new mongoose.Types.ObjectId(userIdStr)
+      : req.user._id;
+
+    const notifications = await Notification.find({
+      $or: [
+        { recipient: req.user._id },
+        { recipient: userObjId },
+        { recipient: userIdStr }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .populate('sender', 'name username avatar email')
+      .populate('draftId', 'projectName domain');
+    res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/notifications/read-all - Mark all notifications as read
+router.patch('/notifications/read-all', requireAuth, async (req, res) => {
+  try {
+    const userIdStr = req.user._id ? req.user._id.toString() : '';
+    const userObjId = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+      ? new mongoose.Types.ObjectId(userIdStr)
+      : req.user._id;
+
+    await Notification.updateMany({
+      $or: [
+        { recipient: req.user._id },
+        { recipient: userObjId },
+        { recipient: userIdStr }
+      ],
+      read: false
+    }, { read: true });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/notifications/:id/read - Mark single notification as read
+router.patch('/notifications/:id/read', requireAuth, async (req, res) => {
+  try {
+    const userIdStr = req.user._id ? req.user._id.toString() : '';
+    const userObjId = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+      ? new mongoose.Types.ObjectId(userIdStr)
+      : req.user._id;
+
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        $or: [
+          { recipient: req.user._id },
+          { recipient: userObjId },
+          { recipient: userIdStr }
+        ]
+      },
+      { read: true },
+      { new: true }
+    );
+    if (!notification) return res.status(404).json({ error: 'Notification not found' });
+    res.json(notification);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications/:id/respond - Accept or Reject a join request
+router.post('/notifications/:id/respond', requireAuth, async (req, res) => {
+  try {
+    const { action } = req.body; // 'accept' | 'reject'
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "accept" or "reject"' });
+    }
+
+    const userIdStr = req.user._id ? req.user._id.toString() : '';
+    const userObjId = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+      ? new mongoose.Types.ObjectId(userIdStr)
+      : req.user._id;
+
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      $or: [
+        { recipient: req.user._id },
+        { recipient: userObjId },
+        { recipient: userIdStr }
+      ]
+    });
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    if (notification.type !== 'join_request') {
+      return res.status(400).json({ error: 'Notification is not a join request' });
+    }
+
+    const isAccept = action === 'accept';
+    notification.status = isAccept ? 'accepted' : 'rejected';
+    notification.read = true;
+    await notification.save();
+
+    if (isAccept) {
+      // Add sender to draft collaborators if sender user exists
+      if (notification.sender) {
+        await Draft.findByIdAndUpdate(notification.draftId, {
+          $addToSet: { collaborators: notification.sender },
+        });
+
+        // Notify applicant about acceptance
+        await Notification.create({
+          recipient: notification.sender,
+          sender: req.user._id,
+          senderName: req.user.name || 'Project Owner',
+          type: 'request_accepted',
+          draftId: notification.draftId,
+          draftName: notification.draftName,
+          details: {
+            name: req.user.name,
+            message: `Your request to join "${notification.draftName}" was accepted! You now have access to manage the workspace.`,
+          },
+          status: 'accepted',
+          read: false,
+        });
+      }
+    } else {
+      // Notify applicant about rejection
+      if (notification.sender) {
+        await Notification.create({
+          recipient: notification.sender,
+          sender: req.user._id,
+          senderName: req.user.name || 'Project Owner',
+          type: 'request_rejected',
+          draftId: notification.draftId,
+          draftName: notification.draftName,
+          details: {
+            name: req.user.name,
+            message: `Your request to join "${notification.draftName}" was rejected by the project owner.`,
+          },
+          status: 'rejected',
+          read: false,
+        });
+      }
+    }
+
+    res.json({ success: true, notification });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

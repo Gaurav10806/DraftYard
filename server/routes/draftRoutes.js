@@ -1,7 +1,25 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Draft = require('../models/draft');
+const Notification = require('../models/Notification');
 const { requireAuth } = require('../middleware/authMiddleware');
+
+function getRawHexId(val) {
+  if (!val) return null;
+  if (typeof val === 'string') {
+    return mongoose.Types.ObjectId.isValid(val) ? val : null;
+  }
+  if (typeof val === 'object') {
+    if (val._id) {
+      const idStr = val._id.toString();
+      if (mongoose.Types.ObjectId.isValid(idStr)) return idStr;
+    }
+    const str = val.toString();
+    if (mongoose.Types.ObjectId.isValid(str)) return str;
+  }
+  return null;
+}
 
 // Optional auth — attaches req.user if a valid token is present, never blocks
 const optionalAuth = async (req, res, next) => {
@@ -17,6 +35,121 @@ const optionalAuth = async (req, res, next) => {
   } catch (_) { /* ignore */ }
   next();
 };
+
+// GET /api/insights/global -> Real platform-wide insights calculated from MongoDB
+router.get('/insights/global', async (req, res) => {
+  try {
+    const allDrafts = await Draft.find({}).lean();
+    const total = allDrafts.length;
+
+    if (total === 0) {
+      return res.json({
+        total: 0,
+        revivalRate: 0,
+        avgWeeksSpent: 0,
+        domains: [],
+        techStacks: [],
+        whyDied: [],
+        stages: [],
+        totalRaisedHands: 0,
+        recentBurials: [],
+      });
+    }
+
+    const revivalCount = allDrafts.filter(d => (d.raisedHands && d.raisedHands.length > 0) || d.openForRevival).length;
+    const revivalRate = Math.round((revivalCount / total) * 100);
+    const totalRaisedHands = allDrafts.reduce((sum, d) => sum + (d.raisedHands ? d.raisedHands.length : 0), 0);
+
+    const domainMap = {};
+    allDrafts.forEach(d => {
+      if (d.domain) domainMap[d.domain] = (domainMap[d.domain] || 0) + 1;
+    });
+    const domains = Object.entries(domainMap)
+      .map(([name, value]) => ({ name, value, pct: Math.round((value / total) * 100) }))
+      .sort((a, b) => b.value - a.value);
+
+    const techMap = {};
+    allDrafts.forEach(d => {
+      (d.techStack || []).forEach(t => {
+        techMap[t] = (techMap[t] || 0) + 1;
+      });
+    });
+    const techStacks = Object.entries(techMap)
+      .map(([name, value]) => ({ name, value, pct: Math.round((value / total) * 100) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+
+    const reasonBuckets = [
+      { label: "Lost motivation", keywords: ["motivation", "interest", "boring", "burnout", "burned"] },
+      { label: "Scope creep", keywords: ["scope", "feature", "kept adding"] },
+      { label: "Team fell apart", keywords: ["team", "cofounder", "co-founder", "stopped showing"] },
+      { label: "Ran out of time", keywords: ["time", "exams", "semester", "job", "internship", "deadline"] },
+      { label: "Technical blocker", keywords: ["accuracy", "bug", "technical", "api", "cost", "gpu"] },
+      { label: "No users / market", keywords: ["users", "market", "traction", "no one", "competition"] },
+    ];
+    const whyMap = {};
+    reasonBuckets.forEach(b => { whyMap[b.label] = 0; });
+    let otherCount = 0;
+
+    allDrafts.forEach(d => {
+      const why = (d.failureReason || "").toLowerCase();
+      const matched = reasonBuckets.find(b => b.keywords.some(k => why.includes(k)));
+      if (matched) whyMap[matched.label]++;
+      else otherCount++;
+    });
+
+    const whyDied = Object.entries(whyMap)
+      .map(([name, value]) => ({ name, value, pct: Math.round((value / total) * 100) }))
+      .sort((a, b) => b.value - a.value);
+    if (otherCount > 0) {
+      whyDied.push({ name: "Other / Unspecified", value: otherCount, pct: Math.round((otherCount / total) * 100) });
+    }
+
+    const stageMap = {};
+    allDrafts.forEach(d => {
+      const s = d.currentStage || "Prototype";
+      stageMap[s] = (stageMap[s] || 0) + 1;
+    });
+    const stages = Object.entries(stageMap)
+      .map(([name, value]) => ({ name, value, pct: Math.round((value / total) * 100) }))
+      .sort((a, b) => b.value - a.value);
+
+    const totalDays = allDrafts.reduce((sum, d) => {
+      if (!d.timeSpent || !d.timeSpent.value) return sum + 21;
+      const m = d.timeSpent.unit === "months" ? 30 : d.timeSpent.unit === "weeks" ? 7 : 1;
+      return sum + d.timeSpent.value * m;
+    }, 0);
+    const avgWeeksSpent = Math.round(totalDays / total / 7) || 4;
+
+    const recentBurials = allDrafts
+      .slice(0, 6)
+      .map(d => ({
+        id: d._id,
+        projectName: d.projectName,
+        oneLiner: d.oneLiner,
+        domain: d.domain,
+        techStack: d.techStack || [],
+        upvotes: d.upvotes || 0,
+        raisedHands: d.raisedHands ? d.raisedHands.length : 0,
+        currentStage: d.currentStage,
+        failureReason: d.failureReason || "Stalled in early development",
+      }));
+
+    res.json({
+      total,
+      revivalRate,
+      totalRaisedHands,
+      avgWeeksSpent,
+      domains,
+      techStacks,
+      whyDied,
+      stages,
+      recentBurials,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // POST /api/draft
 router.post('/draft', optionalAuth, async (req, res) => {
@@ -267,25 +400,7 @@ router.get('/revival-board', async (req, res) => {
   }
 });
 
-// PATCH /api/draft/:id/raise-hand -> record someone wanting to revive the project
-router.patch('/draft/:id/raise-hand', async (req, res) => {
-  try {
-    const { name, message, contact } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Name is required to raise your hand' });
-    }
 
-    const draft = await Draft.findByIdAndUpdate(
-      req.params.id,
-      { $push: { raisedHands: { name, message, contact } } },
-      { new: true }
-    );
-    if (!draft) return res.status(404).json({ error: 'Draft not found' });
-    res.json(draft);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
 
 // GET /api/drafts/mine -> drafts belonging to the authenticated user
 router.get('/drafts/mine', requireAuth, async (req, res) => {
@@ -578,7 +693,7 @@ router.patch('/draft/:id/view', optionalAuth, async (req, res) => {
 // PATCH /api/draft/:id/raise-hand -> record someone wanting to revive the project (updated)
 router.patch('/draft/:id/raise-hand', optionalAuth, async (req, res) => {
   try {
-    const { name, message, contact } = req.body;
+    const { name, message, contact, skills, estimatedTime } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Name is required to raise your hand' });
     }
@@ -586,20 +701,35 @@ router.patch('/draft/:id/raise-hand', optionalAuth, async (req, res) => {
     const draftId = req.params.id;
     const userId = req.user?._id;
 
-    const draft = await Draft.findById(draftId);
+    // Find draft by ObjectId or by slug/projectName match
+    const isObjectId = mongoose.Types.ObjectId.isValid(draftId);
+    const draft = isObjectId
+      ? await Draft.findById(draftId)
+      : await Draft.findOne({ projectName: { $regex: new RegExp(`^${draftId.replace(/-/g, ' ')}$`, 'i') } });
+
     if (!draft) return res.status(404).json({ error: 'Draft not found' });
 
+    const parsedSkills = Array.isArray(skills) ? skills : [];
+    const parsedTime = typeof estimatedTime === 'string' ? estimatedTime : '';
+
+    const ownerIdHex = getRawHexId(draft.submittedBy);
+    const senderIdHex = getRawHexId(userId);
+    const isDifferentUser = !senderIdHex || ownerIdHex !== senderIdHex;
+
     // Check if user already raised hand
-    const alreadyRaised = draft.raisedHands?.some(rh => rh.userId?.toString() === userId?.toString());
+    const alreadyRaised = draft.raisedHands?.some(rh => getRawHexId(rh.userId) === senderIdHex);
     
     if (alreadyRaised && userId) {
       // Update existing raise hand
       const updatedDraft = await Draft.findByIdAndUpdate(
-        draftId,
+        draft._id,
         {
           $set: {
-            'raisedHands.$[elem].message': message,
-            'raisedHands.$[elem].contact': contact,
+            'raisedHands.$[elem].name': name,
+            'raisedHands.$[elem].message': message || '',
+            'raisedHands.$[elem].contact': contact || '',
+            'raisedHands.$[elem].skills': parsedSkills,
+            'raisedHands.$[elem].estimatedTime': parsedTime,
             'raisedHands.$[elem].updatedAt': new Date(),
           }
         },
@@ -610,19 +740,49 @@ router.patch('/draft/:id/raise-hand', optionalAuth, async (req, res) => {
       )
         .populate({ path: 'submittedBy', select: 'name username avatar' })
         .populate({ path: 'collaborators', select: 'name username avatar' });
+
+      // Create or update pending notification for draft owner
+      if (ownerIdHex && isDifferentUser) {
+        try {
+          const recipientObjId = new mongoose.Types.ObjectId(ownerIdHex);
+          const senderObjId = senderIdHex ? new mongoose.Types.ObjectId(senderIdHex) : null;
+          await Notification.create({
+            recipient: recipientObjId,
+            sender: senderObjId,
+            senderName: name,
+            type: 'join_request',
+            draftId: draft._id,
+            draftName: draft.projectName,
+            details: {
+              name,
+              contact: contact || '',
+              message: message || '',
+              skills: parsedSkills,
+              estimatedTime: parsedTime,
+            },
+            status: 'pending',
+            read: false,
+          });
+          console.log(`[Notification] Updated/Created join_request for recipient ${ownerIdHex}`);
+        } catch (notifErr) {
+          console.error('[Notification Error] Failed to create notification:', notifErr);
+        }
+      }
       
       return res.json(updatedDraft);
     }
 
     // Add new raise hand
     const updatedDraft = await Draft.findByIdAndUpdate(
-      draftId,
+      draft._id,
       {
         $push: {
           raisedHands: {
             name,
             message: message || '',
             contact: contact || '',
+            skills: parsedSkills,
+            estimatedTime: parsedTime,
             userId: userId || null,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -635,6 +795,35 @@ router.patch('/draft/:id/raise-hand', optionalAuth, async (req, res) => {
       .populate({ path: 'collaborators', select: 'name username avatar' });
     
     if (!updatedDraft) return res.status(404).json({ error: 'Draft not found' });
+
+    // Emit notification for draft owner if recipient is not the sender
+    if (ownerIdHex && isDifferentUser) {
+      try {
+        const recipientObjId = new mongoose.Types.ObjectId(ownerIdHex);
+        const senderObjId = senderIdHex ? new mongoose.Types.ObjectId(senderIdHex) : null;
+        await Notification.create({
+          recipient: recipientObjId,
+          sender: senderObjId,
+          senderName: name,
+          type: 'join_request',
+          draftId: draft._id,
+          draftName: draft.projectName,
+          details: {
+            name,
+            contact: contact || '',
+            message: message || '',
+            skills: parsedSkills,
+            estimatedTime: parsedTime,
+          },
+          status: 'pending',
+          read: false,
+        });
+        console.log(`[Notification] Created join_request for recipient ${ownerIdHex}`);
+      } catch (notifErr) {
+        console.error('[Notification Error] Failed to create notification:', notifErr);
+      }
+    }
+
     res.json(updatedDraft);
   } catch (err) {
     res.status(400).json({ error: err.message });
