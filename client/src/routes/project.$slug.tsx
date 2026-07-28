@@ -72,16 +72,17 @@ export const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export const Route = createFileRoute("/project/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug} · DraftYard Project` },
-      {
-        name: "description",
-        content: `Explore ${params.slug} on DraftYard — its stall DNA, AI revival prediction, discussions, contributors, and activity timeline.`,
-      },
-      { property: "og:title", content: `${params.slug} · DraftYard` },
-    ],
-  }),
+  head: () => ({
+  meta: [
+    { title: "DraftYard Project" },
+    {
+      name: "description",
+      content:
+        "Explore projects on DraftYard — discussions, contributors, activity and AI insights.",
+    },
+    { property: "og:title", content: "DraftYard Project" },
+  ],
+}),
   loader: async ({ params }) => {
     try {
       // Fetch all drafts (paginated) to find the one matching the slug

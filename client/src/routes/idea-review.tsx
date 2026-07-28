@@ -52,7 +52,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { matchIdea, getIdeaAnalysis, type DraftMatch, type AiIdeaAnalysis } from "@/lib/api";
+import { matchIdea, getIdeaAnalysis, type DraftMatch, type AiIdeaAnalysis, createReview, updateReview, fetchReviews, deleteReview, renameReview, type Review } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/idea-review")({
   head: () => ({
@@ -89,32 +91,6 @@ type CommunityInsights = {
   failurePatterns: string[];
 };
 
-type Report = {
-  id: string;
-  name: string;
-  pitch: string;
-  createdAt: number;
-  score: number;
-  verdict: Verdict;
-  summary: string;
-  community: CommunityInsights | null;
-  matches: DraftMatch[];
-  matchError: string | null;
-  aiAnalysisUsed: boolean;
-  aiAnalysisError: string | null;
-  metrics: {
-    feasibility: { label: Level; note: string };
-    competition: { label: Level; note: string };
-    complexity: { label: Level; note: string };
-    scalability: { label: Level; note: string };
-    market: { headline: string; note: string };
-  };
-  recommendations: string[];
-  stack: { frontend: string; backend: string; database: string; ai: string; hosting: string };
-  roadmap: { week: string; label: string }[];
-  finalNote: string;
-};
-
 type FormState = {
   name?: string;
   pitch: string;
@@ -126,26 +102,6 @@ const emptyForm: FormState = {
   pitch: "",
   context: "",
 };
-
-const STORAGE_KEY = "draftyard.idea-reviews.v2";
-
-function loadReports(): Report[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Report[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveReports(list: Report[]) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch {
-    /* noop */
-  }
-}
 
 function generateReport(
   form: FormState,
@@ -294,74 +250,174 @@ function IdeaReviewPage() {
 }
 
 function IdeaReviewShell() {
-  const [reports, setReports] = useState<Report[]>([]);
+  const { user } = useAuth();
+  const [reports, setReports] = useState<Review[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [emptyHistoryOpen, setEmptyHistoryOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setReports(loadReports());
-  }, []);
+    const loadReviews = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const reviews = await fetchReviews();
+        setReports(reviews);
+      } catch (err) {
+        console.error("Failed to load reviews:", err);
+        toast.error("Failed to load review history");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadReviews();
+  }, [user]);
 
   const active = useMemo(
-    () => reports.find((r) => r.id === activeId) ?? null,
+    () => reports.find((r) => r._id === activeId) ?? null,
     [reports, activeId],
   );
 
-  function persist(next: Report[]) {
-    setReports(next);
-    saveReports(next);
-  }
-
   async function handleAnalyze() {
     if (!form.pitch.trim() || !form.context.trim()) return;
+    if (!user) {
+      toast.error("You must be logged in to analyze ideas");
+      return;
+    }
+
     setAnalyzing(true);
-    let matches: DraftMatch[] = [];
-    let matchError: string | null = null;
     try {
-      const result = await matchIdea({
-        projectName: form.name,
-        pitch: form.pitch,
-        context: form.context,
+      // Create initial review document
+      const newReview = await createReview({
+        projectName: form.name || "Untitled Idea",
+        oneLinePitch: form.pitch,
+        additionalContext: form.context,
       });
-      // Rank by priority first, then raw similarity, so a "High" 20%
-      // match always sits above a "Medium" 19.9% edge case.
-      const priorityRank = { High: 0, Medium: 1, Low: 2 } as const;
-      matches = [...result.matches].sort(
-        (a, b) => priorityRank[a.priority] - priorityRank[b.priority] || b.similarity - a.similarity,
-      );
-    } catch (err) {
-      console.error("Idea matching failed:", err);
-      // Surface this distinctly from "found zero matches" — an empty
-      // list here should never be visually indistinguishable from a
-      // failed request, or debugging becomes guesswork.
-      matchError = err instanceof Error ? err.message : "Couldn't reach the matching service.";
-    }
 
-    // Always ask the LLM to analyze the idea directly — whether or not
-    // matching drafts were found. When matches exist, the AI analysis
-    // supplements the community data instead of replacing it.
-    let aiAnalysis: AiIdeaAnalysis | null = null;
-    let aiAnalysisError: string | null = null;
-    try {
-      aiAnalysis = await getIdeaAnalysis({
-        projectName: form.name,
-        pitch: form.pitch,
-        context: form.context,
+      let matches: DraftMatch[] = [];
+      let matchError: string | null = null;
+      try {
+        const result = await matchIdea({
+          projectName: form.name,
+          pitch: form.pitch,
+          context: form.context,
+        });
+        const priorityRank = { High: 0, Medium: 1, Low: 2 } as const;
+        matches = [...result.matches].sort(
+          (a, b) => priorityRank[a.priority] - priorityRank[b.priority] || b.similarity - a.similarity,
+        );
+      } catch (err) {
+        console.error("Idea matching failed:", err);
+        matchError = err instanceof Error ? err.message : "Couldn't reach the matching service.";
+      }
+
+      let aiAnalysis: AiIdeaAnalysis | null = null;
+      let aiAnalysisError: string | null = null;
+      try {
+        aiAnalysis = await getIdeaAnalysis({
+          projectName: form.name,
+          pitch: form.pitch,
+          context: form.context,
+        });
+      } catch (err) {
+        console.error("AI analysis failed:", err);
+        aiAnalysisError =
+          err instanceof Error ? err.message : "Couldn't reach the AI analysis service.";
+      }
+
+      // Generate fallback analysis if needed
+      const seed =
+        (form.name + form.pitch + form.context).split("").reduce((a, c) => a + c.charCodeAt(0), 0) || 42;
+      const fallbackScore = 68 + (seed % 27);
+      const score = aiAnalysis?.score ?? fallbackScore;
+      const verdict: Verdict =
+        aiAnalysis?.verdict ??
+        (score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider");
+
+      // Update review with analysis
+      const updatedReview = await updateReview(newReview._id!, {
+        score,
+        verdict,
+        summary:
+          aiAnalysis?.summary ??
+          (matches.length > 0
+            ? "Strong potential based on community data and AI analysis. Focus on a lean MVP first."
+            : "No similar DraftYard projects were found. This analysis is based on market research and AI reasoning."),
+        similarProjects: matches,
+        recommendedStack: aiAnalysis?.techStack ?? {
+          frontend: "React",
+          backend: "Node.js",
+          database: "MongoDB",
+          ai: "OpenAI API",
+          hosting: "Vercel",
+        },
+        risks: aiAnalysis
+          ? {
+              feasibility: aiAnalysis.feasibility,
+              competition: aiAnalysis.competition,
+              complexity: aiAnalysis.complexity,
+              scalability: aiAnalysis.scalability,
+              market: aiAnalysis.market,
+            }
+          : {
+              feasibility: {
+                label: score >= 78 ? "High" : "Medium",
+                note: "Can be built in 2–3 months with the right stack.",
+              },
+              competition: {
+                label: score % 2 === 0 ? "Medium" : "High",
+                note: "Some competitors exist, but room for personalization.",
+              },
+              complexity: {
+                label: score >= 82 ? "Medium" : "High",
+                note: "AI integration and user retention are key challenges.",
+              },
+              scalability: {
+                label: "High",
+                note: "Strong scalability with cloud and modular architecture.",
+              },
+              market: {
+                headline: "$25.7B by 2030",
+                note: "The global AI in education market is projected to grow at 45% CAGR.",
+              },
+            },
+        suggestions: aiAnalysis?.recommendations ?? [
+          "Start with a lean MVP: AI planner + progress tracking",
+          "Focus on student retention with daily value delivery",
+          "Limit AI usage and optimize for low cost",
+          "Validate with 20–30 users before expanding features",
+        ],
+        roadmap: aiAnalysis?.roadmap ?? [
+          { week: "Week 1", label: "Research" },
+          { week: "Week 2", label: "UI/UX Design" },
+          { week: "Week 3–4", label: "Backend Setup" },
+          { week: "Week 5–6", label: "AI Integration" },
+          { week: "Week 7", label: "Testing" },
+          { week: "Week 8", label: "Launch MVP" },
+        ],
+        finalNote:
+          aiAnalysis?.finalNote ??
+          (matches.length > 0
+            ? "This idea has strong potential based on real-world data and AI insights."
+            : "This idea shows promise based on AI market analysis. Validate with real users early."),
+        aiAnalysisUsed: Boolean(aiAnalysis),
+        aiAnalysisError,
+        matchError,
       });
-    } catch (err) {
-      console.error("AI analysis failed:", err);
-      aiAnalysisError =
-        err instanceof Error ? err.message : "Couldn't reach the AI analysis service.";
-    }
 
-    const report = generateReport(form, matches, matchError, aiAnalysis, aiAnalysisError);
-    const next = [report, ...reports];
-    persist(next);
-    setActiveId(report.id);
-    setAnalyzing(false);
+      setReports([updatedReview, ...reports]);
+      setActiveId(updatedReview._id!);
+      setAnalyzing(false);
+    } catch (err) {
+      console.error("Analysis failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to analyze idea");
+      setAnalyzing(false);
+    }
   }
 
   function handleNewReview() {
@@ -374,24 +430,66 @@ function IdeaReviewShell() {
     else setHistoryOpen(true);
   }
 
-  function handleDelete(id: string) {
-    const next = reports.filter((r) => r.id !== id);
-    persist(next);
-    if (activeId === id) setActiveId(null);
+  async function handleDelete(id: string) {
+    try {
+      await deleteReview(id);
+      const next = reports.filter((r) => r._id !== id);
+      setReports(next);
+      if (activeId === id) setActiveId(null);
+      toast.success("Review deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete review");
+    }
   }
-  function handleDuplicate(id: string) {
-    const src = reports.find((r) => r.id === id);
-    if (!src) return;
-    const copy: Report = {
-      ...src,
-      id: crypto.randomUUID?.() ?? String(Date.now()),
-      createdAt: Date.now(),
-      name: src.name + " (copy)",
-    };
-    persist([copy, ...reports]);
+
+  async function handleDuplicate(id: string) {
+    try {
+      const src = reports.find((r) => r._id === id);
+      if (!src) return;
+      const copy = await createReview({
+        projectName: (src.projectName || "Untitled") + " (copy)",
+        oneLinePitch: src.oneLinePitch,
+        additionalContext: src.additionalContext,
+      });
+      const reviewWithAnalysis = await updateReview(copy._id!, {
+        score: src.score,
+        verdict: src.verdict,
+        summary: src.summary,
+        similarProjects: src.similarProjects,
+        recommendedStack: src.recommendedStack,
+        risks: src.risks,
+        suggestions: src.suggestions,
+        roadmap: src.roadmap,
+        finalNote: src.finalNote,
+        aiAnalysisUsed: src.aiAnalysisUsed,
+        aiAnalysisError: src.aiAnalysisError,
+        matchError: src.matchError,
+      });
+      setReports([reviewWithAnalysis, ...reports]);
+      toast.success("Review duplicated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to duplicate review");
+    }
   }
-  function handleRename(id: string, name: string) {
-    persist(reports.map((r) => (r.id === id ? { ...r, name } : r)));
+
+  async function handleRename(id: string, name: string) {
+    try {
+      const updated = await renameReview(id, name);
+      setReports(reports.map((r) => (r._id === id ? updated : r)));
+      toast.success("Review renamed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to rename review");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-[1240px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -594,7 +692,7 @@ function Field({
 
 // ---------------- Report ----------------
 
-function ReportView({ report }: { report: Report }) {
+function ReportView({ report }: { report: Review }) {
   const verdictTone =
     report.verdict === "Worth Building"
       ? "text-emerald-500"
@@ -602,26 +700,52 @@ function ReportView({ report }: { report: Report }) {
       ? "text-amber-500"
       : "text-rose-500";
 
+  // Build metrics from risks object
+  const metrics = report.risks
+    ? {
+        feasibility: report.risks.feasibility || { label: "Medium", note: "To be determined" },
+        competition: report.risks.competition || { label: "Medium", note: "To be determined" },
+        complexity: report.risks.complexity || { label: "Medium", note: "To be determined" },
+        scalability: report.risks.scalability || { label: "High", note: "To be determined" },
+        market: report.risks.market || { headline: "Market TBD", note: "To be determined" },
+      }
+    : {
+        feasibility: { label: "Medium", note: "To be determined" },
+        competition: { label: "Medium", note: "To be determined" },
+        complexity: { label: "Medium", note: "To be determined" },
+        scalability: { label: "High", note: "To be determined" },
+        market: { headline: "Market TBD", note: "To be determined" },
+      };
+
+  // Get stack from recommendedStack
+  const stack = report.recommendedStack || {
+    frontend: "React",
+    backend: "Node.js",
+    database: "MongoDB",
+    ai: "OpenAI API",
+    hosting: "Vercel",
+  };
+
   return (
     <div className="space-y-10">
       {/* Summary card */}
       <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-7">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)] lg:items-center">
           <div className="flex items-center gap-5">
-            <ScoreDial score={report.score} />
+            <ScoreDial score={report.score ?? 0} />
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Overall Verdict
               </p>
               <h3 className={`font-display text-2xl font-semibold ${verdictTone}`}>
-                {report.verdict}
+                {report.verdict || "Pending Analysis"}
               </h3>
               <div className="mt-1 flex items-center gap-0.5 text-amber-400">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
                     className={`h-3.5 w-3.5 ${
-                      i < Math.round(report.score / 20) ? "fill-current" : "opacity-30"
+                      i < Math.round((report.score ?? 0) / 20) ? "fill-current" : "opacity-30"
                     }`}
                   />
                 ))}
@@ -636,12 +760,12 @@ function ReportView({ report }: { report: Report }) {
             <MetaRow
               icon={<Radar className="h-4 w-4" />}
               label="Analysis Type"
-              value={report.community ? "AI + Community" : report.aiAnalysisUsed ? "Live AI" : "AI only"}
+              value={report.similarProjects && report.similarProjects.length > 0 ? "AI + Community" : report.aiAnalysisUsed ? "Live AI" : "AI only"}
             />
             <MetaRow
               icon={<Layers3 className="h-4 w-4" />}
               label="Similar Projects Found"
-              value={report.community ? String(report.matches ? report.matches.length : report.community.similarCount) : "0"}
+              value={report.community ? String(report.community.similarCount) : "0"}
             />
             <MetaRow
               icon={<Clock className="h-4 w-4" />}
@@ -656,47 +780,47 @@ function ReportView({ report }: { report: Report }) {
               Your Idea
             </div>
             <p className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground">
-              {report.name}
+              {report.projectName || "Untitled Idea"}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-3">
-              {report.pitch}
+              {report.oneLinePitch}
             </p>
           </div>
         </div>
       </section>
 
       {/* Matched Drafts (real DraftYard data) */}
-      <MatchedDraftsSection matches={report.matches} error={report.matchError} />
+      <MatchedDraftsSection matches={report.similarProjects || []} error={report.matchError} />
 
       {/* AI Analysis */}
       <section>
-        <SectionTitle number={2} title="AI Analysis" subtitle={report.community ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
+        <SectionTitle number={2} title="AI Analysis" subtitle={report.similarProjects && report.similarProjects.length > 0 ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <MetricCard
             title="Feasibility"
-            status={report.metrics.feasibility.label}
-            note={report.metrics.feasibility.note}
+            status={metrics.feasibility.label}
+            note={metrics.feasibility.note}
             tone="emerald"
             icon={<ShieldCheck className="h-4 w-4" />}
           />
           <MetricCard
             title="Competition"
-            status={report.metrics.competition.label}
-            note={report.metrics.competition.note}
+            status={metrics.competition.label}
+            note={metrics.competition.note}
             tone="amber"
             icon={<Users className="h-4 w-4" />}
           />
           <MetricCard
             title="Complexity"
-            status={report.metrics.complexity.label}
-            note={report.metrics.complexity.note}
+            status={metrics.complexity.label}
+            note={metrics.complexity.note}
             tone="violet"
             icon={<Wrench className="h-4 w-4" />}
           />
           <MetricCard
             title="Scalability"
-            status={report.metrics.scalability.label}
-            note={report.metrics.scalability.note}
+            status={metrics.scalability.label}
+            note={metrics.scalability.note}
             tone="sky"
             icon={<Scale className="h-4 w-4" />}
           />
@@ -707,11 +831,11 @@ function ReportView({ report }: { report: Report }) {
               </span>
               <span className="text-[11px] font-medium text-muted-foreground">Market Opportunity</span>
               <span className="ml-auto text-[11px] font-semibold text-primary truncate max-w-[55%]">
-                {report.metrics.market.headline}
+                {metrics.market.headline}
               </span>
             </div>
             <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
-              {report.metrics.market.note}
+              {metrics.market.note}
             </p>
           </div>
         </div>
@@ -722,7 +846,7 @@ function ReportView({ report }: { report: Report }) {
         <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
           <SectionHeading number={2} icon={<Lightbulb className="h-4 w-4" />} title="AI Recommendations" />
           <ul className="mt-4 space-y-2.5 text-sm">
-            {report.recommendations.map((r) => (
+            {(report.suggestions || []).map((r) => (
               <li key={r} className="flex items-start gap-2 text-foreground/85">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <span>{r}</span>
@@ -736,11 +860,11 @@ function ReportView({ report }: { report: Report }) {
           <div className="mt-4 grid grid-cols-6 gap-2 text-center">
             {(
               [
-                ["React", "Frontend", 2],
-                ["Node.js", "Backend", 2],
-                ["MongoDB", "Database", 2],
-                ["Gemini API", "AI", 3],
-                ["Vercel", "Hosting", 3],
+                [stack.frontend || "React", "Frontend", 2],
+                [stack.backend || "Node.js", "Backend", 2],
+                [stack.database || "MongoDB", "Database", 2],
+                [stack.ai || "Gemini API", "AI", 3],
+                [stack.hosting || "Vercel", "Hosting", 3],
               ] as const
             ).map(([name, role, span]) => (
               <div
@@ -763,7 +887,7 @@ function ReportView({ report }: { report: Report }) {
           <div className="relative mt-7 pb-1">
             <div className="absolute left-5 right-5 top-5 h-0.5 rounded-full bg-gradient-to-r from-primary/40 via-primary/25 to-primary/10" aria-hidden />
             <ol className="relative flex justify-between gap-3">
-              {report.roadmap.map((r, i) => (
+              {(report.roadmap || []).map((r, i) => (
                 <li key={r.week} className="flex min-w-0 flex-1 flex-col items-center gap-2.5 text-center">
                   <span className="relative z-10 grid h-10 w-10 place-items-center rounded-full border border-primary/30 bg-card text-sm font-semibold text-primary shadow-[0_2px_10px_-4px_rgba(124,92,255,0.5)]">
                     {i + 1}
@@ -1047,7 +1171,7 @@ function MatchedDraftsSection({ matches, error }: { matches: DraftMatch[]; error
                   Close
                 </Button>
                 <Button asChild size="sm" className="gap-1.5">
-                  <Link to="/project/$slug" params={{ slug: slugify(selectedMatch.projectName) }}>
+                  <Link to="/project/$slug" params={{ slug: selectedMatch.id }}>
                     View Full Project Page <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </Button>
@@ -1059,8 +1183,6 @@ function MatchedDraftsSection({ matches, error }: { matches: DraftMatch[]; error
     </section>
   );
 }
-
-
 
 function NoCommunityBanner({ used, error }: { used: boolean; error: string | null }) {
   return (
@@ -1324,7 +1446,7 @@ function HistoryModal({
 }: {
   open: boolean;
   onClose: () => void;
-  reports: Report[];
+  reports: Review[];
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -1332,7 +1454,7 @@ function HistoryModal({
 }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(
-    () => reports.filter((r) => r.name.toLowerCase().includes(q.trim().toLowerCase())),
+    () => reports.filter((r) => r.projectName.toLowerCase().includes(q.trim().toLowerCase())),
     [reports, q],
   );
 
@@ -1359,18 +1481,18 @@ function HistoryModal({
         </div>
         <ul className="max-h-[420px] overflow-y-auto px-2 py-2">
           {filtered.map((r) => (
-            <li key={r.id}>
+            <li key={r._id}>
               <div className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-muted/60">
                 <button
                   type="button"
-                  onClick={() => onSelect(r.id)}
+                  onClick={() => onSelect(r._id!)}
                   className="flex flex-1 items-center gap-3 text-left"
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                     <FileText className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{r.name}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{r.projectName || "Untitled Idea"}</p>
                     <p className="text-xs text-muted-foreground">{relTime(r.createdAt)}</p>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
@@ -1390,19 +1512,19 @@ function HistoryModal({
                   <DropdownMenuContent align="end" className="w-40">
                     <DropdownMenuItem
                       onClick={() => {
-                        const name = window.prompt("Rename review", r.name);
-                        if (name && name.trim()) onRename(r.id, name.trim());
+                        const name = window.prompt("Rename review", r.projectName || "Untitled Idea");
+                        if (name && name.trim()) onRename(r._id!, name.trim());
                       }}
                     >
                       <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDuplicate(r.id)}>
+                    <DropdownMenuItem onClick={() => onDuplicate(r._id!)}>
                       <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-rose-500 focus:text-rose-500"
-                      onClick={() => onDelete(r.id)}
+                      onClick={() => onDelete(r._id!)}
                     >
                       <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                     </DropdownMenuItem>
@@ -1427,8 +1549,17 @@ function HistoryModal({
   );
 }
 
-function relTime(ts: number) {
-  const diff = Date.now() - ts;
+function relTime(ts: string | Date | number) {
+  let ms: number;
+  if (typeof ts === "string") {
+    ms = new Date(ts).getTime();
+  } else if (ts instanceof Date) {
+    ms = ts.getTime();
+  } else {
+    ms = ts;
+  }
+  
+  const diff = Date.now() - ms;
   const m = Math.floor(diff / 60000);
   if (m < 1) return "Just now";
   if (m < 60) return `${m} min ago`;

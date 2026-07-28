@@ -641,3 +641,127 @@ export async function getIdeaAnalysis(input: {
   const data = await res.json();
   return data.analysis;
 }
+
+// ===== Idea Review (MongoDB persistence) =====
+
+export type Review = {
+  _id?: string;
+  userId?: string;
+  projectName: string;
+  oneLinePitch: string;
+  additionalContext: string;
+  score: number | null;
+  verdict: "Worth Building" | "Needs Refinement" | "Reconsider" | null;
+  summary: string;
+  similarProjects: DraftMatch[];
+  recommendedStack: {
+    frontend: string;
+    backend: string;
+    database: string;
+    ai: string;
+    hosting: string;
+  };
+  risks: {
+    feasibility: { label: string; note: string };
+    competition: { label: string; note: string };
+    complexity: { label: string; note: string };
+    scalability: { label: string; note: string };
+    market: { headline: string; note: string };
+  };
+  suggestions: string[];
+  roadmap: { week: string; label: string }[];
+  finalNote: string;
+  aiAnalysisUsed: boolean;
+  aiAnalysisError: string | null;
+  matchError: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export async function createReview(input: {
+  projectName: string;
+  oneLinePitch: string;
+  additionalContext: string;
+}): Promise<Review> {
+  const res = await fetch(`${API_BASE}/review`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to create review");
+  }
+  return res.json();
+}
+
+export async function updateReview(
+  reviewId: string,
+  data: Partial<Omit<Review, "_id" | "userId" | "projectName" | "oneLinePitch" | "additionalContext">>
+): Promise<Review> {
+  const res = await fetch(`${API_BASE}/review/${reviewId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update review");
+  }
+  return res.json();
+}
+
+export async function fetchReviews(): Promise<Review[]> {
+  const res = await fetch(`${API_BASE}/reviews`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch reviews");
+  }
+  return res.json();
+}
+
+export async function fetchReview(reviewId: string): Promise<Review> {
+  const res = await fetch(`${API_BASE}/review/${reviewId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch review");
+  }
+  return res.json();
+}
+
+export async function deleteReview(reviewId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/review/${reviewId}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to delete review");
+  }
+}
+
+export async function renameReview(reviewId: string, projectName: string): Promise<Review> {
+  const res = await fetch(`${API_BASE}/review/${reviewId}/rename`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ projectName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to rename review");
+  }
+  return res.json();
+}
