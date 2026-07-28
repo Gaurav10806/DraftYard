@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDraft, navigateToWorkspace } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,6 +47,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export const Route = createFileRoute("/new-draft")({
   head: () => ({
@@ -66,7 +75,8 @@ const schema = z.object({
   category: z.string().min(1, "Category is required"),
   techStack: z.array(z.string()).min(1, "At least one technology is required"),
   currentStage: z.string().min(1, "Current Stage is required"),
-  lastWorkedOn: z.date({ required_error: "Last Worked On date is required" }),
+  lastWorkedOn: z.string().min(1, "Last Worked On is required"),
+  failureReason: z.string().min(1, "Why did this project stop? is required"),
   visibility: z.enum(["Public", "Private"]),
 });
 
@@ -167,6 +177,24 @@ const STAGE_MAP: Record<string, string> = {
   "Released": "Launched but abandoned",
 };
 
+const LAST_WORKED_ON_OPTIONS = [
+  "Authentication",
+  "Authorization",
+  "Landing Page",
+  "Dashboard",
+  "Profile",
+  "Database",
+  "API",
+  "Payment",
+  "Notifications",
+  "Chat",
+  "File Upload",
+  "AI Integration",
+  "Deployment",
+  "Documentation",
+  "Other",
+];
+
 function NewDraftPage() {
   return (
     <ProtectedRoute>
@@ -211,7 +239,8 @@ function NewDraftForm() {
       category: "",
       techStack: [],
       currentStage: "",
-      lastWorkedOn: undefined,
+      lastWorkedOn: "",
+      failureReason: "",
       visibility: "Public",
     },
     mode: "onChange",
@@ -245,7 +274,8 @@ function NewDraftForm() {
       techStack: values.techStack,
       teamSize: "solo", // Default required backend field
       currentStage: STAGE_MAP[values.currentStage] || "Idea only", // Default/Mapped backend stage
-      failureReason: "Draft created via Quick Onboarding", // Default required backend field
+      failureReason: values.failureReason,
+      lastWorkedOn: values.lastWorkedOn,
       timeSpent: { value: 1, unit: "weeks" }, // Default required backend field
       projectLink: "",
       isAnonymous: false, // Default value
@@ -544,42 +574,53 @@ function NewDraftForm() {
                     )}
                   />
 
-                  {/* Last Worked On Date Picker */}
+                  {/* Last Worked On Searchable Select */}
                   <FormField
                     control={form.control}
                     name="lastWorkedOn"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel className="mb-1">Last Worked On</FormLabel>
+                        <FormLabel>Last Worked On</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
                                 type="button"
                                 variant="outline"
-                                className={`w-full h-10 rounded-xl pl-3 text-left font-normal border-input hover:bg-muted ${
+                                className={`w-full h-10 rounded-xl pl-3 text-left font-normal border-input hover:bg-muted justify-between ${
                                   !field.value && "text-muted-foreground"
                                 }`}
                               >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                {field.value || "Select a feature..."}
+                                <ChevronRight className="ml-2 h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search features..." />
+                              <CommandEmpty>No feature found.</CommandEmpty>
+                              <CommandList>
+                                <CommandGroup>
+                                  {LAST_WORKED_ON_OPTIONS.map((option) => (
+                                    <CommandItem
+                                      key={option}
+                                      value={option}
+                                      onSelect={(currentValue) => {
+                                        field.onChange(currentValue);
+                                      }}
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          field.value === option ? "opacity-100" : "opacity-0"
+                                        }`}
+                                      />
+                                      {option}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -598,6 +639,25 @@ function NewDraftForm() {
                   transition={{ duration: 0.25, ease: "easeInOut" }}
                   className="space-y-6"
                 >
+                  {/* Why did this project stop? */}
+                  <FormField
+                    control={form.control}
+                    name="failureReason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Why did this project stop?</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="e.g. Scope creep, lack of time, team issues, technical blockers..."
+                            className="min-h-24 rounded-xl border border-border/60 bg-background/50 text-sm resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   {/* Visibility Preferences */}
                   <FormField
                     control={form.control}

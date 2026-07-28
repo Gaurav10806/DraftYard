@@ -31,7 +31,7 @@ const draftSchema = new mongoose.Schema({
   collaborators: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: [] },
   tags: { type: [String], default: [] },
   openForRevival: { type: Boolean, default: false },
-  lastWorkedOn: { type: Date, default: null },
+  lastWorkedOn: { type: String, default: null },
   raisedHands: {
     type: [
       {

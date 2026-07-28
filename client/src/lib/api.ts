@@ -22,7 +22,7 @@ export type Draft = {
   views?: number;
   bookmarks?: number;
   bookmarked?: boolean;
-  lastWorkedOn?: Date | null;
+  lastWorkedOn?: string | null;
   ownerToken?: string | null;
   submittedBy?: {
     _id?: string;
