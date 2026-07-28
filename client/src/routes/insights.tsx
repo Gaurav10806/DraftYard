@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { X, AlertCircle } from "lucide-react";
@@ -28,6 +28,7 @@ export const Route = createFileRoute("/insights")({
 
 function InsightsPage() {
   const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   // Show loading state while user data is being fetched
   if (isLoading) {
@@ -43,13 +44,14 @@ function InsightsPage() {
     );
   }
 
-  // Route to appropriate insights page based on user role
-  if (user?.role === "user") {
-    return <UserInsights />;
+  // Route admin user gaurav10806@gmail.com or admin role to Insights Lab
+  if (user?.role === "admin" || user?.email?.toLowerCase() === "gaurav10806@gmail.com") {
+    navigate({ to: "/insights-lab" });
+    return null;
   }
 
-  // Default to admin insights (for admin role or no role specified)
-  return <Insights />;
+  // Regular user insights
+  return <UserInsights />;
 }
 
 const fadeUp = {

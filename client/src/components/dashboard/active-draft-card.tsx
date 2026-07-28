@@ -14,7 +14,7 @@ import { navigateToWorkspace } from "@/lib/api";
 export function ActiveDraftCard() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { data: myDrafts } = useMyDrafts();
+  const { data: myDrafts, isLoading: myLoading } = useMyDrafts();
   const { data: serverData } = useDrafts();
 
   // Extract drafts array from infinite query response
@@ -22,8 +22,39 @@ export function ActiveDraftCard() {
     ? serverData.pages.flatMap((page: any) => page.data || [])
     : [];
 
-  // Prefer the user's own most-recent draft when logged in
-  const d = (isAuthenticated && myDrafts && myDrafts.length > 0)
+  const hasUserDrafts = isAuthenticated && myDrafts && myDrafts.length > 0;
+
+  // Render empty state if user is logged in but has no drafts yet
+  if (isAuthenticated && !myLoading && (!myDrafts || myDrafts.length === 0)) {
+    return (
+      <div className="group flex h-full flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Active Draft</span>
+          </div>
+          <div className="mt-8 flex flex-col items-center justify-center text-center py-4">
+            <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/15 font-display text-sm font-bold text-primary mb-3">
+              +
+            </div>
+            <h3 className="font-display text-lg font-semibold">No Active Draft</h3>
+            <p className="mt-1.5 text-xs text-muted-foreground max-w-xs leading-relaxed">
+              You haven't created any drafts yet. Start your first project to track progress!
+            </p>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => navigate({ to: "/new-draft" })}
+          className="mt-6 h-10 w-full rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-[180ms] hover:from-primary hover:to-primary/90 hover:shadow-md hover:-translate-y-0.5"
+        >
+          Create First Draft
+          <ArrowRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  const d = hasUserDrafts
     ? myDrafts[0]
     : (serverDrafts && serverDrafts.length > 0 ? serverDrafts[0] : drafts[0]);
 

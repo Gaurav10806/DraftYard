@@ -67,6 +67,7 @@ import { drafts } from "@/data/drafts";
 import { fetchFeed, type Draft, navigateToWorkspace, updateDraftInsights, raiseHand } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getOwnerToken } from "@/lib/owner-token";
+import { JoinRequestModal } from "@/components/JoinRequestModal";
 
 export const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -208,106 +209,56 @@ function ProjectPage() {
   const { user } = useAuth();
 
   // Ownership: logged-in user matches submittedBy._id, OR ownerToken matches
-  // draft.submittedBy is an object { _id, name, username, avatar }
   const isOwner =
     (user && draft.submittedBy && typeof draft.submittedBy === 'object' && '_id' in draft.submittedBy && draft.submittedBy._id === user._id) ||
     (draft.ownerToken && draft.ownerToken === getOwnerToken());
 
-  // Request to Join state
-  const [joinOpen, setJoinOpen] = useState(false);
-  const [joinName, setJoinName] = useState(user?.name || "");
-  const [joinMessage, setJoinMessage] = useState("");
-  const [joinContact, setJoinContact] = useState(user?.email || "");
-  const [joinSubmitting, setJoinSubmitting] = useState(false);
-  const [joinDone, setJoinDone] = useState(false);
+  const isCollaborator = Boolean(
+    user &&
+      draft.collaborators &&
+      Array.isArray(draft.collaborators) &&
+      draft.collaborators.some((c) =>
+        typeof c === "object" && c !== null ? c._id === user._id : String(c) === String(user._id)
+      )
+  );
 
-  const handleRequestJoin = async () => {
-    if (!joinName.trim() || !joinMessage.trim() || !joinContact.trim()) {
-      toast.error("Please fill in all fields.");
-      return;
-    }
+  const canManage = isOwner || isCollaborator;
+
+  // Request to Join modal state
+  const [joinOpen, setJoinOpen] = useState(false);
+
+  const handleRequestJoinSubmit = async (data: {
+    name: string;
+    contact: string;
+    message: string;
+    skills: string[];
+    estimatedTime: string;
+  }) => {
     if (!draft._id) {
       toast.error("Project ID missing.");
       return;
     }
-    setJoinSubmitting(true);
-    try {
-      await raiseHand({ id: draft._id, name: joinName.trim(), message: joinMessage.trim(), contact: joinContact.trim() });
-      setJoinDone(true);
-      toast.success("Request sent! The project owner will be in touch.");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to send request.");
-    } finally {
-      setJoinSubmitting(false);
-    }
+    await raiseHand({
+      id: draft._id,
+      name: data.name,
+      contact: data.contact,
+      message: data.message,
+      skills: data.skills,
+      estimatedTime: data.estimatedTime,
+    });
+    toast.success("Request sent! The project owner will receive a notification.");
   };
 
   return (
     <SidebarProvider>
-      {/* Request to Join Dialog */}
-      <Dialog open={joinOpen} onOpenChange={(o) => { setJoinOpen(o); if (!o) setJoinDone(false); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Hand className="h-5 w-5 text-violet-500" /> Request to Join
-            </DialogTitle>
-          </DialogHeader>
-          {joinDone ? (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-500/15 text-emerald-500">
-                <Check className="h-7 w-7" />
-              </div>
-              <p className="font-semibold">Request Sent!</p>
-              <p className="text-sm text-muted-foreground">
-                The project owner will review your request and get back to you.
-              </p>
-              <Button className="mt-2" onClick={() => setJoinOpen(false)}>Done</Button>
-            </div>
-          ) : (
-            <div className="space-y-4 mt-2">
-              <p className="text-sm text-muted-foreground">
-                Tell the owner why you want to contribute to <span className="font-medium text-foreground">{draft.projectName}</span>.
-              </p>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Your Name</label>
-                <Input
-                  placeholder="Full name"
-                  value={joinName}
-                  onChange={(e) => setJoinName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Contact (email / GitHub / LinkedIn)</label>
-                <Input
-                  placeholder="how can they reach you?"
-                  value={joinContact}
-                  onChange={(e) => setJoinContact(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Message</label>
-                <Textarea
-                  placeholder="Why do you want to join? What can you contribute?"
-                  rows={4}
-                  value={joinMessage}
-                  onChange={(e) => setJoinMessage(e.target.value)}
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" onClick={() => setJoinOpen(false)}>Cancel</Button>
-                <Button
-                  disabled={joinSubmitting}
-                  onClick={handleRequestJoin}
-                  className="gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
-                >
-                  <Send className="h-4 w-4" />
-                  {joinSubmitting ? "Sending…" : "Send Request"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <JoinRequestModal
+        projectName={draft.projectName}
+        open={joinOpen}
+        onOpenChange={setJoinOpen}
+        onSubmit={handleRequestJoinSubmit}
+        title="Request to Join Project"
+        subtitle={`Tell the owner of ${draft.projectName} why you want to collaborate and what skills you bring.`}
+      />
 
       <div className="project-page flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
@@ -341,13 +292,14 @@ function ProjectPage() {
                   }
                 }}
                 isOwner={!!isOwner}
+                canManage={canManage}
               />
               <ProjectTabs tab={tab} onTab={setTab} />
               <div className="h-6" />
               {tab === "overview" && <OverviewTab draft={draft} onViewDiscussions={() => setTab("discussions")} />}
               {tab === "discussions" && <DiscussionsTab />}
-              {tab === "contributors" && <ContributorsTab onApply={(role) => { setJoinMessage(`I'd like to apply for the ${role} position.`); setJoinOpen(true); }} />}
-              {tab === "activity" && <ActivityTab />}
+              {tab === "contributors" && <ContributorsTab draft={draft} onApply={() => setJoinOpen(true)} />}
+              {tab === "activity" && <ActivityTab draft={draft} />}
             </motion.main>
           </div>
         </SidebarInset>
@@ -419,6 +371,13 @@ function ProjectTopBar() {
   );
 }
 
+function getOwnerName(submittedBy: any): string {
+  if (!submittedBy) return "Project Owner";
+  if (typeof submittedBy === "object" && submittedBy.name) return submittedBy.name;
+  if (typeof submittedBy === "string" && submittedBy.trim()) return submittedBy;
+  return "Project Owner";
+}
+
 // ————————————————————————————————————————————————————————————
 // Hero (logo, meta, revival score, actions, dotted node graphic)
 // ————————————————————————————————————————————————————————————
@@ -428,6 +387,7 @@ function ProjectHero({
   onBookmark,
   onShare,
   onRequestJoin,
+  canManage,
   isOwner,
 }: {
   draft: Draft;
@@ -435,6 +395,7 @@ function ProjectHero({
   onBookmark: () => void;
   onShare: () => void;
   onRequestJoin: () => void;
+  canManage: boolean;
   isOwner: boolean;
 }) {
   const navigate = useNavigate();
@@ -449,9 +410,26 @@ function ProjectHero({
     await navigateToWorkspace(draft._id, draft.projectName, navigate, (msg) => toast.error(msg));
   };
 
+  const ownerName = getOwnerName(draft.submittedBy);
+
+  const ownerInitials = ownerName
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "PO";
+
+  const createdDate = (draft as any).createdAt
+    ? new Date((draft as any).createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "Recently";
+
+  const updatedDate = (draft as any).updatedAt || draft.lastWorkedOn
+    ? new Date((draft as any).updatedAt || draft.lastWorkedOn!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "Recently";
+
   return (
     <section className="project-hero relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
-      <HeroDotWave />
+      <ProjectNodeNetwork variant="hero" />
       <div className="relative z-10 grid gap-6 lg:grid-cols-[auto_1fr_auto_auto]">
         {/* Logo */}
         <div className="project-hero-logo grid h-24 w-24 shrink-0 place-items-center rounded-2xl">
@@ -486,17 +464,17 @@ function ProjectHero({
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-[10px] font-semibold text-white">
-                  AV
+                  {ownerInitials}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="text-muted-foreground">By Ansh Vekariya</div>
+                <div className="text-muted-foreground">By {ownerName}</div>
                 <div className="font-medium">Project Owner</div>
               </div>
             </div>
-            <MetaCol label="Created" value="Jan 12, 2026" />
-            <MetaCol label="Last Active" value="Jun 18, 2026" />
-            <MetaCol label="Category" value={draft.domain.charAt(0).toUpperCase() + draft.domain.slice(1)} />
+            <MetaCol label="Created" value={createdDate} />
+            <MetaCol label="Last Active" value={updatedDate} />
+            <MetaCol label="Category" value={draft.domain ? draft.domain.charAt(0).toUpperCase() + draft.domain.slice(1) : "General"} />
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5">
             {draft.techStack.slice(0, 6).map((t) => (
@@ -524,14 +502,14 @@ function ProjectHero({
           </div>
         </div>
 
-        {/* Actions — owner vs public */}
+        {/* Actions — owner/collaborator vs public */}
         <div className="flex w-full flex-col gap-2 lg:w-52">
-          {isOwner ? (
+          {canManage ? (
             <Button
               onClick={handleContinueEditing}
               className="w-full gap-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--primary)_60%,transparent)] hover:brightness-110"
             >
-              <Edit3 className="h-4 w-4" /> Continue Editing
+              <Edit3 className="h-4 w-4" /> Manage Workspace
             </Button>
           ) : (
             <Button
@@ -1394,14 +1372,42 @@ function DiscussionRow({ d }: { d: (typeof DISCUSSIONS)[number] }) {
 // ————————————————————————————————————————————————————————————
 // CONTRIBUTORS TAB
 // ————————————————————————————————————————————————————————————
-function ContributorsTab({ onApply }: { onApply: (role: string) => void }) {
+function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: string) => void }) {
+  const ownerName = getOwnerName(draft.submittedBy);
+
+  const ownerInitials = ownerName
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "PO";
+
+  const dynamicTeam = [
+    {
+      name: ownerName,
+      role: "Project Creator & Owner",
+      initials: ownerInitials,
+      tint: "from-violet-500 to-fuchsia-500",
+    },
+    ...(draft.collaborators || []).map((c, i) => {
+      const cName = typeof c === "object" && c.name ? c.name : "Collaborator";
+      const cInitials = cName.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "CB";
+      return {
+        name: cName,
+        role: "Contributor",
+        initials: cInitials,
+        tint: i % 2 === 0 ? "from-emerald-500 to-teal-500" : "from-sky-500 to-indigo-500",
+      };
+    }),
+  ];
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
       {/* Core team */}
       <Card>
         <CardTitle icon={<Users className="h-4 w-4 text-violet-500" />}>Core Team</CardTitle>
         <ul className="mt-3 space-y-3">
-          {TEAM.map((m) => (
+          {dynamicTeam.map((m) => (
             <li key={m.name} className="flex items-center gap-3">
               <div
                 className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br ${m.tint} text-xs font-semibold text-white`}
@@ -1631,7 +1637,21 @@ function CompatibilityRing({ value }: { value: number }) {
 // ————————————————————————————————————————————————————————————
 // ACTIVITY TAB
 // ————————————————————————————————————————————————————————————
-function ActivityTab() {
+function ActivityTab({ draft }: { draft: Draft }) {
+  const ownerName = getOwnerName(draft.submittedBy);
+
+  const createdDate = (draft as any).createdAt
+    ? new Date((draft as any).createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "Recently";
+
+  const dynamicTimeline = [
+    { icon: "flag", title: `Project created by ${ownerName}`, date: createdDate, tone: "violet" },
+    { icon: "git", title: "Initial commit & repository setup", body: `Setup ${draft.domain} project structure`, date: createdDate, tone: "violet" },
+    { icon: "board", title: `${draft.projectName} progress tracked`, body: `Current stage: ${draft.currentStage}`, date: "Recently", tone: "violet" },
+    { icon: "warn", title: "Stall reason recorded", body: draft.failureReason || "Project looking for revival", date: "Recently", tone: "amber" },
+    { icon: "revive", title: "Marked open for revival", body: "Looking for contributors to join and build", date: "Active", tone: "emerald" },
+  ];
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       {/* Timeline */}
@@ -1642,7 +1662,7 @@ function ActivityTab() {
         <div className="relative mt-4 pl-6">
           <span className="absolute inset-y-1 left-2 w-px bg-gradient-to-b from-violet-500/60 via-fuchsia-500/40 to-emerald-500/60" />
           <ul className="space-y-5">
-            {TIMELINE.map((t) => (
+            {dynamicTimeline.map((t) => (
               <li key={t.title} className="relative">
                 <span
                   className={`absolute -left-[18px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full ring-4 ring-background ${

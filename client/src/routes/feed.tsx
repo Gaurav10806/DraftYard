@@ -63,7 +63,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
 import { useDrafts } from "@/hooks/use-drafts";
-import { likeDraft, recordView } from "@/lib/api";
+import { likeDraft, recordView, raiseHand } from "@/lib/api";
+import { JoinRequestModal } from "@/components/JoinRequestModal";
+import { TopBar } from "@/components/dashboard/top-bar";
 import type { FeedPage } from "@/hooks/use-drafts";
 import { toast } from "sonner";
 import type { Draft } from "@/lib/api";
@@ -286,7 +288,7 @@ function FeedPage() {
 
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
-  const [raiseTarget, setRaiseTarget] = useState<string | null>(null);
+  const [raiseTarget, setRaiseTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Ref for infinite scroll sentinel
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -314,7 +316,7 @@ function FeedPage() {
       <div className="feed-page flex min-h-screen w-full bg-background text-foreground leading-[1.5] dark:bg-[#0d0d14]">
         <AppSidebar />
         <SidebarInset className="flex min-w-0 flex-1 flex-col dark:bg-[#0d0d14]">
-          <FeedTopBar />
+          <TopBar showGreeting={false} />
 
           <motion.main
             className="flex-1 p-4 sm:p-6 overflow-y-auto"
@@ -371,7 +373,7 @@ function FeedPage() {
                   upvoted={upvoted}
                   onBookmark={toggleBookmark}
                   onUpvote={toggleUpvote}
-                  onRaise={(projectName) => setRaiseTarget(projectName)}
+                  onRaise={(target) => setRaiseTarget(target)}
                   isLoading={isLoading}
                 />
                 
@@ -409,10 +411,22 @@ function FeedPage() {
         </SidebarInset>
       </div>
 
-      <RaiseHandModal
-        projectName={raiseTarget}
+      <JoinRequestModal
+        projectName={raiseTarget?.name ?? null}
         open={raiseTarget !== null}
         onOpenChange={(o) => !o && setRaiseTarget(null)}
+        onSubmit={async (data) => {
+          if (!raiseTarget) return;
+          await raiseHand({
+            id: raiseTarget.id,
+            name: data.name,
+            contact: data.contact,
+            message: data.message,
+            skills: data.skills,
+            estimatedTime: data.estimatedTime,
+          });
+          toast.success("Request sent to project owner!");
+        }}
       />
     </SidebarProvider>
   );
@@ -1168,7 +1182,7 @@ function FeedGrid({
   upvoted: Set<string>;
   onBookmark: (id: string) => void;
   onUpvote: (id: string) => void;
-  onRaise: (projectName: string) => void;
+  onRaise: (target: { id: string; name: string }) => void;
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -1207,7 +1221,7 @@ function FeedGrid({
           upvoted={upvoted.has(d.id)}
           onBookmark={() => onBookmark(d.id)}
           onUpvote={() => onUpvote(d.id)}
-          onRaise={() => onRaise(d.projectName)}
+          onRaise={() => onRaise({ id: d._id || d.id, name: d.projectName })}
           index={i}
         />
       ))}
@@ -1542,130 +1556,7 @@ function SpotlightCard() {
 
 
 // ————————————————————————————————————————————————————————————————
-// Raise Hand Modal (from Revival Board)
-// ————————————————————————————————————————————————————————————————
 
-const SKILL_OPTIONS = ["React", "Node", "MongoDB", "Next.js", "Python", "UI/UX"];
-
-function RaiseHandModal({
-  projectName,
-  open,
-  onOpenChange,
-}: {
-  projectName: string | null;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const [skills, setSkills] = useState<string[]>(["React", "Node"]);
-
-  const toggle = (s: string) =>
-    setSkills((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-hidden border-none p-0 [&>button]:hidden">
-        <div className="relative p-6">
-          <button
-            onClick={() => onOpenChange(false)}
-            className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full border border-border/60 bg-background/60 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-          <DialogHeader className="text-left">
-            <DialogTitle className="flex items-center gap-2 font-display text-lg">
-              <Hand className="h-4 w-4 text-[var(--feed-accent)]" />
-              Raise Your Hand
-            </DialogTitle>
-            <DialogDescription>
-              Show the original creator you want to revive their project.
-            </DialogDescription>
-          </DialogHeader>
-
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-              className="mt-4 space-y-4"
-            >
-              <FieldRow label="Project">
-                <Input
-                  readOnly
-                  value={projectName ?? ""}
-                  className="bg-muted/40"
-                />
-              </FieldRow>
-              <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Your Name">
-                  <Input placeholder="Dev Cosmos" />
-                </FieldRow>
-                <FieldRow label="Contact">
-                  <Input placeholder="email / discord / github" />
-                </FieldRow>
-              </div>
-              <FieldRow label="Why do you want to revive this project?">
-                <Textarea
-                  rows={3}
-                  placeholder="Share why this excites you and what you'd bring…"
-                  className="resize-none"
-                />
-              </FieldRow>
-              <FieldRow label="Relevant Skills">
-                <div className="flex flex-wrap gap-2">
-                  {SKILL_OPTIONS.map((s) => {
-                    const on = skills.includes(s);
-                    return (
-                      <label
-                        key={s}
-                        className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all ${
-                          on
-                            ? "border-[var(--feed-accent)] bg-[var(--feed-accent)]/10 text-[var(--feed-accent)]"
-                            : "border-border/60 text-muted-foreground hover:border-[var(--feed-accent)]/40"
-                        }`}
-                      >
-                        <Checkbox
-                          checked={on}
-                          onCheckedChange={() => toggle(s)}
-                          className="h-3 w-3"
-                        />
-                        {s}
-                      </label>
-                    );
-                  })}
-                </div>
-              </FieldRow>
-              <FieldRow label="Estimated Time">
-                <Select defaultValue="2-4">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1-2">1–2 weeks</SelectItem>
-                    <SelectItem value="2-4">2–4 weeks</SelectItem>
-                    <SelectItem value="1m">1 month</SelectItem>
-                    <SelectItem value="1m+">More than 1 month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldRow>
-            </motion.div>
-          </AnimatePresence>
-
-          <DialogFooter className="mt-5 flex gap-2 sm:justify-end">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => onOpenChange(false)}
-              className="rounded-full px-4"
-            >
-              Raise My Hand <Hand className="ml-1 h-3.5 w-3.5" />
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (

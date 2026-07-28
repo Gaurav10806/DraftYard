@@ -34,8 +34,10 @@ router.post('/workspace', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Draft not found' });
     }
 
-    // Verify ownership: user must be authenticated and own the draft
-    if (!req.user || draft.submittedBy?.toString() !== req.user._id.toString()) {
+    // Verify ownership/collaborator permission: user must be authenticated and be the owner or collaborator
+    const isOwner = draft.submittedBy?.toString() === req.user?._id?.toString();
+    const isCollaborator = Array.isArray(draft.collaborators) && draft.collaborators.some(c => c.toString() === req.user?._id?.toString());
+    if (!req.user || (!isOwner && !isCollaborator)) {
       return res.status(403).json({ error: 'You are not authorized to create a workspace for this draft' });
     }
 
@@ -101,8 +103,10 @@ router.patch('/workspace/:draftId', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Draft not found' });
     }
 
-    // Verify ownership: user must be authenticated and own the draft
-    if (!req.user || draft.submittedBy?.toString() !== req.user._id.toString()) {
+    // Verify ownership/collaborator permission: user must be authenticated and be the owner or collaborator
+    const isOwner = draft.submittedBy?.toString() === req.user?._id?.toString();
+    const isCollaborator = Array.isArray(draft.collaborators) && draft.collaborators.some(c => c.toString() === req.user?._id?.toString());
+    if (!req.user || (!isOwner && !isCollaborator)) {
       return res.status(403).json({ error: 'You are not authorized to update this workspace' });
     }
 

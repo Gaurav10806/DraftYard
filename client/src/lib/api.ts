@@ -144,17 +144,104 @@ export type RaiseHandInput = {
   name: string;
   message: string;
   contact: string;
+  skills?: string[];
+  estimatedTime?: string;
 };
 
 export async function raiseHand({ id, ...body }: RaiseHandInput): Promise<Draft> {
   const res = await fetch(`${API_BASE}/draft/${id}/raise-hand`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to raise hand");
+  }
+  return res.json();
+}
+
+// ===== Notification APIs =====
+
+export type AppNotification = {
+  _id: string;
+  recipient: string;
+  sender?: {
+    _id: string;
+    name?: string;
+    username?: string;
+    avatar?: string;
+    email?: string;
+  } | null;
+  senderName?: string;
+  type: "join_request" | "request_accepted" | "request_rejected" | "general";
+  draftId: string | { _id: string; projectName: string; domain?: string };
+  draftName: string;
+  details?: {
+    name?: string;
+    contact?: string;
+    message?: string;
+    skills?: string[];
+    estimatedTime?: string;
+  };
+  status: "pending" | "accepted" | "rejected";
+  read: boolean;
+  createdAt: string;
+};
+
+export async function fetchNotifications(): Promise<AppNotification[]> {
+  const res = await fetch(`${API_BASE}/notifications`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch notifications");
+  }
+  return res.json();
+}
+
+export async function markNotificationRead(id: string): Promise<AppNotification> {
+  const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to mark notification read");
+  }
+  return res.json();
+}
+
+export async function markAllNotificationsRead(): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/notifications/read-all`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to mark notifications read");
+  }
+  return res.json();
+}
+
+export async function respondToNotification(
+  id: string,
+  action: "accept" | "reject"
+): Promise<{ success: boolean; notification: AppNotification }> {
+  const res = await fetch(`${API_BASE}/notifications/${id}/respond`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ action }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Failed to ${action} request`);
   }
   return res.json();
 }
@@ -534,12 +621,17 @@ export type UserInsightsData = {
   }>;
   similarProjects: Array<{
     name: string;
+    domain?: string;
     success: boolean;
     timeToCompletion?: string;
     reason?: string;
   }>;
   revivalPotential: number;
   totalDrafts: number;
+  totalUpvotes?: number;
+  totalRaisedHands?: number;
+  topDomain?: string;
+  topTech?: string;
 };
 
 export async function fetchUserInsights(): Promise<UserInsightsData> {
@@ -549,6 +641,37 @@ export async function fetchUserInsights(): Promise<UserInsightsData> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to load user insights");
+  }
+  return res.json();
+}
+
+export type GlobalInsightsData = {
+  total: number;
+  revivalRate: number;
+  totalRaisedHands: number;
+  avgWeeksSpent: number;
+  domains: Array<{ name: string; value: number; pct: number }>;
+  techStacks: Array<{ name: string; value: number; pct: number }>;
+  whyDied: Array<{ name: string; value: number; pct: number }>;
+  stages: Array<{ name: string; value: number; pct: number }>;
+  recentBurials: Array<{
+    id: string;
+    projectName: string;
+    oneLiner: string;
+    domain: string;
+    techStack: string[];
+    upvotes: number;
+    raisedHands: number;
+    currentStage: string;
+    failureReason: string;
+  }>;
+};
+
+export async function fetchGlobalInsights(): Promise<GlobalInsightsData> {
+  const res = await fetch(`${API_BASE}/insights/global`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to load global insights");
   }
   return res.json();
 }

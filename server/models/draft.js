@@ -38,6 +38,8 @@ const draftSchema = new mongoose.Schema({
         name: { type: String, required: true, trim: true },
         message: { type: String, default: '', trim: true },
         contact: { type: String, default: '', trim: true },
+        skills: { type: [String], default: [] },
+        estimatedTime: { type: String, default: '' },
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
         createdAt: { type: Date, default: Date.now },
         updatedAt: { type: Date, default: Date.now },
