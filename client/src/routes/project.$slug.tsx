@@ -1,5 +1,12 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import {
+  fetchDraftBySlug,
+  type Draft,
+  navigateToWorkspace,
+  updateDraftInsights,
+  raiseHand,
+} from "@/lib/api";
 import { getInitials } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -65,7 +72,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { drafts } from "@/data/drafts";
-import { fetchFeed, type Draft, navigateToWorkspace, updateDraftInsights, raiseHand } from "@/lib/api";
+import { fetchFeed } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getOwnerToken } from "@/lib/owner-token";
 import { JoinRequestModal } from "@/components/JoinRequestModal";

@@ -37,6 +37,7 @@ import { drafts } from "@/data/drafts";
 import { fetchFeed, createWorkspace } from "@/lib/api";
 import { slugify } from "@/routes/project.$slug";
 import { type WorkspaceTask, type WorkspaceMilestone } from "@/lib/workspace-store";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/workspace-setup/$slug")({
   head: () => ({ meta: [{ title: "Workspace Setup · DraftYard" }] }),
@@ -89,6 +90,19 @@ type Step3Values = z.infer<typeof step3Schema>;
 // ── Page shell ──────────────────────────────────────────────────
 function WorkspaceSetupPage() {
   const { draft } = Route.useLoaderData();
+   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (draft && user) {
+      const isOwner = draft.submittedBy === user._id || (draft.submittedBy as any)?._id === user._id;
+      if (!isOwner) {
+        toast.error("Only the project Owner can configure the workspace");
+        navigate({ to: "/workspace", search: { draftId: undefined } });
+      }
+    }
+  }, [draft, user, navigate]);
+
   return (
     <ProtectedRoute>
       <SidebarProvider>

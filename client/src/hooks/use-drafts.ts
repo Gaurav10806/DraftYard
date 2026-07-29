@@ -1,5 +1,12 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchFeed, fetchMyDrafts, likeDraft, bookmarkDraft, type Draft } from "@/lib/api";
+import {
+  fetchFeed,
+  fetchMyDrafts,
+  fetchDraftStats,
+  fetchFilteredFeed,
+  fetchTrendingFeed,
+  type FeedFilters,
+} from "@/lib/api";
 
 export type FeedFilters = {
   search?: string;
@@ -21,6 +28,20 @@ export type FeedPage = {
     hasMore: boolean;
   };
 };
+
+export function useFilteredFeed(filters: FeedFilters) {
+  return useQuery({
+    queryKey: ["filtered-feed", filters],
+    queryFn: () => fetchFilteredFeed(filters),
+  });
+}
+
+export function useTrendingFeed() {
+  return useQuery({
+    queryKey: ["trending-feed"],
+    queryFn: fetchTrendingFeed,
+  });
+}
 
 export function useDrafts(filters?: FeedFilters, enabled = true) {
   return useInfiniteQuery({

@@ -93,6 +93,38 @@ function getAuthHeaders(): Record<string, string> {
     return res.json();
   }
 
+  export type FeedFilters = {
+  tab?: "all" | "open" | "recent" | "revived";
+  search?: string;
+  techStack?: string;
+  stage?: string;
+  domain?: string;
+  teamSize?: string;
+  stallPattern?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+};
+
+export async function fetchFilteredFeed(filters?: FeedFilters): Promise<{ drafts: Draft[]; total: number }> {
+  const query = new URLSearchParams();
+  if (filters) {
+    Object.entries(filters).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== "") {
+        query.append(key, String(val));
+      }
+    });
+  }
+  const res = await fetch(`${API_BASE}/feed?${query.toString()}`);
+  if (!res.ok) throw new Error("Failed to load feed");
+  return res.json();
+}
+
+export async function fetchTrendingFeed(): Promise<Draft[]> {
+  const res = await fetch(`${API_BASE}/feed/trending`);
+  if (!res.ok) throw new Error("Failed to load trending feed");
+  return res.json();
+}
 export async function fetchMyDrafts(): Promise<Draft[]> {
   const res = await fetch(`${API_BASE}/drafts/mine`, {
     headers: { ...getAuthHeaders() },
@@ -1140,8 +1172,64 @@ export async function renameReview(reviewId: string, projectName: string): Promi
   return res.json();
 }
 
+export type CompassFeedData = {
+  items: { key: string; title: string; sub: string; route: string }[];
+  cta: { label: string; route: string };
+};
+
 export async function fetchCompassFeed(mode: string): Promise<CompassFeedData> {
   const res = await fetch(`${API_BASE}/compass-feed/${mode}`);
   if (!res.ok) throw new Error("Failed to load compass feed");
+  return res.json();
+}
+
+  // ===== Stack Intelligence =====
+
+  export type Tech = {
+    slug: string;
+    name: string;
+    icon: string;
+    category: string;
+    projects: number;
+    completion: number;
+    successRate: number;
+    failureRate: number;
+    revived: number;
+    rating: number;
+    growth: number;
+    avgRevivalDays: number;
+    summary: string;
+    bestFor?: string[];
+    failureReasons?: string[];
+    challenges: string[];
+    recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor?: string[] };
+    survival: { stage: string; pct: number }[];
+    similar: { name: string; slug: string; survival: number; trend: { x: number; y: number }[] }[];
+    projectsUsing: {
+      name: string;
+      domain: string;
+      stage: string;
+      score: number;
+      updated: string;
+    }[];
+  };
+
+  export async function fetchStackIntelligence(): Promise<Tech[]> {
+    const res = await fetch(`${API_BASE}/stack-intelligence`);
+    if (!res.ok) throw new Error("Failed to load stack intelligence data");
+    return res.json();
+  }
+
+export async function deleteDraft(draftId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}`, {
+    method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to delete project");
+  }
   return res.json();
 }

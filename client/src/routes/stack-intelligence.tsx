@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -21,14 +21,13 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  AreaChart,
-  Area,
 } from "recharts";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchStackIntelligence, type Tech } from "@/lib/api";
 
 export const Route = createFileRoute("/stack-intelligence")({
   head: () => ({
@@ -51,247 +50,6 @@ export const Route = createFileRoute("/stack-intelligence")({
 
 /* ------------------------------ Data ------------------------------ */
 
-type Tech = {
-  slug: string;
-  name: string;
-  icon: string; // emoji / short glyph
-  category: string;
-  projects: number;
-  completion: number;
-  revived: number;
-  rating: number;
-  growth: number; // trending %
-  avgRevivalDays: number;
-  summary: string;
-  bestFor?: string[];
-  failureReasons?: string[];
-  challenges: string[];
-  recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor?: string[] };
-  survival: { stage: string; pct: number }[];
-  similar: { name: string; slug: string; survival: number; trend: number[] }[];
-  projectsUsing: {
-    name: string;
-    domain: string;
-    stage: "Planning" | "Building" | "Testing" | "Shipped";
-    score: number;
-    updated: string;
-  }[];
-};
-
-/** Provide safe defaults so every tech has actionable AI content. */
-function withDefaults(t: Partial<Tech> & Pick<Tech, "slug" | "name" | "icon" | "category" | "projects" | "completion" | "revived" | "rating" | "growth" | "avgRevivalDays" | "summary" | "challenges" | "recommendation" | "survival">): Tech {
-  return {
-    bestFor: ["General-purpose product work", "Small to mid-size teams", "Rapid iteration"],
-    failureReasons: ["Weak documentation", "Scope creep", "Poor architecture planning"],
-    similar: [],
-    projectsUsing: [],
-    ...t,
-  } as Tech;
-}
-
-const SURVIVAL = (a: number, b: number, c: number, d: number) => [
-  { stage: "Idea", pct: 100 },
-  { stage: "Prototype", pct: a },
-  { stage: "Building", pct: b },
-  { stage: "Testing", pct: c },
-  { stage: "Shipped", pct: d },
-];
-
-const trend = (base: number) =>
-  Array.from({ length: 10 }, (_, i) => ({ x: i, y: base + Math.sin(i * 0.9) * 3 + (i % 3) - 1 }));
-
-const TECHS: Tech[] = [
-  {
-    slug: "react",
-    name: "React",
-    icon: "⚛️",
-    category: "Frontend Library",
-    projects: 4812,
-    completion: 88,
-    revived: 22,
-    rating: 4.6,
-    growth: 12,
-    avgRevivalDays: 14,
-    summary:
-      "React powers the majority of DraftYard's frontend projects. Its component model and ecosystem keep completion rates high even for solo builders.",
-    challenges: ["State sprawl in solo projects", "Prop drilling in mid-size apps"],
-    recommendation: {
-      name: "Next.js",
-      slug: "nextjs",
-      delta: 6,
-      domain: "AI SaaS",
-      reasons: ["6% higher completion", "Server components reduce boilerplate", "Faster time to ship", "Great DX for content-heavy apps"],
-    },
-    survival: SURVIVAL(78, 58, 34, 22),
-    similar: [
-      { name: "Vue", slug: "vue", survival: 74, trend: [4, 6, 5, 7, 8, 7, 9, 10, 9, 11].map((y, x) => ({ x, y })) as any },
-      { name: "Svelte", slug: "svelte", survival: 71, trend: trend(6) as any },
-      { name: "Solid", slug: "solid", survival: 68, trend: trend(4) as any },
-      { name: "Angular", slug: "angular", survival: 62, trend: trend(3) as any },
-    ],
-    projectsUsing: [
-      { name: "AI LMS Platform", domain: "Education", stage: "Building", score: 82, updated: "2 days ago" },
-      { name: "Inventory System", domain: "Business", stage: "Testing", score: 74, updated: "Yesterday" },
-      { name: "Clinic Management", domain: "Healthcare", stage: "Building", score: 68, updated: "3 days ago" },
-      { name: "CRM Platform", domain: "Business", stage: "Planning", score: 63, updated: "4 days ago" },
-      { name: "School ERP", domain: "Education", stage: "Testing", score: 58, updated: "5 days ago" },
-    ],
-  },
-  {
-    slug: "django",
-    name: "Django",
-    icon: "🐍",
-    category: "Backend Framework",
-    projects: 1284,
-    completion: 74,
-    revived: 18,
-    rating: 4.2,
-    growth: 4,
-    avgRevivalDays: 21,
-    summary:
-      "Django is a high-level Python framework known for rapid development and clean design. It performs exceptionally well in enterprise and education projects.",
-    challenges: ["Scope creep", "Complex backend logic"],
-    recommendation: {
-      name: "FastAPI",
-      slug: "fastapi",
-      delta: 17,
-      domain: "AI SaaS",
-      reasons: ["17% higher completion rate", "Faster time to ship", "Better performance for ML/AI integrations", "Growing developer community"],
-    },
-    survival: SURVIVAL(74, 46, 23, 18),
-    similar: [
-      { name: "FastAPI", slug: "fastapi", survival: 76, trend: trend(7) as any },
-      { name: "Flask", slug: "flask", survival: 71, trend: trend(6) as any },
-      { name: "Express.js", slug: "express", survival: 69, trend: trend(5) as any },
-      { name: "Spring Boot", slug: "spring", survival: 65, trend: trend(4) as any },
-    ],
-    projectsUsing: [
-      { name: "AI LMS Platform", domain: "Education", stage: "Building", score: 82, updated: "2 days ago" },
-      { name: "Inventory System", domain: "Business", stage: "Testing", score: 74, updated: "Yesterday" },
-      { name: "Clinic Management", domain: "Healthcare", stage: "Building", score: 68, updated: "3 days ago" },
-      { name: "CRM Platform", domain: "Business", stage: "Planning", score: 63, updated: "4 days ago" },
-      { name: "School ERP", domain: "Education", stage: "Testing", score: 58, updated: "5 days ago" },
-    ],
-  },
-  {
-    slug: "nextjs",
-    name: "Next.js",
-    icon: "▲",
-    category: "React Framework",
-    projects: 3120,
-    completion: 84,
-    revived: 20,
-    rating: 4.5,
-    growth: 15,
-    avgRevivalDays: 12,
-    summary:
-      "Next.js dominates full-stack React work on DraftYard, especially for AI SaaS and content apps. Server components reduce boilerplate and boost ship rate.",
-    challenges: ["Caching confusion", "Deploy env drift"],
-    recommendation: {
-      name: "React",
-      slug: "react",
-      delta: 4,
-      domain: "Consumer apps",
-      reasons: ["Simpler surface area", "Less framework churn", "Great for pure client UIs", "Wider hiring pool"],
-    },
-    survival: SURVIVAL(80, 62, 40, 20),
-    similar: [
-      { name: "React", slug: "react", survival: 88, trend: trend(8) as any },
-      { name: "Remix", slug: "remix", survival: 72, trend: trend(6) as any },
-      { name: "Astro", slug: "astro", survival: 70, trend: trend(5) as any },
-      { name: "SvelteKit", slug: "sveltekit", survival: 66, trend: trend(4) as any },
-    ],
-    projectsUsing: [
-      { name: "Creator CMS", domain: "Media", stage: "Building", score: 78, updated: "1 day ago" },
-      { name: "SaaS Landing", domain: "Business", stage: "Shipped", score: 91, updated: "6 hours ago" },
-      { name: "AI Notes", domain: "Productivity", stage: "Testing", score: 72, updated: "3 days ago" },
-    ],
-  },
-  {
-    slug: "nodejs",
-    name: "Node.js",
-    icon: "⬢",
-    category: "Runtime",
-    projects: 3980,
-    completion: 82,
-    revived: 21,
-    rating: 4.4,
-    growth: 6,
-    avgRevivalDays: 15,
-    summary: "Node.js remains the default runtime for JavaScript backends in the DraftYard ecosystem.",
-    challenges: ["Async error handling", "Package sprawl"],
-    recommendation: {
-      name: "Deno",
-      slug: "deno",
-      delta: 3,
-      domain: "Edge APIs",
-      reasons: ["Batteries included", "Secure by default", "Native TypeScript", "Simpler tooling"],
-    },
-    survival: SURVIVAL(76, 56, 34, 21),
-    similar: [
-      { name: "Deno", slug: "deno", survival: 70, trend: trend(5) as any },
-      { name: "Bun", slug: "bun", survival: 74, trend: trend(7) as any },
-    ],
-    projectsUsing: [],
-  },
-  {
-    slug: "fastapi",
-    name: "FastAPI",
-    icon: "🚀",
-    category: "Python Framework",
-    projects: 1560,
-    completion: 79,
-    revived: 24,
-    rating: 4.6,
-    growth: 9,
-    avgRevivalDays: 13,
-    summary: "FastAPI dominates AI/ML backends with async performance and clean typing.",
-    challenges: ["Auth boilerplate", "ORM choice fatigue"],
-    recommendation: {
-      name: "Django",
-      slug: "django",
-      delta: 0,
-      domain: "Enterprise CRUD",
-      reasons: ["Battle-tested admin", "Great for content-heavy apps", "Stable ORM", "Wide plugin ecosystem"],
-    },
-    survival: SURVIVAL(80, 62, 40, 24),
-    similar: [
-      { name: "Django", slug: "django", survival: 74, trend: trend(6) as any },
-      { name: "Flask", slug: "flask", survival: 71, trend: trend(5) as any },
-    ],
-    projectsUsing: [],
-  },
-  {
-    slug: "postgres",
-    name: "PostgreSQL",
-    icon: "🐘",
-    category: "Database",
-    projects: 4210,
-    completion: 81,
-    revived: 25,
-    rating: 4.7,
-    growth: 7,
-    avgRevivalDays: 14,
-    summary: "The default relational database of DraftYard. Excellent longevity across revived projects.",
-    challenges: ["Migration discipline", "Index tuning"],
-    recommendation: { name: "Supabase", slug: "supabase", delta: 4, domain: "SaaS", reasons: ["Managed Postgres", "Auth included", "Realtime built-in", "Great DX"] },
-    survival: SURVIVAL(80, 60, 38, 25),
-    similar: [{ name: "MySQL", slug: "mysql", survival: 74, trend: trend(5) as any }],
-    projectsUsing: [],
-  },
-  { slug: "mongodb", name: "MongoDB", icon: "🍃", category: "Database", projects: 2210, completion: 68, revived: 15, rating: 4.1, growth: 2, avgRevivalDays: 18, summary: "Document store popular for early prototypes.", challenges: ["Schema drift", "Query complexity"], recommendation: { name: "PostgreSQL", slug: "postgres", delta: 13, domain: "SaaS", reasons: ["Higher completion", "Stronger consistency", "SQL familiarity", "Better long-term maintenance"] }, survival: SURVIVAL(70, 48, 26, 15), similar: [], projectsUsing: [] },
-  { slug: "express", name: "Express", icon: "🚂", category: "Node Framework", projects: 2870, completion: 75, revived: 19, rating: 4.2, growth: 3, avgRevivalDays: 16, summary: "The minimalist Node.js framework.", challenges: ["Boilerplate", "No opinions"], recommendation: { name: "FastAPI", slug: "fastapi", delta: 4, domain: "APIs", reasons: ["Type-first", "Better docs", "Async by default", "Cleaner validation"] }, survival: SURVIVAL(76, 54, 32, 19), similar: [], projectsUsing: [] },
-  { slug: "python", name: "Python", icon: "🐍", category: "Language", projects: 5120, completion: 77, revived: 20, rating: 4.5, growth: 5, avgRevivalDays: 15, summary: "The go-to language for data, ML, and backends.", challenges: ["Env management", "Slow startup"], recommendation: { name: "TypeScript", slug: "typescript", delta: 2, domain: "Web", reasons: ["Unified frontend/backend", "Static typing", "Fast tooling", "Large ecosystem"] }, survival: SURVIVAL(76, 56, 34, 20), similar: [], projectsUsing: [] },
-  { slug: "typescript", name: "TypeScript", icon: "🟦", category: "Language", projects: 4650, completion: 86, revived: 23, rating: 4.7, growth: 11, avgRevivalDays: 13, summary: "TypeScript-based projects have the highest revival scores.", challenges: ["Type gymnastics", "Config sprawl"], recommendation: { name: "React", slug: "react", delta: 2, domain: "Web", reasons: ["Best paired with TS", "Great DX", "Wide adoption", "Predictable"] }, survival: SURVIVAL(82, 64, 42, 23), similar: [], projectsUsing: [] },
-  { slug: "flutter", name: "Flutter", icon: "🦋", category: "Mobile Framework", projects: 1180, completion: 75, revived: 17, rating: 4.3, growth: 4, avgRevivalDays: 19, summary: "Cross-platform mobile with strong solo-dev output.", challenges: ["Native bridges", "iOS polish"], recommendation: { name: "React Native", slug: "rn", delta: 1, domain: "Mobile", reasons: ["JS ecosystem", "OTA updates", "Wide hiring", "Web reuse"] }, survival: SURVIVAL(74, 52, 30, 17), similar: [], projectsUsing: [] },
-  { slug: "java", name: "Java", icon: "☕", category: "Language", projects: 1620, completion: 71, revived: 14, rating: 4.0, growth: 1, avgRevivalDays: 24, summary: "Enterprise backend workhorse.", challenges: ["Verbosity", "Startup time"], recommendation: { name: "Kotlin", slug: "kotlin", delta: 5, domain: "Enterprise", reasons: ["Modern syntax", "Interop with Java", "Coroutines", "Growing ecosystem"] }, survival: SURVIVAL(72, 50, 28, 14), similar: [], projectsUsing: [] },
-];
-
-const TRENDING = [...TECHS].sort((a, b) => b.projects - a.projects).slice(0, 6).map((t) => t.slug);
-const HIGHEST_SUCCESS = [...TECHS].sort((a, b) => b.completion - a.completion).slice(0, 6).map((t) => t.slug);
-const FASTEST_GROWING = [...TECHS].sort((a, b) => b.growth - a.growth).slice(0, 6).map((t) => t.slug);
-
-/** Curated AI insight overrides per technology (falls back to sensible defaults). */
 const AI_INSIGHTS: Record<string, { bestFor: string[]; failureReasons: string[]; considerFor?: string[] }> = {
   react: {
     bestFor: ["Interactive product UIs", "Component-driven dashboards", "Solo & small-team builds"],
@@ -355,19 +113,112 @@ const AI_INSIGHTS: Record<string, { bestFor: string[]; failureReasons: string[];
   },
 };
 
+/* --------------------------- Skeletons & Errors --------------------------- */
+
+function SkeletonCard() {
+  return (
+    <div className="relative flex w-full flex-col rounded-2xl border border-border bg-card/50 p-5 animate-pulse">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-11 w-11 shrink-0 rounded-xl bg-muted" />
+          <div className="min-w-0 space-y-2">
+            <div className="h-4 w-24 rounded bg-muted" />
+            <div className="h-3 w-16 rounded bg-muted" />
+          </div>
+        </div>
+        <div className="h-5 w-12 rounded-full bg-muted" />
+      </div>
+      <div className="mt-6 flex items-end justify-between">
+        <div className="space-y-2">
+          <div className="h-5 w-10 rounded bg-muted" />
+          <div className="h-2 w-14 rounded bg-muted" />
+        </div>
+        <div className="text-right space-y-2">
+          <div className="h-5 w-8 rounded bg-muted animate-pulse" />
+          <div className="h-2 w-14 rounded bg-muted" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExplorerSkeleton() {
+  return (
+    <div className="space-y-8">
+      {/* Header Skeleton */}
+      <div className="space-y-2">
+        <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+        <div className="h-8 w-64 rounded bg-muted animate-pulse" />
+        <div className="h-4 w-96 rounded bg-muted animate-pulse" />
+      </div>
+      
+      {/* Search Input Skeleton */}
+      <div className="h-14 w-full rounded-2xl bg-muted/50 animate-pulse" />
+
+      {/* Grid Skeletons */}
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="h-5 w-48 rounded bg-muted animate-pulse" />
+          <div className="h-3 w-72 rounded bg-muted animate-pulse" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-6 text-center space-y-4">
+      <div className="text-destructive font-medium">⚠️ Error: {message}</div>
+      <p className="text-sm text-muted-foreground">We encountered an issue fetching stack analytics. Please try again.</p>
+      <div className="flex justify-center">
+        <Button onClick={onRetry} variant="outline" className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Retry
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function StackIntelligencePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [techs, setTechs] = useState<Tech[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const tech = useMemo(() => TECHS.find((t) => t.slug === selected) ?? null, [selected]);
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
+    fetchStackIntelligence()
+      .then((res) => {
+        setTechs(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to load stack intelligence data");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const tech = useMemo(() => techs.find((t) => t.slug === selected) ?? null, [selected, techs]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return TECHS;
-    return TECHS.filter(
+    if (!q) return techs;
+    return techs.filter(
       (t) => t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [query, techs]);
 
   const openTech = (slug: string) => {
     setSelected(slug);
@@ -387,7 +238,25 @@ function StackIntelligencePage() {
         <TopBar showGreeting={false} />
         <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
           <AnimatePresence mode="wait">
-            {tech ? (
+            {loading ? (
+              <motion.div
+                key="skeleton"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <ExplorerSkeleton />
+              </motion.div>
+            ) : error ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <ErrorAlert message={error} onRetry={loadData} />
+              </motion.div>
+            ) : tech ? (
               <motion.div
                 key={`detail-${tech.slug}`}
                 initial={{ opacity: 0, y: 8 }}
@@ -395,7 +264,7 @@ function StackIntelligencePage() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
               >
-                <TechnologyDetail tech={tech} onBack={() => setSelected(null)} onOpen={openTech} />
+                <TechnologyDetail tech={tech} techs={techs} onBack={() => setSelected(null)} onOpen={openTech} />
               </motion.div>
             ) : (
               <motion.div
@@ -411,6 +280,7 @@ function StackIntelligencePage() {
                   onSearchSubmit={onSearchSubmit}
                   onOpen={openTech}
                   filtered={filtered}
+                  techs={techs}
                 />
               </motion.div>
             )}
@@ -429,16 +299,27 @@ function TechnologyExplorer({
   onSearchSubmit,
   onOpen,
   filtered,
+  techs,
 }: {
   query: string;
   setQuery: (v: string) => void;
   onSearchSubmit: (e: React.FormEvent) => void;
   onOpen: (slug: string) => void;
   filtered: Tech[];
+  techs: Tech[];
 }) {
-  const trendingTechs = TRENDING.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
-  const highestTechs = HIGHEST_SUCCESS.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
-  const growingTechs = FASTEST_GROWING.map((s) => TECHS.find((x) => x.slug === s)!).filter(Boolean);
+  const trendingTechs = useMemo(() => 
+    [...techs].sort((a, b) => b.projects - a.projects).slice(0, 6),
+    [techs]
+  );
+  const highestTechs = useMemo(() => 
+    [...techs].sort((a, b) => b.completion - a.completion).slice(0, 6),
+    [techs]
+  );
+  const growingTechs = useMemo(() => 
+    [...techs].sort((a, b) => b.growth - a.growth).slice(0, 6),
+    [techs]
+  );
 
   return (
     <div className="space-y-8">
@@ -649,10 +530,12 @@ function TechnologyDetail({
   tech,
   onBack,
   onOpen,
+  techs,
 }: {
   tech: Tech;
   onBack: () => void;
   onOpen: (slug: string) => void;
+  techs: Tech[];
 }) {
   return (
     <div className="space-y-6">
@@ -797,17 +680,23 @@ function TechnologyDetail({
             <span>Project</span><span>Stage</span><span>Score</span><span>Updated</span>
           </div>
           <div className="mt-2 divide-y divide-border/60">
-            {(tech.projectsUsing.length ? tech.projectsUsing : PLACEHOLDER_PROJECTS).map((p) => (
-              <div key={p.name} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 py-3 text-sm">
-                <div className="min-w-0">
-                  <div className="truncate font-medium text-foreground">{p.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{p.domain}</div>
+            {tech.projectsUsing && tech.projectsUsing.length > 0 ? (
+              tech.projectsUsing.map((p) => (
+                <div key={p.name} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 py-3 text-sm">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-foreground">{p.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{p.domain}</div>
+                  </div>
+                  <StagePill stage={p.stage} />
+                  <ScoreRing value={p.score} />
+                  <div className="text-xs text-muted-foreground whitespace-nowrap">{p.updated}</div>
                 </div>
-                <StagePill stage={p.stage} />
-                <ScoreRing value={p.score} />
-                <div className="text-xs text-muted-foreground whitespace-nowrap">{p.updated}</div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No active projects found in the database using {tech.name}.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -889,12 +778,9 @@ function TechnologyDetail({
               seen.add(t.slug);
               picks.push(t);
             };
-            for (const s of tech.similar) push(TECHS.find((t) => t.slug === s.slug));
-            for (const t of TECHS) if (t.category === tech.category) push(t);
-            for (const slug of TRENDING) push(TECHS.find((t) => t.slug === slug));
-            for (const slug of FASTEST_GROWING) push(TECHS.find((t) => t.slug === slug));
-            for (const slug of HIGHEST_SUCCESS) push(TECHS.find((t) => t.slug === slug));
-            for (const t of TECHS) push(t);
+            for (const s of tech.similar) push(techs.find((t) => t.slug === s.slug));
+            for (const t of techs) if (t.category === tech.category) push(t);
+            for (const t of techs) push(t);
             return picks.slice(0, 6).map((s) => (
               <TechCard key={s.slug} tech={s} onOpen={onOpen} />
             ));
@@ -906,13 +792,6 @@ function TechnologyDetail({
     </div>
   );
 }
-
-const PLACEHOLDER_PROJECTS: Tech["projectsUsing"] = [
-  { name: "AI LMS Platform", domain: "Education", stage: "Building", score: 82, updated: "2 days ago" },
-  { name: "Inventory System", domain: "Business", stage: "Testing", score: 74, updated: "Yesterday" },
-  { name: "Clinic Management", domain: "Healthcare", stage: "Building", score: 68, updated: "3 days ago" },
-  { name: "CRM Platform", domain: "Business", stage: "Planning", score: 63, updated: "4 days ago" },
-];
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
