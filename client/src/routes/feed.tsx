@@ -195,6 +195,7 @@ function FeedPage() {
     const seen = new Set<string>();
     return drafts.filter(d => {
       const id = d._id || d.id;
+      if (!id) return true;
       if (seen.has(id)) return false;
       seen.add(id);
       return true;
@@ -274,6 +275,10 @@ function FeedPage() {
     return bDate - aDate;
   }).slice(0, 8), [enriched]);
 
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
+  const [raiseTarget, setRaiseTarget] = useState<{ id: string; name: string } | null>(null);
+
   const toggleBookmark = (id: string) =>
     setBookmarks((prev) => {
       const next = new Set(prev);
@@ -286,10 +291,6 @@ function FeedPage() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-
-  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
-  const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
-  const [raiseTarget, setRaiseTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Ref for infinite scroll sentinel
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -703,7 +704,7 @@ function HeroNetwork() {
 }
 
 function HeroHeader({ draftsCount, isLoading, totalInteractions, avgRevival }: { draftsCount: number; isLoading: boolean; totalInteractions: number; avgRevival: number }) {
-  const stats = [
+  const stats: Array<{ label: string; value: string; trend?: string }> = [
     { label: "Total Drafts", value: draftsCount.toLocaleString() },
     { label: "Community Interactions", value: totalInteractions.toLocaleString() },
     { label: "Avg. Revival Score", value: avgRevival.toString() },
@@ -948,7 +949,7 @@ function TrendingCard({
         <div className="mt-auto flex items-center justify-between pt-1">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--feed-accent)]/10 px-2.5 py-1 text-[13px] font-bold text-[var(--feed-accent)] ring-1 ring-[var(--feed-accent)]/20">
             <TrendingUp className="h-3.5 w-3.5" />
-            {draft.upvotes.toLocaleString()}
+            {(draft.upvotes ?? draft.likes ?? 0).toLocaleString()}
           </span>
           {draft.raisedHands && draft.raisedHands.length > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] font-medium text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-300">
@@ -1059,14 +1060,17 @@ function FilterBar({
         />
         <SingleSelectDropdown 
           label="Category" 
-          options={CATEGORY_OPTIONS}
+          options={CATEGORY_OPTIONS.map((c) => ({
+            value: c,
+            label: c === "ml" ? "AI / ML" : c.charAt(0).toUpperCase() + c.slice(1),
+          }))}
           selected={selectedCategory}
           onChange={onCategoryChange}
         />
         <div className="ml-auto">
           <SingleSelectDropdown 
-            label={`Sort: ${SORT_OPTIONS.find(s => s.id === sortBy)?.label || 'Newest'}`}
-            options={SORT_OPTIONS.map(s => s.id)}
+            label="Sort"
+            options={SORT_OPTIONS.map((s) => ({ value: s.id, label: s.label }))}
             selected={sortBy}
             onChange={(v) => onSortChange(v as typeof sortBy)}
           />
@@ -1128,10 +1132,17 @@ function SingleSelectDropdown({
   onChange,
 }: {
   label: string;
-  options: string[];
+  options: (string | { value: string; label: string })[];
   selected: string;
   onChange: (v: string) => void;
 }) {
+  const normalized = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o.charAt(0).toUpperCase() + o.slice(1) } : o
+  );
+
+  const selectedItem = normalized.find((o) => o.value === selected);
+  const triggerLabel = selectedItem ? `${label}: ${selectedItem.label}` : label;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1140,20 +1151,28 @@ function SingleSelectDropdown({
           size="sm"
           className="h-8 gap-1.5 rounded-full border-border/60 bg-background/70 text-xs font-medium"
         >
-          {label}
+          {triggerLabel}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
         <DropdownMenuLabel className="text-xs">{label}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {options.map((o) => (
+        {selected && (
           <DropdownMenuItem
-            key={o}
-            onClick={() => onChange(o)}
-            className={`text-xs ${selected === o ? 'bg-primary/10' : ''}`}
+            onClick={() => onChange("")}
+            className="text-xs text-muted-foreground italic"
           >
-            {o}
+            Clear selection
+          </DropdownMenuItem>
+        )}
+        {normalized.map((o) => (
+          <DropdownMenuItem
+            key={o.value}
+            onClick={() => onChange(o.value === selected ? "" : o.value)}
+            className={`text-xs flex items-center justify-between ${selected === o.value ? 'bg-primary/10 font-semibold text-primary' : ''}`}
+          >
+            {o.label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -1270,7 +1289,7 @@ function FeedCard({
   onRaise,
   index,
 }: {
-  draft: FeedDraft & { stallPattern?: string; aiInsight?: string; stallAnalyzed?: boolean };
+  draft: EnrichedDraft & { stallPattern?: string; aiInsight?: string; stallAnalyzed?: boolean };
   tint: string;
   bookmarked: boolean;
   upvoted: boolean;
@@ -1279,7 +1298,8 @@ function FeedCard({
   onRaise: () => void;
   index: number;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com";
   const [likes, setLikes] = useState(draft.likes || 0);
   const [liked, setLiked] = useState(draft.liked || false);
   const [isLoadingLike, setIsLoadingLike] = useState(false);
@@ -1419,15 +1439,17 @@ function FeedCard({
           >
             <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-current' : ''}`} /> {likes}
           </button>
-          <Button
-            onClick={onRaise}
-            size="sm"
-            className="h-7 gap-1 rounded-full px-2.5 text-[11px] font-semibold"
-            disabled={!isAuthenticated}
-            title={!isAuthenticated ? "Sign in to raise hand" : ""}
-          >
-            <Hand className="h-3 w-3" /> Raise Hand
-          </Button>
+          {!isAdmin && (
+            <Button
+              onClick={onRaise}
+              size="sm"
+              className="h-7 gap-1 rounded-full px-2.5 text-[11px] font-semibold"
+              disabled={!isAuthenticated}
+              title={!isAuthenticated ? "Sign in to raise hand" : ""}
+            >
+              <Hand className="h-3 w-3" /> Raise Hand
+            </Button>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">{draft.timeAgo}</span>

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const BlockedEmail = require('../models/BlockedEmail');
 
 const signToken = (userId, role) =>
   jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -19,12 +20,22 @@ const register = async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check if email is blacklisted
+    const isBlocked = await BlockedEmail.findOne({ email: cleanEmail });
+    if (isBlocked) {
+      return res.status(403).json({
+        error: `This email address has been blocked by administrators. Reason: ${isBlocked.reason}`,
+      });
+    }
+
+    const existing = await User.findOne({ email: cleanEmail });
     if (existing) {
       return res.status(409).json({ error: 'An account with that email already exists' });
     }
 
-    const user = await User.create({ name: name.trim(), email, password });
+    const user = await User.create({ name: name.trim(), email: cleanEmail, password });
     const token = signToken(user._id, user.role);
 
     res.status(201).json({ token, user });
@@ -44,21 +55,49 @@ const login = async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // Auto-provision or promote gaurav10806@gmail.com to admin
-    if (cleanEmail === 'gaurav10806@gmail.com') {
-      let adminUser = await User.findOne({ email: cleanEmail }).select('+password');
+    // Check if email is blacklisted
+    const isBlocked = await BlockedEmail.findOne({ email: cleanEmail });
+    if (isBlocked) {
+      return res.status(403).json({
+        error: `This email address has been blocked by administrators. Reason: ${isBlocked.reason}`,
+      });
+    }
+
+    // Demote gaurav10806@gmail.com from admin if present
+    await User.updateOne({ email: 'gaurav10806@gmail.com' }, { role: 'user' }).catch(() => {});
+
+    // Auto-provision or update draftadmin@gmail.com with admin role & Draft@2026 password
+    if (cleanEmail === 'draftadmin@gmail.com') {
+      let adminUser = await User.findOne({ email: 'draftadmin@gmail.com' }).select('+password');
       if (!adminUser) {
         adminUser = await User.create({
-          name: 'Gaurav Soni',
-          email: cleanEmail,
-          password: password || 'Gaurav06',
+          name: 'DraftYard Admin',
+          email: 'draftadmin@gmail.com',
+          password: 'Draft@2026',
           role: 'admin',
-          username: 'gauravsoni',
+          username: 'draftadmin',
         });
-      } else if (adminUser.role !== 'admin') {
-        adminUser.role = 'admin';
-        await adminUser.save();
+      } else {
+        let modified = false;
+        if (adminUser.role !== 'admin') {
+          adminUser.role = 'admin';
+          modified = true;
+        }
+        const isPasswordCorrect = await adminUser.comparePassword(password);
+        if (!isPasswordCorrect && password === 'Draft@2026') {
+          adminUser.password = 'Draft@2026';
+          modified = true;
+        }
+        if (modified) {
+          await adminUser.save();
+        }
       }
+
+      const isPasswordMatch = await adminUser.comparePassword(password);
+      if (!isPasswordMatch && password !== 'Draft@2026') {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
       const token = signToken(adminUser._id, adminUser.role);
       return res.json({ token, user: adminUser });
     }

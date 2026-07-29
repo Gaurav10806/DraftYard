@@ -1,15 +1,16 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchFeed, fetchMyDrafts, likeDraft, bookmarkDraft, type Draft } from "@/lib/api";
+import {
+  fetchFeed,
+  fetchMyDrafts,
+  fetchFilteredFeed,
+  fetchTrendingFeed,
+  likeDraft,
+  bookmarkDraft,
+  type FeedFilters,
+  type Draft,
+} from "@/lib/api";
 
-export type FeedFilters = {
-  search?: string;
-  category?: string;
-  techStack?: string[];
-  stage?: string[];
-  status?: string;
-  openForRevival?: boolean;
-  sort?: string;
-};
+export type { FeedFilters };
 
 export type FeedPage = {
   data: Draft[];
@@ -21,6 +22,20 @@ export type FeedPage = {
     hasMore: boolean;
   };
 };
+
+export function useFilteredFeed(filters: FeedFilters) {
+  return useQuery({
+    queryKey: ["filtered-feed", filters],
+    queryFn: () => fetchFilteredFeed(filters),
+  });
+}
+
+export function useTrendingFeed() {
+  return useQuery({
+    queryKey: ["trending-feed"],
+    queryFn: fetchTrendingFeed,
+  });
+}
 
 export function useDrafts(filters?: FeedFilters, enabled = true) {
   return useInfiniteQuery({

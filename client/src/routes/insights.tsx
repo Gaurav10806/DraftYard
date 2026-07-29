@@ -44,8 +44,8 @@ function InsightsPage() {
     );
   }
 
-  // Route admin user gaurav10806@gmail.com or admin role to Insights Lab
-  if (user?.role === "admin" || user?.email?.toLowerCase() === "gaurav10806@gmail.com") {
+  // Route admin user draftadmin@gmail.com or admin role to Insights Lab
+  if (user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com") {
     navigate({ to: "/insights-lab" });
     return null;
   }

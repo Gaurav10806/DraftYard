@@ -14,6 +14,9 @@ import {
   Loader2,
   Check,
   X,
+  AlertCircle,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -276,11 +279,19 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
                     ? `Accepted: ${n.draftName}`
                     : n.type === "request_rejected"
                     ? `Rejected: ${n.draftName}`
-                    : n.draftName;
+                    : n.type === "warning"
+                    ? `⚠️ Administrative Warning`
+                    : n.type === "draft_deleted"
+                    ? `🚨 Draft Removed: ${n.draftName}`
+                    : n.draftName || "System Notification";
 
                 const detail =
                   n.type === "join_request"
                     ? `${n.details?.name || n.senderName || "Someone"} raised a hand / requested to join`
+                    : n.type === "warning"
+                    ? n.details?.message || "You have received an administrative warning."
+                    : n.type === "draft_deleted"
+                    ? `Reason: ${n.details?.message || "Policy violation"}`
                     : n.details?.message || "Notification update";
 
                 return (
@@ -292,7 +303,7 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
                     }`}
                   >
                     <div className="flex w-full items-center justify-between gap-2">
-                      <span className="text-sm font-semibold truncate">{title}</span>
+                      <span className={`text-sm font-semibold truncate ${n.type === "warning" ? "text-amber-500" : n.type === "draft_deleted" ? "text-red-500" : ""}`}>{title}</span>
                       <span className="text-[10px] shrink-0 text-muted-foreground">
                         {formatTimeAgo(n.createdAt)}
                       </span>
@@ -362,16 +373,26 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
           <DialogContent className="max-w-md border-border/80 bg-card p-6 shadow-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 font-display text-base">
-                <Hand className="h-4 w-4 text-primary" />
+                {selectedNotif.type === "warning" ? (
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                ) : selectedNotif.type === "draft_deleted" ? (
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                ) : (
+                  <Hand className="h-4 w-4 text-primary" />
+                )}
                 {selectedNotif.type === "join_request"
                   ? "Join Request Details"
-                  : selectedNotif.type === "request_accepted"
-                  ? "Request Accepted"
-                  : "Request Status"}
+                  : selectedNotif.type === "warning"
+                  ? "Administrative Warning"
+                  : selectedNotif.type === "draft_deleted"
+                  ? "Draft Removal Notice"
+                  : "Notification Details"}
               </DialogTitle>
-              <DialogDescription>
-                Project: <strong className="text-foreground">{selectedNotif.draftName}</strong>
-              </DialogDescription>
+              {selectedNotif.draftName && (
+                <DialogDescription>
+                  Project: <strong className="text-foreground">{selectedNotif.draftName}</strong>
+                </DialogDescription>
+              )}
             </DialogHeader>
 
             <div className="mt-4 space-y-4 text-sm">

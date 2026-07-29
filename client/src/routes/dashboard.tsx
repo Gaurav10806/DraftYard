@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -10,6 +10,7 @@ import { CompassFeed, type CompassMode } from "@/components/dashboard/compass-fe
 import { DraftShelf } from "@/components/dashboard/draft-shelf";
 import { WeeklyChallenge } from "@/components/dashboard/weekly-challenge";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -38,7 +39,15 @@ const fadeUp = {
 };
 
 function Dashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [compassFocus, setCompassFocus] = useState<CompassMode>("Build");
+
+  useEffect(() => {
+    if (user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com") {
+      navigate({ to: "/admin-users" });
+    }
+  }, [user, navigate]);
 
   // Hydrate from localStorage on mount
   useEffect(() => {

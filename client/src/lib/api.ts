@@ -1,5 +1,6 @@
 export type Draft = {
   _id?: string;
+  id?: string;
   projectName: string;
   oneLiner: string;
   description?: string;
@@ -58,14 +59,7 @@ function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-  export async function fetchFeed(filters?: {
-    search?: string;
-    category?: string;
-    techStack?: string[];
-    stage?: string[];
-    status?: string;
-    openForRevival?: boolean;
-    sort?: string;
+  export async function fetchFeed(filters?: FeedFilters & {
     page?: number;
     limit?: number;
   }): Promise<{ data: Draft[]; pagination: { page: number; limit: number; total: number; pages: number; hasMore: boolean } }> {
@@ -73,11 +67,19 @@ function getAuthHeaders(): Record<string, string> {
     
     if (filters?.search) params.append('search', filters.search);
     if (filters?.category) params.append('category', filters.category);
-    if (filters?.techStack?.length) {
-      filters.techStack.forEach(tech => params.append('techStack', tech));
+    if (filters?.techStack) {
+      if (Array.isArray(filters.techStack)) {
+        filters.techStack.forEach(tech => params.append('techStack', tech));
+      } else {
+        params.append('techStack', filters.techStack);
+      }
     }
-    if (filters?.stage?.length) {
-      filters.stage.forEach(s => params.append('stage', s));
+    if (filters?.stage) {
+      if (Array.isArray(filters.stage)) {
+        filters.stage.forEach(s => params.append('stage', s));
+      } else {
+        params.append('stage', filters.stage);
+      }
     }
     if (filters?.status) params.append('status', filters.status);
     if (filters?.openForRevival) params.append('openForRevival', 'true');
@@ -93,6 +95,41 @@ function getAuthHeaders(): Record<string, string> {
     return res.json();
   }
 
+  export type FeedFilters = {
+  tab?: "all" | "open" | "recent" | "revived";
+  search?: string;
+  category?: string;
+  techStack?: string | string[];
+  stage?: string | string[];
+  domain?: string;
+  teamSize?: string;
+  stallPattern?: string;
+  status?: string;
+  openForRevival?: boolean;
+  sort?: string;
+  page?: number;
+  limit?: number;
+};
+
+export async function fetchFilteredFeed(filters?: FeedFilters): Promise<{ drafts: Draft[]; total: number }> {
+  const query = new URLSearchParams();
+  if (filters) {
+    Object.entries(filters).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== "") {
+        query.append(key, String(val));
+      }
+    });
+  }
+  const res = await fetch(`${API_BASE}/feed?${query.toString()}`);
+  if (!res.ok) throw new Error("Failed to load feed");
+  return res.json();
+}
+
+export async function fetchTrendingFeed(): Promise<Draft[]> {
+  const res = await fetch(`${API_BASE}/feed/trending`);
+  if (!res.ok) throw new Error("Failed to load trending feed");
+  return res.json();
+}
 export async function fetchMyDrafts(): Promise<Draft[]> {
   const res = await fetch(`${API_BASE}/drafts/mine`, {
     headers: { ...getAuthHeaders() },
@@ -177,9 +214,9 @@ export type AppNotification = {
     email?: string;
   } | null;
   senderName?: string;
-  type: "join_request" | "request_accepted" | "request_rejected" | "general";
-  draftId: string | { _id: string; projectName: string; domain?: string };
-  draftName: string;
+  type: "join_request" | "request_accepted" | "request_rejected" | "warning" | "draft_deleted" | "general";
+  draftId?: string | { _id: string; projectName: string; domain?: string } | null;
+  draftName?: string;
   details?: {
     name?: string;
     contact?: string;
@@ -1140,8 +1177,185 @@ export async function renameReview(reviewId: string, projectName: string): Promi
   return res.json();
 }
 
+export type CompassFeedData = {
+  items: { key: string; title: string; sub: string; route: string }[];
+  cta: { label: string; route: string };
+};
+
 export async function fetchCompassFeed(mode: string): Promise<CompassFeedData> {
   const res = await fetch(`${API_BASE}/compass-feed/${mode}`);
   if (!res.ok) throw new Error("Failed to load compass feed");
+  return res.json();
+}
+
+  // ===== Stack Intelligence =====
+
+  export type Tech = {
+    slug: string;
+    name: string;
+    icon: string;
+    category: string;
+    projects: number;
+    completion: number;
+    successRate: number;
+    failureRate: number;
+    revived: number;
+    rating: number;
+    growth: number;
+    avgRevivalDays: number;
+    summary: string;
+    bestFor?: string[];
+    failureReasons?: string[];
+    challenges: string[];
+    recommendation: { name: string; slug: string; delta: number; reasons: string[]; domain: string; considerFor?: string[] };
+    survival: { stage: string; pct: number }[];
+    similar: { name: string; slug: string; survival: number; trend: { x: number; y: number }[] }[];
+    projectsUsing: {
+      name: string;
+      domain: string;
+      stage: string;
+      score: number;
+      updated: string;
+    }[];
+  };
+
+  export async function fetchStackIntelligence(): Promise<Tech[]> {
+    const res = await fetch(`${API_BASE}/stack-intelligence`);
+    if (!res.ok) throw new Error("Failed to load stack intelligence data");
+    return res.json();
+  }
+
+export async function deleteDraft(draftId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}`, {
+    method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to delete project");
+  }
+  return res.json();
+}
+
+// ===== Admin Moderation APIs =====
+
+export type AdminUser = {
+  _id: string;
+  name: string;
+  fullName?: string;
+  email: string;
+  username?: string;
+  role: 'user' | 'admin';
+  avatar?: string;
+  bio?: string;
+  draftCount: number;
+  warningCount: number;
+  createdAt: string;
+};
+
+export type BlockedEmailRecord = {
+  _id: string;
+  email: string;
+  reason: string;
+  blockedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+};
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch admin users");
+  }
+  return res.json();
+}
+
+export async function fetchUserDraftsAdmin(userId: string): Promise<Draft[]> {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/drafts`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch user drafts");
+  }
+  return res.json();
+}
+
+export async function warnUserAdmin(userId: string, message: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/warn`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to send warning");
+  }
+  return res.json();
+}
+
+export async function deleteDraftAdmin(draftId: string, reason: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/admin/drafts/${draftId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to delete draft");
+  }
+  return res.json();
+}
+
+export async function blockUserAdmin(userId: string, reason: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/block`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to block user");
+  }
+  return res.json();
+}
+
+export async function fetchBlockedEmails(): Promise<BlockedEmailRecord[]> {
+  const res = await fetch(`${API_BASE}/admin/blocked-emails`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch blocked emails");
+  }
+  return res.json();
+}
+
+export async function unblockEmailAdmin(blockedId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/admin/blocked-emails/${blockedId}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to unblock email");
+  }
   return res.json();
 }

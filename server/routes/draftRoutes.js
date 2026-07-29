@@ -36,6 +36,82 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+function getStallPatternRegex(pattern) {
+  switch (pattern.toLowerCase()) {
+    case 'scope creep':
+    case 'scope creep syndrome':
+      return /scope|feature|kept adding/i;
+    case 'solo burnout':
+      return /burnout|burned|alone|solo/i;
+    case 'lack of consistency':
+      return /time|exam|semester|job|internship|deadline/i;
+    case 'waiting on data':
+      return /data|dataset|accuracy/i;
+    case 'perfectionism trap':
+    case 'perfectionism':
+      return /perfect|polish/i;
+    case 'lost motivation':
+      return /motivation|interest|boring/i;
+    case 'team fell apart':
+      return /team|cofounder|co-founder/i;
+    case 'technical blocker':
+      return /api|bug|technical|cost|gpu/i;
+    default:
+      return null;
+  }
+}
+
+function getStallPattern(failureReason) {
+  const why = (failureReason || '').toLowerCase();
+  if (why.match(/scope|feature|kept adding/)) return "Scope Creep";
+  if (why.match(/burnout|burned|alone|solo/)) return "Solo Burnout";
+  if (why.match(/motivation|interest|boring/)) return "Lost Motivation";
+  if (why.match(/team|cofounder|co-founder/)) return "Team Fell Apart";
+  if (why.match(/time|exam|semester|job|internship|deadline/)) return "Lack of Consistency";
+  if (why.match(/data|dataset|accuracy/)) return "Waiting on Data";
+  if (why.match(/api|bug|technical|cost|gpu/)) return "Technical Blocker";
+  if (why.match(/perfect|polish/)) return "Perfectionism Trap";
+  return "Lost Motivation";
+}
+
+function getAiInsight(draft) {
+  const why = (draft.failureReason || '').toLowerCase();
+  const tech = (draft.techStack || []).join(', ');
+  
+  if (why.includes('burnout') || why.includes('alone') || why.includes('solo')) {
+    return `Solo developer fatigue detected. The technical foundation in ${tech || 'this stack'} is solid, but the project requires co-founders or specialized collaborators to divide workload and restore momentum.`;
+  }
+  if (why.includes('scope') || why.includes('feature') || why.includes('kept adding')) {
+    return `Features ballooned beyond initial intent. Recommending a hard pivot back to a core MVP, trimming secondary features, and prioritizing user validation before writing more code.`;
+  }
+  if (why.includes('time') || why.includes('exam') || why.includes('job') || why.includes('busy')) {
+    return `Project stalled due to competing priorities. Highly modular codebase allows contributors to pick up small issues without extensive onboarding. Great candidate for community revive.`;
+  }
+  if (why.includes('market') || why.includes('user') || why.includes('interest') || why.includes('customers')) {
+    return `Target audience validation challenge. Technical implementation is mature. Needs product-market fit discovery, marketing distribution strategy, or a developer-marketer co-founder.`;
+  }
+  if (why.includes('technical') || why.includes('api') || why.includes('gpu') || why.includes('bug')) {
+    return `Technical blocker encountered. Code requires optimization or alternative APIs/architectures. A specialized backend or DevOps contributor could easily resolve this issue.`;
+  }
+  return `Strong core concept built using ${tech || 'modern tech'}. Needs product direction, structural scope definition, and external contributors to accelerate development.`;
+}
+
+function getStageLabel(currentStage) {
+  const s = (currentStage || '').toLowerCase();
+  if (s.includes('idea')) return "Idea";
+  if (s.includes('plan')) return "Planning";
+  if (s.includes('proto')) return "Prototype";
+  if (s.includes('building') || s.includes('almost') || s.includes('50%')) return "Building";
+  if (s.includes('launch') || s.includes('abandoned')) return "Shipped";
+  return "Building";
+}
+
+// Helper: convert project name to slug (mirrors client-side slugify)
+function toSlug(name) {
+  return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+
 // GET /api/insights/global -> Real platform-wide insights calculated from MongoDB
 router.get('/insights/global', async (req, res) => {
   try {
@@ -162,6 +238,43 @@ router.post('/draft', optionalAuth, async (req, res) => {
     res.status(201).json(draft);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/draft/by-slug/:slug — fetch a single draft by its slugified project name
+router.get('/draft/by-slug/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    // Fetch all drafts and find the one whose slugified name matches
+    // We use a lean query and iterate in JS (avoids storing a redundant slug field)
+    const drafts = await Draft.find({}).lean();
+    const match = drafts.find(d => toSlug(d.projectName) === slug);
+    if (!match) return res.status(404).json({ error: 'Draft not found' });
+    // Augment with computed fields identical to /api/feed processing
+    const stallPatternVal = getStallPattern(match.failureReason);
+    const aiInsight = getAiInsight(match);
+    const stageVal = getStageLabel(match.currentStage);
+    const upvotes = match.upvotes || 0;
+    const views = match.views || 0;
+    const bookmarks = match.bookmarks || 0;
+    const h = Math.abs((match.projectName || '').split('').reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) | 0, 0));
+    const raisedHandsCount = (match.raisedHands || []).length;
+    const revivalScore = Math.min(100, 55 + upvotes * 0.05 + raisedHandsCount * 10 + bookmarks * 0.5);
+    res.json({
+      ...match,
+      id: match._id.toString(),
+      stallPattern: stallPatternVal,
+      aiInsight,
+      stage: stageVal,
+      upvotes,
+      views,
+      bookmarks,
+      revivalScore: Math.round(revivalScore),
+      contributors: (match.collaborators ? match.collaborators.length : 0) + 1,
+      stallAnalyzed: h % 3 !== 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -355,6 +468,64 @@ router.get('/feed', optionalAuth, async (req, res) => {
     error: err.message,
     stack: err.stack,
   });
+  }
+});
+
+// GET /api/feed/trending
+router.get('/feed/trending', async (req, res) => {
+  try {
+    const pipeline = [];
+    
+    pipeline.push({
+      $addFields: {
+        raisedHandsCount: { $size: { $ifNull: ["$raisedHands", []] } }
+      }
+    });
+    
+    pipeline.push({
+      $addFields: {
+        trendingScore: {
+          $add: [
+            { $multiply: [{ $ifNull: ["$upvotes", 0] }, 1] },
+            { $multiply: [{ $ifNull: ["$bookmarks", 0] }, 2] },
+            { $multiply: [{ $ifNull: ["$views", 0] }, 0.1] },
+            { $multiply: ["$raisedHandsCount", 5] }
+          ]
+        }
+      }
+    });
+    
+    pipeline.push({ $sort: { trendingScore: -1, createdAt: -1 } });
+    pipeline.push({ $limit: 8 });
+    
+    const drafts = await Draft.aggregate(pipeline);
+    
+    const processed = drafts.map((draft) => {
+      const stallPatternVal = getStallPattern(draft.failureReason);
+      const aiInsight = getAiInsight(draft);
+      const stageVal = getStageLabel(draft.currentStage);
+      const bookmarks = draft.bookmarks || 0;
+      const upvotes = draft.upvotes || 0;
+      const views = draft.views || 0;
+      const h = Math.abs(draft.projectName.split('').reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) | 0, 0));
+      
+      return {
+        ...draft,
+        id: draft._id.toString(),
+        stallPattern: stallPatternVal,
+        aiInsight,
+        stage: stageVal,
+        upvotes,
+        views,
+        bookmarks,
+        contributors: (draft.collaborators ? draft.collaborators.length : 0) + 1,
+        stallAnalyzed: h % 3 !== 0,
+      };
+    });
+    
+    res.json(processed);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -970,6 +1141,436 @@ router.get('/compass-feed/:mode', async (req, res) => {
     }
 
     res.status(400).json({ error: 'Unknown mode' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/drafts/stats -> statistics about all drafts
+router.get('/drafts/stats', async (req, res) => {
+  try {
+    const totalDrafts = await Draft.countDocuments();
+    const openForRevival = await Draft.countDocuments({ raisedHands: { $exists: true, $ne: [] } });
+    
+    // Count drafts revived in the last 7 days (based on raisedHands createdAt)
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const revivedThisWeek = await Draft.countDocuments({
+      'raisedHands.createdAt': { $gte: weekAgo }
+    });
+    
+    // Calculate average revival rate
+    const avgRevivalRate = totalDrafts > 0 
+      ? Math.round((openForRevival / totalDrafts) * 100) 
+      : 0;
+    
+    res.json({
+      totalDrafts,
+      openForRevival,
+      revivedThisWeek,
+      avgRevivalRate
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/stack-intelligence -> dynamic stack intelligence analytics
+router.get('/stack-intelligence', async (req, res) => {
+  try {
+    const drafts = await Draft.find({}).lean();
+    
+    // Group drafts by technology name (normalized lowercase)
+    const techGroups = {};
+    for (const draft of drafts) {
+      const stack = draft.techStack || [];
+      for (const rawTech of stack) {
+        if (!rawTech || typeof rawTech !== 'string') continue;
+        const trimmed = rawTech.trim();
+        if (!trimmed) continue;
+        const norm = trimmed.toLowerCase();
+        
+        if (!techGroups[norm]) {
+          techGroups[norm] = {
+            rawName: trimmed,
+            drafts: [],
+            casingCount: {}
+          };
+        }
+        techGroups[norm].drafts.push(draft);
+        techGroups[norm].casingCount[trimmed] = (techGroups[norm].casingCount[trimmed] || 0) + 1;
+      }
+    }
+
+    // Predefined metadata mapping for premium aesthetics
+    const PREDEFINED_TECH_METADATA = {
+      react: { icon: "⚛️", category: "Frontend Library", slug: "react" },
+      django: { icon: "🐍", category: "Backend Framework", slug: "django" },
+      nextjs: { icon: "▲", category: "React Framework", slug: "nextjs" },
+      nodejs: { icon: "⬢", category: "Runtime", slug: "nodejs" },
+      fastapi: { icon: "🚀", category: "Python Framework", slug: "fastapi" },
+      postgres: { icon: "🐘", category: "Database", slug: "postgres" },
+      postgresql: { icon: "🐘", category: "Database", slug: "postgres" },
+      mongodb: { icon: "🍃", category: "Database", slug: "mongodb" },
+      express: { icon: "🚂", category: "Node Framework", slug: "express" },
+      python: { icon: "🐍", category: "Language", slug: "python" },
+      typescript: { icon: "🟦", category: "Language", slug: "typescript" },
+      flutter: { icon: "🦋", category: "Mobile Framework", slug: "flutter" },
+      java: { icon: "☕", category: "Language", slug: "java" },
+      vue: { icon: "💚", category: "Frontend Framework", slug: "vue" },
+      svelte: { icon: "🧡", category: "Frontend Framework", slug: "svelte" },
+      docker: { icon: "🐳", category: "DevOps", slug: "docker" },
+      kubernetes: { icon: "☸️", category: "DevOps", slug: "kubernetes" },
+      aws: { icon: "☁️", category: "Cloud Platform", slug: "aws" },
+      redis: { icon: "🔴", category: "Database", slug: "redis" },
+      firebase: { icon: "🔥", category: "Backend service", slug: "firebase" }
+    };
+
+    // Predefined AI Insights static templates
+    const AI_INSIGHTS = {
+      react: {
+        bestFor: ["Interactive product UIs", "Component-driven dashboards", "Solo & small-team builds"],
+        failureReasons: ["State sprawl", "Prop drilling in mid-size apps", "Tooling fatigue"],
+        considerFor: ["Content-heavy sites", "SEO-critical marketing", "Server-rendered SaaS"],
+      },
+      nextjs: {
+        bestFor: ["Full-stack SaaS", "SEO-critical marketing sites", "Content-heavy apps"],
+        failureReasons: ["Caching confusion", "Deploy env drift", "Overuse of server components"],
+        considerFor: ["Pure client SPAs", "Static docs sites"],
+      },
+      django: {
+        bestFor: ["Content-heavy backends", "Admin-driven enterprise apps", "Rapid CRUD MVPs"],
+        failureReasons: ["Scope creep", "Async workflows outgrow WSGI", "ORM performance tuning"],
+        considerFor: ["AI / ML APIs", "Async-first backends", "High-performance edge APIs"],
+      },
+      fastapi: {
+        bestFor: ["AI / ML inference APIs", "High-performance async services", "Type-first Python teams"],
+        failureReasons: ["Auth boilerplate", "ORM choice fatigue", "Missing admin UI"],
+        considerFor: ["Content-heavy CRUD apps", "Teams needing batteries-included admin"],
+      },
+      express: {
+        bestFor: ["REST APIs", "Lightweight backend services", "Rapid MVPs & small teams"],
+        failureReasons: ["Weak documentation", "Poor architecture planning", "Callback / error handling drift"],
+        considerFor: ["AI / ML projects", "High-performance async APIs", "Type-first backends"],
+      },
+      nodejs: {
+        bestFor: ["JavaScript-first backends", "Realtime services", "Shared TypeScript across stack"],
+        failureReasons: ["Async error handling", "Package sprawl", "Runtime version drift"],
+        considerFor: ["Edge-native APIs", "Secure-by-default runtimes"],
+      },
+      postgres: {
+        bestFor: ["Transactional SaaS", "Analytics-heavy products", "Long-lived data models"],
+        failureReasons: ["Migration discipline", "Index tuning", "N+1 query patterns"],
+        considerFor: ["Managed Postgres with auth & realtime out of the box"],
+      },
+      mongodb: {
+        bestFor: ["Early prototypes", "Flexible schemas", "Event / log stores"],
+        failureReasons: ["Schema drift", "Complex joins", "Consistency edge cases"],
+        considerFor: ["Relational workloads that need SQL & strong consistency"],
+      },
+      typescript: {
+        bestFor: ["Long-lived codebases", "Cross-stack shared types", "Team-scale projects"],
+        failureReasons: ["Type gymnastics", "Config sprawl", "Slow feedback loops"],
+        considerFor: ["Throwaway scripts & prototypes"],
+      },
+      python: {
+        bestFor: ["Data & ML pipelines", "Scripting & automation", "AI-first backends"],
+        failureReasons: ["Env management", "Slow cold starts", "Runtime type errors"],
+        considerFor: ["Unified TS frontend + backend teams"],
+      },
+      flutter: {
+        bestFor: ["Cross-platform mobile", "Design-heavy consumer apps", "Solo-dev mobile output"],
+        failureReasons: ["Native bridges", "iOS polish gaps", "Package ecosystem gaps"],
+        considerFor: ["JS-native mobile teams with web reuse"],
+      },
+      java: {
+        bestFor: ["Enterprise backends", "Long-lived legacy integrations", "JVM ecosystems"],
+        failureReasons: ["Verbosity", "Startup time", "Slow iteration"],
+        considerFor: ["Modern JVM languages like Kotlin"],
+      },
+    };
+
+    const RECOMMENDATIONS = {
+      react: { name: "Next.js", slug: "nextjs", domain: "AI SaaS", reasons: ["Higher completion", "Server components reduce boilerplate", "Faster time to ship", "Great DX for content-heavy apps"] },
+      django: { name: "FastAPI", slug: "fastapi", domain: "AI SaaS", reasons: ["Higher completion rate", "Faster time to ship", "Better performance for ML/AI integrations", "Growing developer community"] },
+      nextjs: { name: "React", slug: "react", domain: "Consumer apps", reasons: ["Simpler surface area", "Less framework churn", "Great for pure client UIs", "Wider hiring pool"] },
+      nodejs: { name: "Deno", slug: "deno", domain: "Edge APIs", reasons: ["Batteries included", "Secure by default", "Native TypeScript", "Simpler tooling"] },
+      fastapi: { name: "Django", slug: "django", domain: "Enterprise CRUD", reasons: ["Battle-tested admin", "Great for content-heavy apps", "Stable ORM", "Wide plugin ecosystem"] },
+      postgres: { name: "Supabase", slug: "supabase", domain: "SaaS", reasons: ["Managed Postgres", "Auth included", "Realtime built-in", "Great DX"] },
+      mongodb: { name: "PostgreSQL", slug: "postgres", domain: "SaaS", reasons: ["Higher completion", "Stronger consistency", "SQL familiarity", "Better long-term maintenance"] },
+      express: { name: "FastAPI", slug: "fastapi", domain: "APIs", reasons: ["Type-first", "Better docs", "Async by default", "Cleaner validation"] },
+      python: { name: "TypeScript", slug: "typescript", domain: "Web", reasons: ["Unified frontend/backend", "Static typing", "Fast tooling", "Large ecosystem"] },
+      typescript: { name: "React", slug: "react", domain: "Web", reasons: ["Best paired with TS", "Great DX", "Wide adoption", "Predictable"] },
+      flutter: { name: "React Native", slug: "rn", domain: "Mobile", reasons: ["JS ecosystem", "OTA updates", "Wide hiring", "Web reuse"] },
+      java: { name: "Kotlin", slug: "kotlin", domain: "Enterprise", reasons: ["Modern syntax", "Interop with Java", "Coroutines", "Growing ecosystem"] }
+    };
+
+    const STAGE_PROGRESS = {
+      'Idea only': 10,
+      'Prototype': 35,
+      '50% done': 50,
+      'Almost complete': 80,
+      'Launched but abandoned': 100
+    };
+
+    const getRelativeTime = (date) => {
+      if (!date) return 'Recently';
+      const now = new Date();
+      const diffMs = now - new Date(date);
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      if (diffMins < 60) return `${diffMins} min ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} hr ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      const diffWeeks = Math.floor(diffDays / 7);
+      if (diffWeeks < 4) return `${diffWeeks} wk ago`;
+      const diffMonths = Math.floor(diffDays / 30);
+      return `${diffMonths} mo ago`;
+    };
+
+    // Cutoff for growth calculation (e.g. 180 days ago)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 180);
+
+    const techList = Object.keys(techGroups).map(norm => {
+      const group = techGroups[norm];
+      const count = group.drafts.length;
+
+      // Determine display name by most common casing used in database
+      let displayName = group.rawName;
+      let maxCount = 0;
+      for (const [casing, c] of Object.entries(group.casingCount)) {
+        if (c > maxCount) {
+          maxCount = c;
+          displayName = casing;
+        }
+      }
+
+      // Calculate completion rate
+      let totalProgress = 0;
+      let successCount = 0;
+      let failureCount = 0;
+      let totalDays = 0;
+      let countWithHands = 0;
+      let totalUpvotes = 0;
+      let totalBookmarks = 0;
+      let totalViews = 0;
+      let recentCount = 0;
+
+      for (const draft of group.drafts) {
+        const progress = STAGE_PROGRESS[draft.currentStage] || 35;
+        totalProgress += progress;
+
+        if (['Almost complete', 'Launched but abandoned'].includes(draft.currentStage)) {
+          successCount++;
+        }
+        if (['Idea only', 'Prototype'].includes(draft.currentStage)) {
+          failureCount++;
+        }
+
+        totalUpvotes += draft.upvotes || 0;
+        totalBookmarks += draft.bookmarks || 0;
+        totalViews += draft.views || 0;
+
+        if (draft.createdAt && new Date(draft.createdAt) >= cutoffDate) {
+          recentCount++;
+        }
+
+        if (draft.raisedHands && draft.raisedHands.length > 0) {
+          const draftCreated = new Date(draft.createdAt);
+          // Find earliest raised hand date
+          const earliestHand = draft.raisedHands.reduce((earliest, h) => {
+            const hDate = new Date(h.createdAt);
+            return hDate < earliest ? hDate : earliest;
+          }, new Date(draft.raisedHands[0].createdAt || draft.updatedAt));
+          
+          const diffMs = Math.abs(earliestHand - draftCreated);
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          totalDays += diffDays;
+          countWithHands++;
+        }
+      }
+
+      const completion = Math.round(totalProgress / count);
+      const successRate = Math.round((successCount / count) * 100);
+      const failureRate = Math.round((failureCount / count) * 100);
+      const revived = Math.round((countWithHands / count) * 100);
+      const avgRevivalDays = countWithHands > 0 ? Math.round(totalDays / countWithHands) : 14;
+
+      // Community Rating out of 5 based on engagements (average metrics)
+      const avgUpvotes = totalUpvotes / count;
+      const avgBookmarks = totalBookmarks / count;
+      // Formula: base 3.5, add points based on engagement, capped at 5.0
+      const rating = Math.max(3.5, Math.min(5.0, Number((3.5 + (avgUpvotes * 0.003) + (avgBookmarks * 0.005)).toFixed(1))));
+
+      // Growth percentage
+      // e.g. growth is based on recent projects ratio, normalized to show logical percentage
+      const priorCount = count - recentCount;
+      const growth = Math.max(1, Math.min(99, Math.round((recentCount / Math.max(1, priorCount)) * 100))) || 5;
+
+      // Metadata mappings
+      const meta = PREDEFINED_TECH_METADATA[norm] || {
+        icon: "💻",
+        category: "Tool / Language",
+        slug: norm.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      };
+
+      // Survival funnel rates
+      const reachesPrototype = group.drafts.filter(d => ['Prototype', '50% done', 'Almost complete', 'Launched but abandoned'].includes(d.currentStage)).length;
+      const reachesBuilding = group.drafts.filter(d => ['50% done', 'Almost complete', 'Launched but abandoned'].includes(d.currentStage)).length;
+      const reachesTesting = group.drafts.filter(d => ['Almost complete', 'Launched but abandoned'].includes(d.currentStage)).length;
+      const reachesShipped = group.drafts.filter(d => ['Launched but abandoned'].includes(d.currentStage)).length;
+
+      const survival = [
+        { stage: "Idea", pct: 100 },
+        { stage: "Prototype", pct: Math.round((reachesPrototype / count) * 100) },
+        { stage: "Building", pct: Math.round((reachesBuilding / count) * 100) },
+        { stage: "Testing", pct: Math.round((reachesTesting / count) * 100) },
+        { stage: "Shipped", pct: Math.round((reachesShipped / count) * 100) },
+      ];
+
+      // Projects Using (top 5 by engagement score)
+      const mappedProjects = group.drafts.map(d => {
+        const score = Math.round((STAGE_PROGRESS[d.currentStage] || 35) * 0.8 + Math.min(20, (d.upvotes || 0) * 0.05));
+        
+        // Map database stage to UI stage
+        let uiStage = 'Building';
+        if (d.currentStage === 'Idea only') uiStage = 'Planning';
+        else if (d.currentStage === 'Prototype' || d.currentStage === '50% done') uiStage = 'Building';
+        else if (d.currentStage === 'Almost complete') uiStage = 'Testing';
+        else if (d.currentStage === 'Launched but abandoned') uiStage = 'Shipped';
+
+        return {
+          name: d.projectName,
+          domain: d.domain ? d.domain.charAt(0).toUpperCase() + d.domain.slice(1) : 'General',
+          stage: uiStage,
+          score,
+          updated: getRelativeTime(d.updatedAt || d.createdAt),
+          engagement: (d.upvotes || 0) + (d.bookmarks || 0) * 2 + (d.views || 0) * 0.05
+        };
+      });
+      const topProjects = mappedProjects
+        .sort((a, b) => b.engagement - a.engagement)
+        .slice(0, 5)
+        .map(({ engagement, ...p }) => p);
+
+      // Recommendations mapping
+      const defaultRec = RECOMMENDATIONS[meta.slug] || {
+        name: "TypeScript",
+        slug: "typescript",
+        domain: "Web Development",
+        reasons: ["Unified typing", "Reduced runtime errors", "Enhanced productivity"]
+      };
+
+      // Summary
+      const basicSummary = `${displayName} is utilized in ${count} projects. Its projects show a ${completion}% average progress rate and a community rating of ${rating}/5.`;
+      const summary = AI_INSIGHTS[meta.slug]?.bestFor ? 
+        `${displayName} is highly popular, powering many projects in DraftYard. ${AI_INSIGHTS[meta.slug].bestFor[0]} remains a key application, with projects maintaining a ${completion}% completion pace.` 
+        : basicSummary;
+
+      // Extract real failure reasons from database drafts if available
+      const dbFailureReasons = Array.from(new Set(group.drafts.map(d => d.failureReason).filter(f => f && f !== 'None' && f !== 'Unknown'))).slice(0, 3);
+      const challenges = AI_INSIGHTS[meta.slug]?.failureReasons || (dbFailureReasons.length > 0 ? dbFailureReasons : ["Scope creep", "Integration issues", "Resource constraints"]);
+
+      return {
+        slug: meta.slug,
+        name: displayName,
+        icon: meta.icon,
+        category: meta.category,
+        projects: count,
+        completion,
+        successRate,
+        failureRate,
+        revived,
+        rating,
+        growth,
+        avgRevivalDays,
+        summary,
+        challenges,
+        recommendation: {
+          ...defaultRec,
+          delta: 5 // placeholder delta, will calculate after all tech is computed
+        },
+        survival,
+        similar: [], // filled later
+        projectsUsing: topProjects
+      };
+    });
+
+    // Populate recommendation deltas and similar/related technologies
+    const allTechMap = {};
+    techList.forEach(t => { allTechMap[t.slug] = t; });
+
+    techList.forEach(t => {
+      // Calculate dynamic recommendation delta
+      const recommendedTech = allTechMap[t.recommendation.slug];
+      if (recommendedTech) {
+        t.recommendation.delta = Math.max(1, recommendedTech.completion - t.completion);
+      } else {
+        // Fallback: use a random offset or standard 4-8%
+        t.recommendation.delta = Math.max(2, Math.min(15, Math.round((100 - t.completion) * 0.15)));
+      }
+
+      // Generate similar technologies (same category)
+      const sameCategory = techList.filter(x => x.category === t.category && x.slug !== t.slug);
+      t.similar = sameCategory.slice(0, 4).map(x => ({
+        name: x.name,
+        slug: x.slug,
+        survival: x.completion,
+        trend: Array.from({ length: 10 }, (_, i) => ({ x: i, y: Math.max(10, x.projects + Math.round(Math.sin(i * 0.8) * 2)) }))
+      }));
+
+      // If similar is empty, populate with top technologies
+      if (t.similar.length === 0) {
+        const topPopular = techList.filter(x => x.slug !== t.slug).sort((a, b) => b.projects - a.projects).slice(0, 4);
+        t.similar = topPopular.map(x => ({
+          name: x.name,
+          slug: x.slug,
+          survival: x.completion,
+          trend: Array.from({ length: 10 }, (_, i) => ({ x: i, y: Math.max(10, x.projects + Math.round(Math.sin(i * 0.8) * 2)) }))
+        }));
+      }
+    });
+
+    res.json(techList);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/draft/:id - Delete draft and related workspace items
+router.delete('/draft/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const draft = await Draft.findById(id);
+    if (!draft) return res.status(404).json({ error: 'Draft not found' });
+
+    // Verify workspace membership (only Owner can delete project)
+    if (draft.submittedBy?.toString() !== req.user._id.toString()) {
+  return res.status(403).json({
+    error: 'Only the workspace owner can delete this draft'
+  });
+}
+
+    await Draft.findByIdAndDelete(id);
+
+    // Cascade deletions to clean up database
+    const Workspace = require('../models/Workspace');
+    await Workspace.deleteMany({ draftId: id });
+
+    const Task = require('../models/Task');
+    await Task.deleteMany({ draftId: id });
+
+    const TeamMember = require('../models/TeamMember');
+    await TeamMember.deleteMany({ draftId: id });
+
+    const ActivityLog = require('../models/ActivityLog');
+    await ActivityLog.deleteMany({ draftId: id });
+
+    res.json({ message: 'Project and all related workspace data deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

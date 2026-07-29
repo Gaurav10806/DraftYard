@@ -48,9 +48,14 @@ function Login() {
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
-      await login(values.email, values.password);
+      const loggedUser = await login(values.email, values.password);
       toast.success("Welcome back!");
-      navigate({ to: "/dashboard" });
+      const isAdmin = loggedUser?.role === "admin" || loggedUser?.email?.toLowerCase() === "draftadmin@gmail.com";
+      if (isAdmin) {
+        navigate({ to: "/admin-users" });
+      } else {
+        navigate({ to: "/dashboard" });
+      }
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Something went wrong. Try again.";
       toast.error(message);

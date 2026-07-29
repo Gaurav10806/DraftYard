@@ -19,17 +19,17 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['join_request', 'request_accepted', 'request_rejected', 'general'],
+      enum: ['join_request', 'request_accepted', 'request_rejected', 'warning', 'draft_deleted', 'general'],
       required: true,
     },
     draftId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Draft',
-      required: true,
+      default: null,
     },
     draftName: {
       type: String,
-      required: true,
+      default: '',
     },
     details: {
       name: { type: String, default: '' },

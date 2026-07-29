@@ -26,4 +26,15 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { requireAuth };
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  const isAdmin = req.user.role === 'admin' || req.user.email?.toLowerCase() === 'draftadmin@gmail.com';
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+  }
+  next();
+};
+
+module.exports = { requireAuth, requireAdmin };

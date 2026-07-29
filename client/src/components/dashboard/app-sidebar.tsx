@@ -13,6 +13,7 @@ import {
   Hexagon,
   LayoutDashboard,
   Plus,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,10 +30,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-const primaryBase = [
+const primaryUserItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Workspace", url: "/workspace", icon: Boxes },
   { title: "DraftYard Feed", url: "/feed", icon: Rss },
+  { title: "Your Insights", url: "/insights", icon: BarChart2 },
   { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
   { title: "Idea Review", url: "/idea-review", icon: ClipboardCheck },
   { title: "AI Assistant", url: "/ai-assistant", icon: Bot },
@@ -40,12 +42,13 @@ const primaryBase = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-const adminOnlyItems = [
-  { title: "Insights", url: "/insights-lab", icon: BarChart2, adminOnly: true },
-];
-
-const userOnlyItems = [
-  { title: "Your Insights", url: "/insights", icon: BarChart2, userOnly: true },
+const primaryAdminItems = [
+  { title: "User Handling", url: "/admin-users", icon: ShieldAlert },
+  { title: "DraftYard Feed", url: "/feed", icon: Rss },
+  { title: "Insights", url: "/insights-lab", icon: BarChart2 },
+  { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
+  { title: "Profile", url: "/profile", icon: UserCircle },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -56,23 +59,10 @@ export function AppSidebar() {
   });
   const { user } = useAuth();
 
+  const isAdmin = user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com";
+
   // Build menu based on user role
-  let primary = [...primaryBase];
-  if (user?.role === "admin") {
-    // Insert admin insights after feed
-    primary = [
-      ...primary.slice(0, 3),
-      ...adminOnlyItems,
-      ...primary.slice(3),
-    ];
-  } else {
-    // Insert user insights after feed
-    primary = [
-      ...primary.slice(0, 3),
-      ...userOnlyItems,
-      ...primary.slice(3),
-    ];
-  }
+  const primary = isAdmin ? primaryAdminItems : primaryUserItems;
 
   return (
     <Sidebar collapsible="icon">
