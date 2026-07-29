@@ -79,18 +79,6 @@ export const Route = createFileRoute("/idea-review")({
 // ---------------- Types ----------------
 
 type Verdict = "Worth Building" | "Needs Refinement" | "Reconsider";
-type Level = "High" | "Medium" | "Low";
-
-type CommunityInsights = {
-  similarCount: number;
-  outcomes: { completed: number; active: number; abandoned: number };
-  stoppingPoints: { label: string; pct: number }[];
-  avgCompletion: number;
-  topStack: { name: string; pct: number }[];
-  successPatterns: string[];
-  failurePatterns: string[];
-};
-
 type FormState = {
   name?: string;
   pitch: string;
@@ -103,135 +91,6 @@ const emptyForm: FormState = {
   context: "",
 };
 
-function generateReport(
-  form: FormState,
-  matches: DraftMatch[],
-  matchError: string | null,
-  aiAnalysis: AiIdeaAnalysis | null,
-  aiAnalysisError: string | null,
-): Report {
-  const seed =
-    (form.name + form.pitch + form.context).split("").reduce((a, c) => a + c.charCodeAt(0), 0) || 42;
-  const fallbackScore = 68 + (seed % 27);
-  const score = aiAnalysis?.score ?? fallbackScore;
-  const verdict: Verdict =
-    aiAnalysis?.verdict ??
-    (score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider");
-
-  // Community insights (outcomes donut, stopping points, etc.) are still
-  // simulated below — only the matched-drafts list is real. Base the
-  // on/off toggle on whether we actually found any real matches.
-  const hasCommunity = matches.length > 0;
-
-  const community: CommunityInsights | null = hasCommunity
-    ? {
-        similarCount: matches.length,
-        outcomes: { completed: Math.max(0, Math.round(matches.length * 0.35)), active: Math.max(0, Math.round(matches.length * 0.25)), abandoned: Math.max(1, matches.length - Math.round(matches.length * 0.6)) },
-        stoppingPoints: [
-          { label: "Authentication", pct: 29 },
-          { label: "AI Cost / Limits", pct: 21 },
-          { label: "User Retention", pct: 21 },
-          { label: "Payment Integration", pct: 14 },
-          { label: "Deployment", pct: 14 },
-        ],
-        avgCompletion: 62,
-        topStack: [
-          { name: "React", pct: 86 },
-          { name: "Node.js", pct: 71 },
-          { name: "MongoDB", pct: 64 },
-          { name: "Firebase", pct: 29 },
-          { name: "Supabase", pct: 21 },
-        ],
-        successPatterns: [
-          "Started with a core planner only",
-          "Focused on a single student segment",
-          "Introduced AI recommendations early",
-          "Kept UI simple for higher retention",
-        ],
-        failurePatterns: [
-          "Too many features shipped at once",
-          "Skipped early user validation",
-          "Complex auth and payments upfront",
-          "High AI usage without cost limits",
-        ],
-      }
-    : null;
-
-  return {
-    id: crypto.randomUUID?.() ?? String(Date.now()),
-    name: form.name || "Untitled Idea",
-    pitch: form.pitch || "—",
-    createdAt: Date.now(),
-    score,
-    verdict,
-    summary:
-      aiAnalysis?.summary ??
-      (hasCommunity
-        ? "Strong potential based on community data and AI analysis. Focus on a lean MVP first."
-        : "No similar DraftYard projects were found. This analysis is based on market research and AI reasoning."),
-    community,
-    matches,
-    matchError,
-    aiAnalysisUsed: Boolean(aiAnalysis),
-    aiAnalysisError,
-    metrics: aiAnalysis
-      ? {
-          feasibility: aiAnalysis.feasibility,
-          competition: aiAnalysis.competition,
-          complexity: aiAnalysis.complexity,
-          scalability: aiAnalysis.scalability,
-          market: aiAnalysis.market,
-        }
-      : {
-          feasibility: {
-            label: score >= 78 ? "High" : "Medium",
-            note: "Can be built in 2–3 months with the right stack.",
-          },
-          competition: {
-            label: score % 2 === 0 ? "Medium" : "High",
-            note: "Some competitors exist, but room for personalization.",
-          },
-          complexity: {
-            label: score >= 82 ? "Medium" : "High",
-            note: "AI integration and user retention are key challenges.",
-          },
-          scalability: {
-            label: "High",
-            note: "Strong scalability with cloud and modular architecture.",
-          },
-          market: {
-            headline: "$25.7B by 2030",
-            note: "The global AI in education market is projected to grow at 45% CAGR.",
-          },
-        },
-    recommendations: aiAnalysis?.recommendations ?? [
-      "Start with a lean MVP: AI planner + progress tracking",
-      "Focus on student retention with daily value delivery",
-      "Limit AI usage and optimize for low cost",
-      "Validate with 20–30 users before expanding features",
-    ],
-    stack: aiAnalysis?.techStack ?? {
-      frontend: "React",
-      backend: "Node.js",
-      database: "MongoDB",
-      ai: "OpenAI API",
-      hosting: "Vercel",
-    },
-    roadmap: aiAnalysis?.roadmap ?? [
-      { week: "Week 1", label: "Research" },
-      { week: "Week 2", label: "UI/UX Design" },
-      { week: "Week 3–4", label: "Backend Setup" },
-      { week: "Week 5–6", label: "AI Integration" },
-      { week: "Week 7", label: "Testing" },
-      { week: "Week 8", label: "Launch MVP" },
-    ],
-    finalNote:
-      aiAnalysis?.finalNote ??
-      (hasCommunity
-        ? "This idea has strong potential based on real-world data and AI insights."
-        : "This idea shows promise based on AI market analysis. Validate with real users early."),
-  };
-}
 
 // ---------------- Page ----------------
 
@@ -765,7 +624,7 @@ function ReportView({ report }: { report: Review }) {
             <MetaRow
               icon={<Layers3 className="h-4 w-4" />}
               label="Similar Projects Found"
-              value={report.community ? String(report.community.similarCount) : "0"}
+              value={String(report.similarProjects?.length ?? 0)}
             />
             <MetaRow
               icon={<Clock className="h-4 w-4" />}
@@ -1549,7 +1408,8 @@ function HistoryModal({
   );
 }
 
-function relTime(ts: string | Date | number) {
+function relTime(ts?: string | Date | number | null) {
+  if (!ts) return "Just now";
   let ms: number;
   if (typeof ts === "string") {
     ms = new Date(ts).getTime();

@@ -31,5 +31,11 @@ def get_db():
 
 
 def get_burials_collection():
-    """Mongoose model 'Burial' -> collection 'burials' by default pluralization."""
+    """Mongoose model 'Draft' -> collection 'drafts'."""
     return get_db()["drafts"]
+
+
+def get_workspaces_collection():
+    """Mongoose model 'Workspace' -> collection 'workspaces'."""
+    return get_db()["workspaces"]
+

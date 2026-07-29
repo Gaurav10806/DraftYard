@@ -31,16 +31,14 @@ export function DraftShelf() {
     ? serverData.pages.flatMap((page: any) => page.data || [])
     : [];
 
-  // Show the user's own drafts first when logged in, fall back to feed
+  // Show the user's own drafts when logged in, or public feed drafts when guest
   const items = (
-    isAuthenticated && myDrafts && myDrafts.length > 0
-      ? myDrafts
-      : serverDrafts && serverDrafts.length > 0
-        ? serverDrafts
-        : []
+    isAuthenticated
+      ? (myDrafts || [])
+      : (serverDrafts || [])
   ).slice(0, 12);
 
-  const isLoading = myLoading || serverLoading;
+  const isLoading = myLoading || (isAuthenticated ? false : serverLoading);
 
   const openDraft = (id: string, name: string) => {
     if (!id) return;
@@ -84,7 +82,14 @@ export function DraftShelf() {
       {!isLoading && items.length === 0 && (
         <div className="mt-6 rounded-lg border border-dashed border-border/60 p-8 text-center">
           <Zap className="mx-auto h-8 w-8 text-muted-foreground" />
-          <p className="mt-2 text-sm text-muted-foreground">No drafts available</p>
+          <p className="mt-2 text-sm font-semibold">No drafts here yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">Create your first draft to start building your shelf.</p>
+          <button
+            onClick={() => navigate({ to: "/new-draft" })}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow transition hover:brightness-110"
+          >
+            <Plus className="h-3.5 w-3.5" /> Create New Draft
+          </button>
         </div>
       )}
 
