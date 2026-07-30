@@ -21,6 +21,7 @@ const workspaceRoutes = require("./routes/workspaceRoutes");
 const userRoutes = require("./routes/userRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const challengeRoutes = require("./routes/challengeRoutes");
 
 app.use("/api", (req, res, next) => {
   console.log(req.method, req.originalUrl);
@@ -35,6 +36,7 @@ app.use("/api", reviewRoutes);
 app.use("/api", taskRoutes);
 app.use("/api", teamRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api", challengeRoutes);
 
 app.get("/", (req, res) => {
   res.send("DraftYard API is running 🚀");

@@ -214,7 +214,16 @@ export type AppNotification = {
     email?: string;
   } | null;
   senderName?: string;
-  type: "join_request" | "request_accepted" | "request_rejected" | "warning" | "draft_deleted" | "general";
+  type:
+  | "join_request"
+  | "request_accepted"
+  | "request_rejected"
+  | "workspace_invite"
+  | "invite_accepted"
+  | "invite_declined"
+  | "warning"
+  | "draft_deleted"
+  | "general";
   draftId?: string | { _id: string; projectName: string; domain?: string } | null;
   draftName?: string;
   details?: {
@@ -223,6 +232,7 @@ export type AppNotification = {
     message?: string;
     skills?: string[];
     estimatedTime?: string;
+    role?: string;
   };
   status: "pending" | "accepted" | "rejected";
   read: boolean;
@@ -1423,3 +1433,148 @@ export async function searchDrafts(query: string): Promise<SearchResultDraft[]> 
 }
 
 
+
+// ── Weekly Challenge Types ─────────────────────────────────────────────
+
+export type ChallengeReward = {
+  icon: string;
+  label: string;
+  value?: string;
+};
+
+export type ChallengeCriteria = {
+  type: string;
+  targetCount: number;
+  domain?: string;
+  category?: string;
+  techStack?: string[];
+  description: string;
+};
+
+export type ChallengeParticipant = {
+  _id: string;
+  challengeId: string;
+  userId: string;
+  joinedAt: string;
+  status: "joined" | "completed";
+  progress: {
+    current: number;
+    target: number;
+    percentage: number;
+    details: string;
+  };
+  completedAt?: string | null;
+};
+
+export type Challenge = {
+  _id: string;
+  title: string;
+  slug: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  rewards: ChallengeReward[];
+  eligibilityRules: string[];
+  completionCriteria: ChallengeCriteria;
+  participantCount: number;
+  badge?: string;
+  status: "Upcoming" | "Active" | "Completed" | "Expired";
+  userParticipation?: ChallengeParticipant | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type LeaderboardEntry = {
+  _id: string;
+  user: {
+    _id?: string;
+    name: string;
+    username?: string;
+    avatar?: string;
+  };
+  joinedAt: string;
+  status: "joined" | "completed";
+  completedAt?: string | null;
+  progress: {
+    current: number;
+    target: number;
+    percentage: number;
+    details: string;
+  };
+};
+
+export async function fetchActiveChallenge(): Promise<{
+  challenge: Challenge;
+  userParticipation?: ChallengeParticipant | null;
+}> {
+  const res = await fetch(`${API_BASE}/challenges/active`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to load active challenge");
+  return res.json();
+}
+
+export async function fetchAllChallenges(filters?: {
+  status?: string;
+  sort?: string;
+  search?: string;
+}): Promise<{ challenges: Challenge[] }> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.sort) params.append("sort", filters.sort);
+  if (filters?.search) params.append("search", filters.search);
+
+  const query = params.toString();
+  const url = query ? `${API_BASE}/challenges?${query}` : `${API_BASE}/challenges`;
+  const res = await fetch(url, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch challenges");
+  return res.json();
+}
+
+export async function fetchChallengeById(id: string): Promise<{
+  challenge: Challenge;
+  userParticipation?: ChallengeParticipant | null;
+}> {
+  const res = await fetch(`${API_BASE}/challenges/${id}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch challenge details");
+  return res.json();
+}
+
+export async function joinChallenge(id: string): Promise<{
+  message: string;
+  userParticipation: ChallengeParticipant;
+  participantCount: number;
+}> {
+  const res = await fetch(`${API_BASE}/challenges/${id}/join`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Failed to join challenge");
+  return data;
+}
+
+export async function fetchChallengeProgress(id: string): Promise<{
+  userParticipation: ChallengeParticipant;
+}> {
+  const res = await fetch(`${API_BASE}/challenges/${id}/progress`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to check challenge progress");
+  return res.json();
+}
+
+export async function fetchChallengeLeaderboard(id: string): Promise<{
+  leaderboard: LeaderboardEntry[];
+}> {
+  const res = await fetch(`${API_BASE}/challenges/${id}/leaderboard`);
+  if (!res.ok) throw new Error("Failed to fetch leaderboard");
+  return res.json();
+}
