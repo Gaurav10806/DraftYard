@@ -52,7 +52,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { matchIdea, getIdeaAnalysis, type DraftMatch, type AiIdeaAnalysis, createReview, updateReview, fetchReviews, deleteReview, renameReview, type Review } from "@/lib/api";
+import { matchIdea, fetchAiIdeaAnalysis, type DraftMatch, type AiIdeaAnalysis, createReview, updateReview, fetchReviews, deleteReview, renameReview, type Review } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 

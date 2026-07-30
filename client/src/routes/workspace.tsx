@@ -66,6 +66,7 @@ import { useMyDrafts } from "@/hooks/use-drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
 import {
   fetchWorkspace,
+  fetchAiIdeaAnalysis,
   type WorkspaceData,
   fetchFeed,
   type Draft,
@@ -894,24 +895,26 @@ function OverviewTab({
   const [activityOpen, setActivityOpen] = useState(false);
 
   useEffect(() => {
-    if (!draft) return;
-    setLoadingAi(true);
-    getIdeaAnalysis({
-      projectName: draft.projectName,
-      pitch: draft.oneLiner,
-      context: `Tech Stack: ${draft.techStack?.join(", ") || "None"}. Failure Reason: ${draft.failureReason || "None"}.`,
+  if (!draft) return;
+
+  setLoadingAi(true);
+
+  fetchAiIdeaAnalysis({
+    projectName: draft.projectName,
+    pitch: draft.oneLiner,
+    context: `Tech Stack: ${draft.techStack?.join(", ") || "None"}. Failure Reason: ${draft.failureReason || "None"}.`,
+  })
+    .then((data) => {
+      setAiAnalysis(data);
     })
-      .then((data) => {
-        setAiAnalysis(data);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch AI analysis:", err);
-        setAiAnalysis(generateFallbackAnalysis(draft));
-      })
-      .finally(() => {
-        setLoadingAi(false);
-      });
-  }, [draft]);
+    .catch((err) => {
+      console.error("Failed to fetch AI analysis:", err);
+      setAiAnalysis(generateFallbackAnalysis(draft));
+    })
+    .finally(() => {
+      setLoadingAi(false);
+    });
+}, [draft]);
 
   const activeAnalysis = aiAnalysis || (draft ? generateFallbackAnalysis(draft) : null);
 
