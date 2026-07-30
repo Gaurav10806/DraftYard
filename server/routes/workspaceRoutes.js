@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Workspace = require('../models/Workspace');
 const Draft = require('../models/draft');
+const TeamMember = require('../models/TeamMember');
 const { requireAuth } = require('../middleware/authMiddleware');
 
 // Optional auth — attaches req.user if a valid token is present, never blocks
@@ -19,6 +20,55 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+/**
+ * Resolve a user's effective role for a given draft.
+ * Returns 'Owner' | 'Contributor' | 'Viewer' | null (no access).
+ */
+async function getEffectiveRole(userId, draftId) {
+  if (!userId || !draftId) return null;
+
+  const mongoose = require('mongoose');
+  const userIdStr = userId ? userId.toString() : '';
+  const userObjId = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+    ? new mongoose.Types.ObjectId(userIdStr)
+    : userId;
+
+  const draftIdStr = draftId ? draftId.toString() : '';
+  const draftObjId = (draftIdStr && mongoose.Types.ObjectId.isValid(draftIdStr))
+    ? new mongoose.Types.ObjectId(draftIdStr)
+    : draftId;
+
+  // Check TeamMember table first
+  const member = await TeamMember.findOne({
+  $and: [
+    {
+      $or: [{ draftId: draftObjId }, { draftId: draftIdStr }],
+    },
+    {
+      $or: [{ userId: userObjId }, { userId: userIdStr }],
+    },
+  ],
+});
+  if (member) return member.role;
+
+  // Fallback: check Draft submittedBy and collaborators
+  const draft = await Draft.findById(draftObjId).lean();
+  console.log("Logged in user :", userIdStr);
+console.log("Draft owner    :", draft?.submittedBy?.toString());
+console.log("Draft :", draft);
+  if (!draft) return null;
+
+  if (draft.submittedBy && draft.submittedBy.toString() === userIdStr) {
+    return 'Owner';
+  }
+  if (draft.collaborators && draft.collaborators.some(c => c.toString() === userIdStr)) {
+    return 'Contributor';
+  }
+
+  return null;
+}
+
+
 // POST /api/workspace - Create a new workspace
 router.post('/workspace', optionalAuth, async (req, res) => {
   try {
@@ -34,10 +84,8 @@ router.post('/workspace', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Draft not found' });
     }
 
-    // Verify ownership/collaborator permission: user must be authenticated and be the owner or collaborator
-    const isOwner = draft.submittedBy?.toString() === req.user?._id?.toString();
-    const isCollaborator = Array.isArray(draft.collaborators) && draft.collaborators.some(c => c.toString() === req.user?._id?.toString());
-    if (!req.user || (!isOwner && !isCollaborator)) {
+    const role = req.user ? await getEffectiveRole(req.user._id, draftId) : null;
+    if (!role || role === 'Viewer') {
       return res.status(403).json({ error: 'You are not authorized to create a workspace for this draft' });
     }
 
@@ -82,6 +130,14 @@ router.get('/workspace/:draftId', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: "Workspace not found for this draft" });
     }
 
+    // Access check: user must be Owner, Contributor, or Viewer of this draft
+    if (req.user) {
+      const role = await getEffectiveRole(req.user._id, req.params.draftId);
+      if (!role) {
+        return res.status(403).json({ error: 'You do not have access to this workspace' });
+      }
+    }
+
     res.json(workspace);
   } catch (err) {
     console.log(err);
@@ -95,17 +151,19 @@ router.patch('/workspace/:draftId', optionalAuth, async (req, res) => {
     const { draftId } = req.params;
     const { longDescription, featuresCompleted, currentBlockers, externalLinks, tasks, milestones, attachments } = req.body;
 
-    // Find the draft to verify ownership
+    // Find the draft to verify it exists
     const draft = await Draft.findById(draftId);
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }
 
-    // Verify ownership/collaborator permission: user must be authenticated and be the owner or collaborator
-    const isOwner = draft.submittedBy?.toString() === req.user?._id?.toString();
-    const isCollaborator = Array.isArray(draft.collaborators) && draft.collaborators.some(c => c.toString() === req.user?._id?.toString());
-    if (!req.user || (!isOwner && !isCollaborator)) {
+    // Role-based permission: Viewers cannot write; no auth = denied
+    const role = req.user ? await getEffectiveRole(req.user._id, draftId) : null;
+    if (!role) {
       return res.status(403).json({ error: 'You are not authorized to update this workspace' });
+    }
+    if (role === 'Viewer') {
+      return res.status(403).json({ error: 'Viewers cannot edit workspace content' });
     }
 
     // Find and update the workspace

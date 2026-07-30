@@ -178,7 +178,7 @@ function IdeaReviewShell() {
       let aiAnalysis: AiIdeaAnalysis | null = null;
       let aiAnalysisError: string | null = null;
       try {
-        aiAnalysis = await getIdeaAnalysis({
+        aiAnalysis = await  fetchAiIdeaAnalysis({
           projectName: form.name,
           pitch: form.pitch,
           context: form.context,

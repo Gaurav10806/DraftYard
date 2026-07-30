@@ -50,6 +50,11 @@ export type Draft = {
   revivalScore: number;
   createdAt?: string;
   updatedAt?: string;
+  /** Present only on drafts returned by /api/drafts/mine for shared workspaces */
+_sharedRole?: "Contributor" | "Viewer";
+
+/** Owner's display name, present only on shared workspace entries */
+_ownerName?: string;
 };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
@@ -619,6 +624,18 @@ export async function declineJoinRequest(draftId: string, email: string): Promis
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to decline request");
   }
+}
+
+export async function leaveWorkspace(draftId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/team/${draftId}/leave`, {
+    method: "POST",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to leave workspace");
+  }
+  return res.json();
 }
 
 export async function updateDraftStage(draftId: string, currentStage: string): Promise<any> {

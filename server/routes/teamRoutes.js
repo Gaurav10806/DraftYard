@@ -362,6 +362,36 @@ router.delete('/team/:draftId/member/:userId', requireAuth, async (req, res) => 
   }
 });
 
+// POST /api/team/:draftId/leave - Current user voluntarily leaves a shared workspace
+router.post('/team/:draftId/leave', requireAuth, async (req, res) => {
+  try {
+    const { draftId } = req.params;
+
+    const member = await TeamMember.findOne({ draftId, userId: req.user._id });
+    if (!member) {
+      return res.status(404).json({ error: 'You are not a member of this workspace' });
+    }
+    if (member.role === 'Owner') {
+      return res.status(400).json({ error: 'The workspace owner cannot leave. Transfer ownership or delete the project.' });
+    }
+
+    await TeamMember.deleteOne({ draftId, userId: req.user._id });
+
+    await Draft.findByIdAndUpdate(draftId, {
+      $pull: { collaborators: req.user._id }
+    });
+
+    await logTeamActivity(draftId, req.user, 'left the workspace');
+
+    res.json({
+      success: true,
+      message: 'You have left the workspace.'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/team/:draftId/request/approve - Approve join request
 router.post('/team/:draftId/request/approve', requireAuth, async (req, res) => {
   try {

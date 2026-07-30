@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ChevronRight, Plus, Calendar, Zap } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  Crown,
   Edit3,
   Flag,
   Github,
@@ -66,12 +67,12 @@ import { useMyDrafts } from "@/hooks/use-drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
 import {
   fetchWorkspace,
-  fetchAiIdeaAnalysis,
   type WorkspaceData,
   fetchFeed,
   type Draft,
   navigateToWorkspace,
-  sendAiChatMessage,
+  fetchAiIdeaAnalysis,
+  type AiIdeaAnalysis,
   fetchTasks,
   createTask,
   updateTask,
@@ -92,10 +93,13 @@ import {
   type JoinRequestData,
   type ActivityLogData,
   type TeamResponseData,
+  sendAiChatMessage,
+  leaveWorkspace,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut, Settings, UserCircle } from "lucide-react";
 import { getInitials } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/workspace")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -167,6 +171,36 @@ function WorkspacePage() {
 function WorkspaceHomePage() {
   const { data: myDrafts = [], isLoading } = useMyDrafts();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [roleFilter, setRoleFilter] = useState<"all" | "owned" | "shared">("all");
+
+  const ownedDrafts = myDrafts.filter((d: any) => d.isOwner || (!d._sharedRole && d.userRole !== "Contributor" && d.userRole !== "Viewer"));
+  const sharedDrafts = myDrafts.filter((d: any) => !d.isOwner && (d._sharedRole || d.userRole === "Contributor" || d.userRole === "Viewer"));
+
+  const filteredDrafts = roleFilter === "owned"
+    ? ownedDrafts
+    : roleFilter === "shared"
+    ? sharedDrafts
+    : myDrafts;
+
+  const handleLeaveWorkspace = async (d: any) => {
+    if (!d._id) return;
+    try {
+      await leaveWorkspace(d._id);
+      toast.success(`You have left "${d.projectName}".`);
+      await queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to leave workspace");
+    }
+  };
+
+  const rolePillClass = (role: string) => {
+    if (role === "Owner")
+      return "bg-primary/15 text-primary border-primary/30";
+    if (role === "Contributor")
+      return "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30";
+    return "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30";
+  };
 
   return (
     <ProtectedRoute>
@@ -175,19 +209,19 @@ function WorkspaceHomePage() {
           <AppSidebar />
           <SidebarInset className="flex min-w-0 flex-1 flex-col">
             <TopBar showGreeting={false} />
-            
-            <main className="flex-1 space-y-6 p-4 sm:p-6">
+
+            <main className="flex-1 space-y-8 p-4 sm:p-6">
               <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="text-foreground font-medium">Workspace</span>
               </nav>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h1 className="font-display text-3xl font-semibold tracking-tight">Your Drafts</h1>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {myDrafts.length === 0 
-                      ? "Create your first draft to get started" 
-                      : `${myDrafts.length} draft${myDrafts.length !== 1 ? "s" : ""}`}
+                  <h1 className="font-display text-2xl font-semibold tracking-tight">Workspace Hub</h1>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {myDrafts.length === 0
+                      ? "Create or join a workspace to start collaborating"
+                      : `${myDrafts.length} workspace${myDrafts.length !== 1 ? "s" : ""} available (${ownedDrafts.length} owned, ${sharedDrafts.length} shared)`}
                   </p>
                 </div>
                 <Button asChild className="rounded-xl gap-2">
@@ -197,33 +231,91 @@ function WorkspaceHomePage() {
                 </Button>
               </div>
 
-              {myDrafts.length === 0 && !isLoading ? (
-                <EmptyState />
-              ) : (
-                <div className="space-y-3">
-                  {myDrafts.map((d, i) => (
-                    <motion.div
-                      key={d._id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                    >
-                      <DraftCard
-                        draft={d}
-                        onClick={() => navigateToWorkspace(d._id!, d.projectName, navigate, (msg) => toast.error(msg))}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                <button
+                  onClick={() => setRoleFilter("all")}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    roleFilter === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  All Workspaces ({myDrafts.length})
+                </button>
+                <button
+                  onClick={() => setRoleFilter("owned")}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    roleFilter === "owned"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  Owned ({ownedDrafts.length})
+                </button>
+                <button
+                  onClick={() => setRoleFilter("shared")}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    roleFilter === "shared"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  Shared with Me ({sharedDrafts.length})
+                </button>
+              </div>
 
-              {isLoading && (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-24 rounded-2xl bg-card/30 animate-pulse" />
-                  ))}
-                </div>
-              )}
+              {/* Workspaces List */}
+              <section className="space-y-4">
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-24 rounded-2xl bg-card/30 animate-pulse" />
+                    ))}
+                  </div>
+                ) : filteredDrafts.length === 0 ? (
+                  roleFilter === "shared" ? (
+                    <div className="rounded-2xl border border-border/60 bg-card p-12 text-center">
+                      <Users className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                      <h3 className="font-display text-base font-semibold">No Shared Workspaces Yet</h3>
+                      <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+                        When other project owners invite you as a Contributor or Viewer and you accept, their workspaces will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <EmptyState />
+                  )
+                ) : (
+                  <div className="space-y-3">
+                    {filteredDrafts.map((d: any, i: number) => {
+                      const isShared = !d.isOwner && (d._sharedRole || d.userRole === "Contributor" || d.userRole === "Viewer");
+                      return (
+                        <motion.div
+                          key={d._id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                        >
+                          {isShared ? (
+                            <SharedDraftCard
+                              draft={d}
+                              onClick={() => navigateToWorkspace(d._id!, d.projectName, navigate, (msg) => toast.error(msg))}
+                              onLeave={() => handleLeaveWorkspace(d)}
+                              rolePillClass={rolePillClass}
+                            />
+                          ) : (
+                            <DraftCard
+                              draft={d}
+                              onClick={() => navigateToWorkspace(d._id!, d.projectName, navigate, (msg) => toast.error(msg))}
+                              rolePillClass={rolePillClass}
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             </main>
           </SidebarInset>
         </div>
@@ -231,6 +323,7 @@ function WorkspaceHomePage() {
     </ProtectedRoute>
   );
 }
+
 
 function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; draft: Draft | null }) {
   const { user } = useAuth();
@@ -254,6 +347,10 @@ const myMemberRole =
   teamData?.members?.find(
     (m: TeamMemberData) => m.userId === user?._id
   )?.role || "Viewer";
+
+// Owner's name from team data
+const ownerMember = teamData?.members?.find((m: TeamMemberData) => m.role === "Owner");
+const ownerName = ownerMember?.name || draft?.submittedBy?.name || "";
 
 const isViewer =
   !isCurrentUserOwner && myMemberRole === "Viewer";
@@ -307,7 +404,7 @@ const visibleTabs: Array<"overview" | "tasks" | "team"> =
   draft,
   tasks,
   teamData,
-  activityLog: teamData?.activityLog ?? [],
+  activityLog: teamData?.activity ?? [],
 };
   return (
     <ProtectedRoute>
@@ -331,6 +428,8 @@ const visibleTabs: Array<"overview" | "tasks" | "team"> =
                 projectName={projectName}
                 description={draft?.oneLiner || ""}
                 members={teamData?.members || []}
+                ownerName={ownerName}
+                userRole={myMemberRole}
                 onInviteClick={
                   teamData?.members?.some((m: TeamMemberData) => m.userId === user?._id && m.role === "Owner")
                     ? () => setTab("team")
@@ -508,6 +607,8 @@ function ProjectHeader({
   description,
   members,
   onInviteClick,
+  ownerName,
+  userRole,
 }: {
   stage: Stage;
   onStageClick: (s: Stage) => void;
@@ -517,6 +618,8 @@ function ProjectHeader({
   description: string;
   members: TeamMemberData[];
   onInviteClick?: () => void;
+  ownerName?: string;
+  userRole?: string;
 }) {
   const initials = projectName.slice(0, 2).toUpperCase();
   
@@ -546,6 +649,30 @@ function ProjectHeader({
               <Badge variant="outline" className="gap-1 rounded-full text-[10px]">
                 <Github className="h-3 w-3" /> Connected
               </Badge>
+              {/* Role badge — only shown for non-owners and when role is available */}
+              {userRole && userRole !== "Owner" && (
+                <Badge
+                  variant="outline"
+                  className={`gap-1 rounded-full text-[10px] ${
+                    userRole === "Contributor"
+                      ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                      : "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                  }`}
+                >
+                  {userRole === "Contributor" ? (
+                    <Edit3 className="h-3 w-3" />
+                  ) : (
+                    <Lock className="h-3 w-3" />
+                  )}
+                  {userRole}
+                </Badge>
+              )}
+              {userRole && userRole !== "Owner" && ownerName && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Users className="h-3 w-3" />
+                  <span>by <span className="font-medium text-foreground">{ownerName}</span></span>
+                </span>
+              )}
             </div>
             <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
               {description || "AI-powered project for building."}
@@ -751,15 +878,15 @@ function TabBar({
   onChange: (tab: "overview" | "tasks" | "team") => void;
   visibleTabs: Array<"overview" | "tasks" | "team">;
 }) {
- const items: { id: typeof tab; label: string; icon: typeof LayoutList }[] = [
-  { id: "overview", label: "Overview", icon: LineChart },
+ const items: { id: "overview" | "tasks" | "team"; label: string; icon: typeof LayoutList }[] = [
+  { id: "overview" as const, label: "Overview", icon: LineChart },
 
   ...(visibleTabs.includes("tasks")
-    ? [{ id: "tasks", label: "Tasks", icon: LayoutList }]
+    ? [{ id: "tasks" as const, label: "Tasks", icon: LayoutList }]
     : []),
 
   ...(visibleTabs.includes("team")
-    ? [{ id: "team", label: "Team", icon: Users }]
+    ? [{ id: "team" as const, label: "Team", icon: Users }]
     : []),
 ];
   return (
@@ -895,26 +1022,24 @@ function OverviewTab({
   const [activityOpen, setActivityOpen] = useState(false);
 
   useEffect(() => {
-  if (!draft) return;
-
-  setLoadingAi(true);
-
-  fetchAiIdeaAnalysis({
-    projectName: draft.projectName,
-    pitch: draft.oneLiner,
-    context: `Tech Stack: ${draft.techStack?.join(", ") || "None"}. Failure Reason: ${draft.failureReason || "None"}.`,
-  })
-    .then((data) => {
-      setAiAnalysis(data);
+    if (!draft) return;
+    setLoadingAi(true);
+    fetchAiIdeaAnalysis({
+      projectName: draft.projectName,
+      pitch: draft.oneLiner,
+      context: `Tech Stack: ${draft.techStack?.join(", ") || "None"}. Failure Reason: ${draft.failureReason || "None"}.`,
     })
-    .catch((err) => {
-      console.error("Failed to fetch AI analysis:", err);
-      setAiAnalysis(generateFallbackAnalysis(draft));
-    })
-    .finally(() => {
-      setLoadingAi(false);
-    });
-}, [draft]);
+      .then((data) => {
+        setAiAnalysis(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch AI analysis:", err);
+        setAiAnalysis(generateFallbackAnalysis(draft));
+      })
+      .finally(() => {
+        setLoadingAi(false);
+      });
+  }, [draft]);
 
   const activeAnalysis = aiAnalysis || (draft ? generateFallbackAnalysis(draft) : null);
 
@@ -1306,9 +1431,18 @@ function DraftCompassMini({ analysis }: { analysis: AiIdeaAnalysis }) {
   );
 }
 
-function DraftCard({ draft, onClick }: { draft: any; onClick: () => void }) {
+function DraftCard({
+  draft,
+  onClick,
+  rolePillClass,
+}: {
+  draft: any;
+  onClick: () => void;
+  rolePillClass?: (role: string) => string;
+}) {
   const progress = stageToProgress(draft.currentStage);
   const updatedAt = new Date(draft.updatedAt || draft.createdAt).toLocaleDateString();
+  const role = draft.userRole || (draft.isOwner ? "Owner" : "Owner");
 
   return (
     <button
@@ -1323,13 +1457,26 @@ function DraftCard({ draft, onClick }: { draft: any; onClick: () => void }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                {draft.projectName}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                  {draft.projectName}
+                </h3>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    rolePillClass
+                      ? rolePillClass(role)
+                      : "bg-primary/15 text-primary border-primary/30"
+                  }`}
+                >
+                  <Crown className="h-2.5 w-2.5" />
+                  {role}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{draft.oneLiner}</p>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
           </div>
+
 
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <Badge variant="secondary" className="text-[10px] rounded-md">{draft.currentStage}</Badge>
@@ -1363,6 +1510,117 @@ function DraftCard({ draft, onClick }: { draft: any; onClick: () => void }) {
   );
 }
 
+function SharedDraftCard({
+  draft,
+  onClick,
+  onLeave,
+  rolePillClass,
+}: {
+  draft: any;
+  onClick: () => void;
+  onLeave: () => void;
+  rolePillClass: (role: string) => string;
+}) {
+  const progress = stageToProgress(draft.currentStage);
+  const updatedAt = new Date(draft.updatedAt || draft.createdAt).toLocaleDateString();
+  const role: string = draft._sharedRole || "Contributor";
+  const ownerName: string = draft._ownerName || (typeof draft.submittedBy === "object" ? draft.submittedBy?.name || "Unknown" : "Unknown");
+
+  return (
+    <div className="relative w-full group">
+      {/* Shared indicator left border */}
+      <div
+        className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${
+          role === "Contributor" ? "bg-violet-500/70" : "bg-sky-500/70"
+        }`}
+      />
+      <button
+        onClick={onClick}
+        className="w-full text-left rounded-2xl border border-border/40 bg-card/50 backdrop-blur-xl p-4 sm:p-5 pl-5 hover:border-primary/30 hover:bg-card/70 transition-all"
+      >
+        <div className="flex items-start gap-4">
+          <div className="h-12 w-12 shrink-0 rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20 flex items-center justify-center text-sm font-bold text-violet-600 dark:text-violet-400">
+            {draft.projectName.slice(0, 2).toUpperCase()}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                    {draft.projectName}
+                  </h3>
+                  {/* Role pill */}
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${rolePillClass(role)}`}
+                  >
+                    {role === "Contributor" ? (
+                      <Edit3 className="h-2.5 w-2.5" />
+                    ) : (
+                      <Lock className="h-2.5 w-2.5" />
+                    )}
+                    {role}
+                  </span>
+                  {/* Shared indicator */}
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    <span>by <span className="font-medium text-foreground">{ownerName}</span></span>
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{draft.oneLiner}</p>
+              </div>
+              {/* Overflow menu */}
+              <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="h-7 w-7 flex items-center justify-center rounded-full border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={onClick}>
+                      Open workspace
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-rose-500 focus:text-rose-500"
+                      onClick={onLeave}
+                    >
+                      <LogOut className="mr-2 h-3.5 w-3.5" />
+                      Leave workspace
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <Badge variant="secondary" className="text-[10px] rounded-md">{draft.currentStage}</Badge>
+              <Badge variant="outline" className="text-[10px] rounded-md capitalize">{draft.domain}</Badge>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto">
+                <Calendar className="h-3 w-3" /> {updatedAt}
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-1">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-medium">{progress}%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                <div
+                  className={`h-full ${role === "Contributor" ? "bg-gradient-to-r from-violet-500 to-primary" : "bg-gradient-to-r from-sky-400 to-sky-600"}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 relative">
@@ -1381,6 +1639,7 @@ function EmptyState() {
     </div>
   );
 }
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2561,151 +2820,77 @@ function TeamTab({
   onOpenChange: (v: boolean) => void;
   projectName: string;
   aiContext?: any;
-}) {
-  const [messages, setMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>([
-    {
-      role: "ai",
-      content: `Hi! I'm your DraftYard AI assistant for **${projectName}**. How can I help you build, debug, or structure your project today?`,
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+}){
+    return (
+      <>
+        <motion.button
+          onClick={() => onOpenChange(true)}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-xl"
+          aria-label="Open AI Assistant"
+        >
+          <Bot className="h-5 w-5" />
+        </motion.button>
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
-
-  async function handleSend(text?: string) {
-    const query = (text || input).trim();
-    if (!query || loading) return;
-
-    const userMsg = { role: "user" as const, content: query };
-    setMessages((prev) => [...prev, userMsg]);
-    if (!text) setInput("");
-    setLoading(true);
-
-    const contextStr = `Project Name: ${projectName}\n${
-      aiContext ? JSON.stringify(aiContext) : ""
-    }`;
-
-    try {
-      const responseText = await sendAiChatMessage(query, contextStr, messages);
-      setMessages((prev) => [...prev, { role: "ai", content: responseText }]);
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          content: `Sorry, I couldn't process that: ${err.message || "Failed to reach AI service"}`,
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <>
-      <motion.button
-        onClick={() => onOpenChange(true)}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-xl"
-        aria-label="Open AI Assistant"
-      >
-        <Bot className="h-5 w-5" />
-      </motion.button>
-
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
-                <Bot className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold leading-tight">AI Assistant</p>
-                <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Messages list */}
-          <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5 scrollbar-none">
-            {messages.map((m, idx) => (
-              <div key={idx} className={`flex items-start gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                <span
-                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${
-                    m.role === "user" ? "bg-muted text-foreground" : "bg-primary/15 text-primary"
-                  }`}
-                >
-                  {m.role === "user" ? "You" : <Bot className="h-3.5 w-3.5" />}
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
+                  <Bot className="h-4 w-4" />
                 </span>
-                <div
-                  className={`rounded-2xl px-3 py-2 text-xs leading-relaxed max-w-[85%] ${
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-tr-none"
-                      : "bg-muted/60 text-foreground rounded-tl-none whitespace-pre-wrap"
-                  }`}
-                >
-                  {m.content}
+                <div>
+                  <p className="text-sm font-semibold leading-tight">AI Assistant</p>
+                  <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
                 </div>
               </div>
-            ))}
-
-            {loading && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
-                <Bot className="h-3.5 w-3.5 text-primary animate-spin" />
-                Thinking...
-              </div>
-            )}
-          </div>
-
-          {/* Quick Prompts */}
-          <div className="flex flex-wrap gap-1.5 px-4 py-2 border-t border-border/40 bg-muted/20">
-            {["Draft MVP scope", "Suggest next tasks", "Review tech stack"].map((s) => (
               <button
-                key={s}
-                onClick={() => handleSend(s)}
-                className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium transition-colors hover:border-primary/60 hover:bg-primary/5"
+                onClick={() => onOpenChange(false)}
+                className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
               >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          {/* Input field */}
-          <div className="border-t border-border/60 p-3">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSend();
-                }}
-                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-                placeholder="Ask about this project…"
-              />
-              <button
-                onClick={() => handleSend()}
-                disabled={loading || !input.trim()}
-                className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:opacity-50"
-              >
-                <Send className="h-3 w-3" />
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
-  );
-}
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              <div className="flex items-start gap-2.5">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
+                  <Bot className="h-3.5 w-3.5" />
+                </span>
+                <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2 text-sm leading-relaxed">
+                  Hi Dev — {projectName} is stalled on <span className="font-medium">Scope Creep</span>.
+                  Want me to draft a locked MVP scope?
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {["Draft MVP scope", "Summarize open tasks", "Suggest next PR"].map((s) => (
+                  <button
+                    key={s}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium transition-colors duration-[180ms] hover:border-primary/60 hover:bg-primary/5"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border/60 p-3">
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
+                <input
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  placeholder="Ask about this project…"
+                />
+                <button className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-[180ms] hover:-translate-y-0.5">
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
     
