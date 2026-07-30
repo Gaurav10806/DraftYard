@@ -5,9 +5,11 @@ import {
   fetchDraftStats,
   fetchFilteredFeed,
   fetchTrendingFeed,
+  likeDraft,
+  bookmarkDraft,
+  type Draft,
   type FeedFilters,
 } from "@/lib/api";
-
 export type FeedFilters = {
   search?: string;
   category?: string;

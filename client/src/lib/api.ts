@@ -278,6 +278,27 @@ export async function respondToNotification(
   return res.json();
 }
 
+export async function respondToWorkspaceInvite(
+  notificationId: string,
+  action: "accept" | "decline"
+): Promise<{ success: boolean; action: string; message: string }> {
+  const res = await fetch(`${API_BASE}/team/invite/${notificationId}/respond`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ action }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Failed to ${action} invitation`);
+  }
+
+  return res.json();
+}
+
 // ===== Workspace APIs =====
 
 export type WorkspaceData = {
@@ -1183,6 +1204,26 @@ export async function fetchCompassFeed(mode: string): Promise<CompassFeedData> {
   return res.json();
 }
 
+export async function sendAiChatMessage(input: {
+  context: string;
+  history: { role: string; content: string }[];
+  message: string;
+}): Promise<string> {
+  const res = await fetch(`${ML_API_BASE}/api/ml/chat/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to get AI response");
+  }
+
+  const data = await res.json();
+  return data.response;
+}
+
   // ===== Stack Intelligence =====
 
   export type Tech = {
@@ -1231,5 +1272,12 @@ export async function deleteDraft(draftId: string): Promise<any> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to delete project");
   }
+  return res.json();
+}
+
+export async function searchDrafts(query: string): Promise<SearchResultDraft[]> {
+  if (!query.trim()) return [];
+  const res = await fetch(`${API_BASE}/drafts/search?q=${encodeURIComponent(query.trim())}`);
+  if (!res.ok) return [];
   return res.json();
 }

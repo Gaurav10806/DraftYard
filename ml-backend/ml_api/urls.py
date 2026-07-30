@@ -1,5 +1,13 @@
 from django.urls import path
-from . import views, analytics_views, stack_views, survival_views, idea_analysis_views, idea_match_views
+from . import (
+    views,
+    analytics_views,
+    stack_views,
+    survival_views,
+    idea_analysis_views,
+    idea_match_views,
+    chat_views,
+)
 
 urlpatterns = [
     path("classify/", views.classify, name="classify"),
@@ -15,4 +23,5 @@ urlpatterns = [
     path("survival-check/", survival_views.survival_check, name="survival-check"),
     path("idea-analysis/", idea_analysis_views.idea_analysis),
     path("idea-match/", idea_match_views.idea_match),
+    path("chat/", chat_views.chat),
 ]

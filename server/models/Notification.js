@@ -19,7 +19,15 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['join_request', 'request_accepted', 'request_rejected', 'general'],
+      enum: [
+  'join_request',
+  'request_accepted',
+  'request_rejected',
+  'workspace_invite',
+  'invite_accepted',
+  'invite_declined',
+  'general',
+],
       required: true,
     },
     draftId: {
@@ -32,12 +40,13 @@ const notificationSchema = new mongoose.Schema(
       required: true,
     },
     details: {
-      name: { type: String, default: '' },
-      contact: { type: String, default: '' },
-      message: { type: String, default: '' },
-      skills: { type: [String], default: [] },
-      estimatedTime: { type: String, default: '' },
-    },
+  name: { type: String, default: '' },
+  contact: { type: String, default: '' },
+  message: { type: String, default: '' },
+  skills: { type: [String], default: [] },
+  estimatedTime: { type: String, default: '' },
+  role: { type: String, default: '' },
+},
     status: {
       type: String,
       enum: ['pending', 'accepted', 'rejected'],
