@@ -105,7 +105,8 @@ function getAuthHeaders(): Record<string, string> {
   teamSize?: string;
   stallPattern?: string;
   status?: string;
-  openForRevival?: boolean;  sort?: string;
+  openForRevival?: boolean;
+sort?: string;
   page?: number;
   limit?: number;
 };
@@ -1392,10 +1393,14 @@ export async function unblockEmailAdmin(blockedId: string): Promise<any> {
     method: "DELETE",
     headers: { ...getAuthHeaders() },
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to unblock email");
   }
+
+  return res.json();
+}   // <-- THIS BRACE IS MISSING
 
 export type SearchResultDraft = {
   _id: string;
@@ -1416,4 +1421,5 @@ export async function searchDrafts(query: string): Promise<SearchResultDraft[]> 
 
   return res.json();
 }
-  
+
+
