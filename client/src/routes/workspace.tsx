@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ChevronRight, Plus, Calendar, Zap } from "lucide-react";
 import {
@@ -70,8 +70,7 @@ import {
   fetchFeed,
   type Draft,
   navigateToWorkspace,
-  getIdeaAnalysis,
-  type AiIdeaAnalysis,
+  sendAiChatMessage,
   fetchTasks,
   createTask,
   updateTask,
@@ -92,7 +91,6 @@ import {
   type JoinRequestData,
   type ActivityLogData,
   type TeamResponseData,
-  sendAiChatMessage,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut, Settings, UserCircle } from "lucide-react";
@@ -2560,77 +2558,151 @@ function TeamTab({
   onOpenChange: (v: boolean) => void;
   projectName: string;
   aiContext?: any;
-}){
-    return (
-      <>
-        <motion.button
-          onClick={() => onOpenChange(true)}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-xl"
-          aria-label="Open AI Assistant"
-        >
-          <Bot className="h-5 w-5" />
-        </motion.button>
+}) {
+  const [messages, setMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>([
+    {
+      role: "ai",
+      content: `Hi! I'm your DraftYard AI assistant for **${projectName}**. How can I help you build, debug, or structure your project today?`,
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-        <Sheet open={open} onOpenChange={onOpenChange}>
-          <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
-                  <Bot className="h-4 w-4" />
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  async function handleSend(text?: string) {
+    const query = (text || input).trim();
+    if (!query || loading) return;
+
+    const userMsg = { role: "user" as const, content: query };
+    setMessages((prev) => [...prev, userMsg]);
+    if (!text) setInput("");
+    setLoading(true);
+
+    const contextStr = `Project Name: ${projectName}\n${
+      aiContext ? JSON.stringify(aiContext) : ""
+    }`;
+
+    try {
+      const responseText = await sendAiChatMessage(query, contextStr, messages);
+      setMessages((prev) => [...prev, { role: "ai", content: responseText }]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          content: `Sorry, I couldn't process that: ${err.message || "Failed to reach AI service"}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <motion.button
+        onClick={() => onOpenChange(true)}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-xl"
+        aria-label="Open AI Assistant"
+      >
+        <Bot className="h-5 w-5" />
+      </motion.button>
+
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
+                <Bot className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold leading-tight">AI Assistant</p>
+                <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Messages list */}
+          <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5 scrollbar-none">
+            {messages.map((m, idx) => (
+              <div key={idx} className={`flex items-start gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                    m.role === "user" ? "bg-muted text-foreground" : "bg-primary/15 text-primary"
+                  }`}
+                >
+                  {m.role === "user" ? "You" : <Bot className="h-3.5 w-3.5" />}
                 </span>
-                <div>
-                  <p className="text-sm font-semibold leading-tight">AI Assistant</p>
-                  <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
+                <div
+                  className={`rounded-2xl px-3 py-2 text-xs leading-relaxed max-w-[85%] ${
+                    m.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                      : "bg-muted/60 text-foreground rounded-tl-none whitespace-pre-wrap"
+                  }`}
+                >
+                  {m.content}
                 </div>
               </div>
+            ))}
+
+            {loading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                <Bot className="h-3.5 w-3.5 text-primary animate-spin" />
+                Thinking...
+              </div>
+            )}
+          </div>
+
+          {/* Quick Prompts */}
+          <div className="flex flex-wrap gap-1.5 px-4 py-2 border-t border-border/40 bg-muted/20">
+            {["Draft MVP scope", "Suggest next tasks", "Review tech stack"].map((s) => (
               <button
-                onClick={() => onOpenChange(false)}
-                className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
+                key={s}
+                onClick={() => handleSend(s)}
+                className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium transition-colors hover:border-primary/60 hover:bg-primary/5"
               >
-                <X className="h-4 w-4" />
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Input field */}
+          <div className="border-t border-border/60 p-3">
+            <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSend();
+                }}
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                placeholder="Ask about this project…"
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={loading || !input.trim()}
+                className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+              >
+                <Send className="h-3 w-3" />
               </button>
             </div>
-
-            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-              <div className="flex items-start gap-2.5">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
-                  <Bot className="h-3.5 w-3.5" />
-                </span>
-                <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2 text-sm leading-relaxed">
-                  Hi Dev — {projectName} is stalled on <span className="font-medium">Scope Creep</span>.
-                  Want me to draft a locked MVP scope?
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {["Draft MVP scope", "Summarize open tasks", "Suggest next PR"].map((s) => (
-                  <button
-                    key={s}
-                    className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium transition-colors duration-[180ms] hover:border-primary/60 hover:bg-primary/5"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-border/60 p-3">
-              <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
-                <input
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  placeholder="Ask about this project…"
-                />
-                <button className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-[180ms] hover:-translate-y-0.5">
-                  <Send className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-      </>
-    );
-  }
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
     

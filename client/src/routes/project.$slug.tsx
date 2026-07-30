@@ -1,7 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
-  fetchDraftBySlug,
   type Draft,
   navigateToWorkspace,
   updateDraftInsights,

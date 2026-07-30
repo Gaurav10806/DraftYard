@@ -998,6 +998,10 @@ export async function fetchGlobalInsights(): Promise<GlobalInsightsData> {
 // ===== Idea Matching (Django ML backend) =====
 
 const ML_API_BASE = import.meta.env.VITE_ML_API_URL ?? "http://localhost:8000";
+export type AiChatMessage = {
+  role: "user" | "ai";
+  content: string;
+};
 
 export type DraftMatch = {
   id: string;
@@ -1064,7 +1068,7 @@ export type AiIdeaAnalysis = {
   finalNote: string;
 };
 
-export async function getIdeaAnalysis(input: {
+export async function fetchAiIdeaAnalysis(input: {
   projectName?: string;
   pitch: string;
   context: string;
