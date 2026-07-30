@@ -23,7 +23,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { fetchCompassFeed } from "@/lib/api";
+import { toast } from "sonner";
+import { fetchCompassFeed, type CompassRoute } from "@/lib/api";
 
 export type CompassMode = "Explore" | "Learn" | "Build" | "Collaborate" | "Publish";
 
@@ -82,7 +83,7 @@ const MODE_CONFIG: Record<
 
 // ── Static fallbacks (shown while loading or on API error) ──────────────────
 
-const FALLBACK_ITEMS: Record<CompassMode, { key: string; title: string; sub: string; route: string }[]> = {
+const FALLBACK_ITEMS: Record<CompassMode, { key: string; title: string; sub: string; route: CompassRoute}[]> = {
   Explore: [
     { key: 'trending', title: 'Trending Drafts', sub: 'Browse hot drafts', route: '/feed' },
     { key: 'featured', title: 'Featured Ideas', sub: 'Community top picks', route: '/feed' },
@@ -201,7 +202,23 @@ export function CompassFeed({ mode }: CompassFeedProps) {
               >
                 <button
                   type="button"
-                  onClick={() => navigate({ to: item.route as "/" })}
+                 onClick={() => {
+  if (!item.route) {
+    toast.info("Coming soon", {
+      description: "This view is not yet available.",
+    });
+    return;
+  }
+
+  if (typeof item.route === "object") {
+    navigate({
+      to: item.route.to as any,
+      search: item.route.search as any,
+    });
+  } else {
+    navigate({ to: item.route as any });
+  }
+}}
                   className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-left transition-all duration-150 hover:bg-muted/60 hover:-translate-y-0.5 hover:border-border/80 hover:shadow-sm active:scale-[0.98]"
                 >
                   <span
@@ -235,7 +252,18 @@ export function CompassFeed({ mode }: CompassFeedProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={() => cta && navigate({ to: cta.route as "/" })}
+           onClick={() => {
+  if (!cta?.route) return;
+
+  if (typeof cta.route === "object") {
+    navigate({
+      to: cta.route.to as any,
+      search: cta.route.search as any,
+    });
+  } else {
+    navigate({ to: cta.route as any });
+  }
+}}
             className="inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ color: cfg.accentHex }}
           >

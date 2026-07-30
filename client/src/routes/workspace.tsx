@@ -64,7 +64,36 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useMyDrafts } from "@/hooks/use-drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
-import { fetchWorkspace, type WorkspaceData, fetchFeed, type Draft, navigateToWorkspace, getIdeaAnalysis, type AiIdeaAnalysis, fetchTasks, createTask, updateTask, deleteTask, addTaskComment, updateTaskChecklist, type TaskData, type TaskChecklistItem, type TaskComment, fetchTeamData, inviteTeamMember, updateTeamMemberRole, removeTeamMember, approveJoinRequest, declineJoinRequest, updateDraftStage, type TeamMemberData, type JoinRequestData, type ActivityLogData, type TeamResponseData } from "@/lib/api";
+import {
+  fetchWorkspace,
+  type WorkspaceData,
+  fetchFeed,
+  type Draft,
+  navigateToWorkspace,
+  getIdeaAnalysis,
+  type AiIdeaAnalysis,
+  fetchTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  addTaskComment,
+  updateTaskChecklist,
+  type TaskData,
+  type TaskChecklistItem,
+  type TaskComment,
+  fetchTeamData,
+  inviteTeamMember,
+  updateTeamMemberRole,
+  removeTeamMember,
+  approveJoinRequest,
+  declineJoinRequest,
+  updateDraftStage,
+  type TeamMemberData,
+  type JoinRequestData,
+  type ActivityLogData,
+  type TeamResponseData,
+  sendAiChatMessage,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut, Settings, UserCircle } from "lucide-react";
 import { getInitials } from "@/lib/utils";
@@ -215,12 +244,37 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [teamData, setTeamData] = useState<TeamResponseData | null>(null);
   const [loadingTeam, setLoadingTeam] = useState(true);
+  
+
+  const isCurrentUserOwner =
+  teamData?.members?.some(
+    (m: TeamMemberData) => m.userId === user?._id && m.role === "Owner"
+  ) || false;
+
+const myMemberRole =
+  teamData?.members?.find(
+    (m: TeamMemberData) => m.userId === user?._id
+  )?.role || "Viewer";
+
+const isViewer =
+  !isCurrentUserOwner && myMemberRole === "Viewer";
+
+const visibleTabs: Array<"overview" | "tasks" | "team"> =
+  isViewer
+    ? ["overview"]
+    : ["overview", "tasks", "team"];
 
   useEffect(() => {
     if (draft?.currentStage) {
       setStage(draft.currentStage as Stage);
     }
   }, [draft?.currentStage]);
+
+  useEffect(() => {
+  if (isViewer && (tab === "tasks" || tab === "team")) {
+    setTab("overview");
+  }
+}, [isViewer, tab]);
 
   const refreshTeam = () => {
     if (!draft?._id) return;
@@ -250,6 +304,12 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
 
   const projectName = draft?.projectName || "Project";
 
+  const aiContext = {
+  draft,
+  tasks,
+  teamData,
+  activityLog: teamData?.activityLog ?? [],
+};
   return (
     <ProtectedRoute>
       <SidebarProvider>
@@ -279,7 +339,11 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                 }
               />
 
-              <TabBar tab={tab} onChange={setTab} />
+             <TabBar
+  tab={tab}
+  onChange={setTab}
+  visibleTabs={visibleTabs}
+/>
 
               <AnimatePresence mode="wait">
                 <motion.div
@@ -298,22 +362,22 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                       onViewFullSuggestion={() => setAiOpen(true)}
                     />
                   )}
-                  {tab === "tasks" && (
-                    <TasksTab
-                      draftId={draft?._id}
-                      tasks={tasks}
-                      refreshTasks={refreshTasks}
-                      loading={loadingTasks}
-                    />
-                  )}
-                  {tab === "team" && (
-                    <TeamTab
-                      draftId={draft?._id}
-                      teamData={teamData}
-                      refreshTeam={refreshTeam}
-                      loading={loadingTeam}
-                    />
-                  )}
+                  {tab === "tasks" && !isViewer && (
+  <TasksTab
+    draftId={draft?._id}
+    tasks={tasks}
+    refreshTasks={refreshTasks}
+    loading={loadingTasks}
+  />
+)}
+                  {tab === "team" && !isViewer && (
+  <TeamTab
+    draftId={draft?._id}
+    teamData={teamData}
+    refreshTeam={refreshTeam}
+    loading={loadingTeam}
+  />
+)}
                 </motion.div>
               </AnimatePresence>
             </motion.main>
@@ -361,7 +425,12 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
         </Dialog>
 
         {/* Floating AI */}
-        <FloatingAI open={aiOpen} onOpenChange={setAiOpen} projectName={projectName} />
+       <FloatingAI
+  open={aiOpen}
+  onOpenChange={setAiOpen}
+  projectName={projectName}
+  aiContext={aiContext}
+/>
       </SidebarProvider>
     </ProtectedRoute>
   );
@@ -674,19 +743,26 @@ function StageTracker({ current, onSelect }: { current: Stage; onSelect: (s: Sta
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab Bar
 // ─────────────────────────────────────────────────────────────────────────────
-
 function TabBar({
   tab,
   onChange,
+  visibleTabs,
 }: {
   tab: "overview" | "tasks" | "team";
-  onChange: (t: "overview" | "tasks" | "team") => void;
+  onChange: (tab: "overview" | "tasks" | "team") => void;
+  visibleTabs: Array<"overview" | "tasks" | "team">;
 }) {
-  const items: { id: typeof tab; label: string; icon: typeof LayoutList }[] = [
-    { id: "overview", label: "Overview", icon: LineChart },
-    { id: "tasks", label: "Tasks", icon: LayoutList },
-    { id: "team", label: "Team", icon: Users },
-  ];
+ const items: { id: typeof tab; label: string; icon: typeof LayoutList }[] = [
+  { id: "overview", label: "Overview", icon: LineChart },
+
+  ...(visibleTabs.includes("tasks")
+    ? [{ id: "tasks", label: "Tasks", icon: LayoutList }]
+    : []),
+
+  ...(visibleTabs.includes("team")
+    ? [{ id: "team", label: "Team", icon: Users }]
+    : []),
+];
   return (
     <div className="flex items-center gap-1 border-b border-border/60">
       {items.map((it) => {
@@ -2474,77 +2550,87 @@ function TeamTab({
 // Floating AI
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FloatingAI({ open, onOpenChange, projectName }: { open: boolean; onOpenChange: (v: boolean) => void; projectName: string }) {
-  return (
-    <>
-      <motion.button
-        onClick={() => onOpenChange(true)}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-xl"
-        aria-label="Open AI Assistant"
-      >
-        <Bot className="h-5 w-5" />
-      </motion.button>
+  function FloatingAI({
+  open,
+  onOpenChange,
+  projectName,
+  aiContext,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  projectName: string;
+  aiContext?: any;
+}){
+    return (
+      <>
+        <motion.button
+          onClick={() => onOpenChange(true)}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-xl"
+          aria-label="Open AI Assistant"
+        >
+          <Bot className="h-5 w-5" />
+        </motion.button>
 
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
-                <Bot className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold leading-tight">AI Assistant</p>
-                <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
+                  <Bot className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold leading-tight">AI Assistant</p>
+                  <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
+                </div>
               </div>
-            </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            <div className="flex items-start gap-2.5">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
-                <Bot className="h-3.5 w-3.5" />
-              </span>
-              <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2 text-sm leading-relaxed">
-                Hi Dev — {projectName} is stalled on <span className="font-medium">Scope Creep</span>.
-                Want me to draft a locked MVP scope?
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {["Draft MVP scope", "Summarize open tasks", "Suggest next PR"].map((s) => (
-                <button
-                  key={s}
-                  className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium transition-colors duration-[180ms] hover:border-primary/60 hover:bg-primary/5"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t border-border/60 p-3">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
-              <input
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder="Ask about this project…"
-              />
-              <button className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-[180ms] hover:-translate-y-0.5">
-                <Send className="h-3.5 w-3.5" />
+              <button
+                onClick={() => onOpenChange(false)}
+                className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
-  );
-}
-  
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              <div className="flex items-start gap-2.5">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
+                  <Bot className="h-3.5 w-3.5" />
+                </span>
+                <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2 text-sm leading-relaxed">
+                  Hi Dev — {projectName} is stalled on <span className="font-medium">Scope Creep</span>.
+                  Want me to draft a locked MVP scope?
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {["Draft MVP scope", "Summarize open tasks", "Suggest next PR"].map((s) => (
+                  <button
+                    key={s}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium transition-colors duration-[180ms] hover:border-primary/60 hover:bg-primary/5"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border/60 p-3">
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
+                <input
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  placeholder="Ask about this project…"
+                />
+                <button className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-[180ms] hover:-translate-y-0.5">
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
+    

@@ -1,4 +1,9 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   fetchFeed,
   fetchMyDrafts,
@@ -6,8 +11,8 @@ import {
   fetchTrendingFeed,
   likeDraft,
   bookmarkDraft,
-  type FeedFilters,
   type Draft,
+  type FeedFilters,
 } from "@/lib/api";
 
 export type { FeedFilters };
@@ -43,67 +48,74 @@ export function useDrafts(filters?: FeedFilters, enabled = true) {
     queryFn: ({ pageParam = 1 }) =>
       fetchFeed({ ...filters, page: pageParam, limit: 10 }),
     getNextPageParam: (lastPage) =>
-      lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined,
+      lastPage.pagination.hasMore
+        ? lastPage.pagination.page + 1
+        : undefined,
     initialPageParam: 1,
     enabled,
   });
 }
 
 export function useMyDrafts() {
-  return useQuery({ queryKey: ["my-drafts"], queryFn: fetchMyDrafts });
+  return useQuery({
+    queryKey: ["my-drafts"],
+    queryFn: fetchMyDrafts,
+  });
 }
 
 // Mutations with automatic cache updates and invalidation
 export function useLikeDraftMutation() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: likeDraft,
     onSuccess: (updatedDraft) => {
-      // Update the specific draft in all feed queries
       queryClient.setQueryData(["feed"], (oldData: any) => {
         if (!oldData?.pages) return oldData;
+
         return {
           ...oldData,
           pages: oldData.pages.map((page: any) => ({
             ...page,
-            data: page.data.map((d: any) => 
+            data: page.data.map((d: any) =>
               d._id === updatedDraft._id ? updatedDraft : d
-            )
-          }))
+            ),
+          })),
         };
       });
-      // Invalidate to trigger refetch and sync across tabs
+
       queryClient.invalidateQueries({ queryKey: ["feed"] });
     },
     onError: (error) => {
       console.error("Failed to like draft:", error);
-    }
+    },
   });
 }
 
 export function useBookmarkDraftMutation() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: bookmarkDraft,
     onSuccess: (updatedDraft) => {
-      // Update the specific draft in all feed queries
       queryClient.setQueryData(["feed"], (oldData: any) => {
         if (!oldData?.pages) return oldData;
+
         return {
           ...oldData,
           pages: oldData.pages.map((page: any) => ({
             ...page,
-            data: page.data.map((d: any) => 
+            data: page.data.map((d: any) =>
               d._id === updatedDraft._id ? updatedDraft : d
-            )
-          }))
+            ),
+          })),
         };
       });
-      // Invalidate to trigger refetch and sync across tabs
+
       queryClient.invalidateQueries({ queryKey: ["feed"] });
     },
     onError: (error) => {
       console.error("Failed to bookmark draft:", error);
-    }
+    },
   });
 }

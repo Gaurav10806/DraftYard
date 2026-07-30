@@ -72,7 +72,17 @@ import { toast } from "sonner";
 import type { Draft } from "@/lib/api";
 
 
+type FeedSearch = {
+  tab?: "all" | "open" | "recent" | "revived";
+  search?: string;
+};
+
 export const Route = createFileRoute("/feed")({
+  validateSearch: (search: Record<string, unknown>): FeedSearch => ({
+    tab: (search.tab as FeedSearch["tab"]) || undefined,
+    search: (search.search as string) || undefined,
+  }),
+
   head: () => ({
     meta: [
       { title: "DraftYard Feed · Discover unfinished ideas" },
@@ -88,9 +98,9 @@ export const Route = createFileRoute("/feed")({
       },
     ],
   }),
+
   component: FeedPage,
 });
-
 // ————————————————————————————————————————————————————————————————
 // Utilities
 // ————————————————————————————————————————————————————————————————
@@ -159,13 +169,17 @@ function enrichDrafts(drafts: Draft[]): EnrichedDraft[] {
 // ————————————————————————————————————————————————————————————————
 
 function FeedPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = Route.useSearch();
+
+  const [searchQuery, setSearchQuery] = useState(searchParams.search || "");
   const [selectedTechStack, setSelectedTechStack] = useState<string[]>([]);
   const [selectedStages, setSelectedStages] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "mostviewed" | "mostliked" | "recentlyupdated">("newest");
-  const [tab, setTab] = useState<"all" | "open" | "recent" | "revived">("all");
+  const [tab, setTab] = useState<"all" | "open" | "recent" | "revived">(
+    searchParams.tab || "all"
+  );
 
   // Build filters object
   const filters = {

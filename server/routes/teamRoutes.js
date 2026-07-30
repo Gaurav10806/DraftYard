@@ -3,6 +3,7 @@ const router = express.Router();
 const TeamMember = require('../models/TeamMember');
 const ActivityLog = require('../models/ActivityLog');
 const Draft = require('../models/draft');
+const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/authMiddleware');
 
@@ -137,23 +138,147 @@ router.post('/team/:draftId/invite', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'User is already a member of this workspace' });
     }
 
-    // Create TeamMember
-    const newMember = new TeamMember({
+    // Check if there is already a pending invite notification for this user
+    const draft = await Draft.findById(draftId);
+    if (!draft) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    const existingInvite = await Notification.findOne({
+      recipient: user._id,
       draftId,
-      userId: user._id,
-      role: finalRole
+      type: 'workspace_invite',
+      status: 'pending'
     });
-    await newMember.save();
+    if (existingInvite) {
+      return res.status(400).json({ error: 'An invitation has already been sent to this user and is pending their response.' });
+    }
 
-    // Add to draft collaborators list
-    await Draft.findByIdAndUpdate(draftId, {
-      $addToSet: { collaborators: user._id }
+    // Create a workspace_invite notification for the invited user
+    await Notification.create({
+      recipient: user._id,
+      sender: req.user._id,
+      senderName: req.user.name || req.user.username || req.user.email,
+      type: 'workspace_invite',
+      draftId,
+      draftName: draft.projectName,
+      details: {
+        name: req.user.name || req.user.username || 'The project owner',
+        contact: req.user.email,
+        message: `You have been invited to join "${draft.projectName}" as a ${finalRole}.`,
+        role: finalRole,
+      },
+      status: 'pending',
+      read: false,
     });
 
-    // Log activity
-    await logTeamActivity(draftId, req.user, `invited ${user.name} as ${finalRole.toLowerCase()}`);
+    // Log activity for the owner
+    await logTeamActivity(draftId, req.user, `sent an invitation to ${user.name || user.email} as ${finalRole.toLowerCase()}`);
 
-    res.status(201).json({ message: 'User invited successfully' });
+    res.status(201).json({ message: 'Invitation sent successfully. The user will be notified and can accept or decline.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/team/invite/:notificationId/respond - Accept or decline a workspace invitation
+router.post('/team/invite/:notificationId/respond', requireAuth, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const { action } = req.body; // 'accept' | 'decline'
+
+    if (!['accept', 'decline'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "accept" or "decline"' });
+    }
+
+    // Find the notification and make sure it belongs to the current user
+    const notification = await Notification.findOne({
+      _id: notificationId,
+      recipient: req.user._id,
+      type: 'workspace_invite',
+    });
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Invitation not found or does not belong to you' });
+    }
+
+    if (notification.status !== 'pending') {
+      return res.status(400).json({ error: `Invitation has already been ${notification.status}` });
+    }
+
+    const draftId = notification.draftId;
+    const finalRole = notification.details?.role || 'Contributor';
+    const isAccept = action === 'accept';
+
+    // Update notification status
+    notification.status = isAccept ? 'accepted' : 'rejected';
+    notification.read = true;
+    await notification.save();
+
+    if (isAccept) {
+      // Check if user is not already a member
+      const existingMember = await TeamMember.findOne({ draftId, userId: req.user._id });
+      if (!existingMember) {
+        // Add as team member
+        await TeamMember.create({
+          draftId,
+          userId: req.user._id,
+          role: finalRole,
+        });
+        // Add to draft collaborators
+        await Draft.findByIdAndUpdate(draftId, {
+          $addToSet: { collaborators: req.user._id },
+        });
+        // Log activity
+        await logTeamActivity(draftId, req.user, `joined as ${finalRole.toLowerCase()}`);
+      }
+
+      // Notify the owner that the invitation was accepted
+      if (notification.sender) {
+        await Notification.create({
+          recipient: notification.sender,
+          sender: req.user._id,
+          senderName: req.user.name || req.user.email,
+          type: 'invite_accepted',
+          draftId,
+          draftName: notification.draftName,
+          details: {
+            name: req.user.name || req.user.username,
+            contact: req.user.email,
+            message: `${req.user.name || req.user.email} accepted your invitation to join "${notification.draftName}" as ${finalRole}.`,
+            role: finalRole,
+          },
+          status: 'accepted',
+          read: false,
+        });
+      }
+    } else {
+      // Notify the owner that the invitation was declined
+      if (notification.sender) {
+        await Notification.create({
+          recipient: notification.sender,
+          sender: req.user._id,
+          senderName: req.user.name || req.user.email,
+          type: 'invite_declined',
+          draftId,
+          draftName: notification.draftName,
+          details: {
+            name: req.user.name || req.user.username,
+            contact: req.user.email,
+            message: `${req.user.name || req.user.email} declined your invitation to join "${notification.draftName}".`,
+            role: finalRole,
+          },
+          status: 'rejected',
+          read: false,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      action,
+      message: isAccept ? 'You have joined the workspace!' : 'Invitation declined.',
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

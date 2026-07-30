@@ -43,7 +43,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { drafts } from "@/data/drafts";
 import { slugify } from "@/routes/project.$slug";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -51,7 +50,10 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   respondToNotification,
+  respondToWorkspaceInvite,
+  searchDrafts,
   type AppNotification,
+  type SearchResultDraft,
 } from "@/lib/api";
 
 function formatTimeAgo(ts?: string) {
@@ -81,6 +83,8 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(null);
   const [processingAction, setProcessingAction] = useState<"accept" | "reject" | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResultDraft[]>([]);
+const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const displayName = user?.name || user?.email?.split("@")[0] || "there";
@@ -149,6 +153,30 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
     }
   };
 
+  const handleWorkspaceInviteRespond = async (action: "accept" | "decline") => {
+    if (!selectedNotif) return;
+    setProcessingAction(action as any);
+    try {
+      const result = await respondToWorkspaceInvite(selectedNotif._id, action);
+      toast.success(result.message);
+      // Update the local notification state to reflect the new status
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === selectedNotif._id
+            ? { ...n, status: action === "accept" ? "accepted" : "rejected", read: true }
+            : n
+        )
+      );
+      setSelectedNotif((prev) =>
+        prev ? { ...prev, status: action === "accept" ? "accepted" : "rejected", read: true } : prev
+      );
+      await loadNotifications();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to ${action} invitation`);
+    } finally {
+      setProcessingAction(null);
+    }
+  };
   // ⌘K / Ctrl+K focuses the search box
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -164,21 +192,42 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const results = query.trim()
-    ? drafts
-        .filter((d) => d.projectName.toLowerCase().includes(query.trim().toLowerCase()))
-        .slice(0, 6)
-    : [];
+  useEffect(() => {
+  if (!query.trim()) {
+    setSearchResults([]);
+    setIsSearching(false);
+    return;
+  }
 
-  const goToDraft = (name: string) => {
-    navigate({ to: "/project/$slug", params: { slug: slugify(name) } });
-    setQuery("");
-    inputRef.current?.blur();
-  };
+  setIsSearching(true);
+
+  const timer = setTimeout(async () => {
+    try {
+      const data = await searchDrafts(query);
+      setSearchResults(data);
+    } catch (_) {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, 150);
+
+  return () => clearTimeout(timer);
+}, [query]);
+
+  const goToDraft = (target: SearchResultDraft) => {
+  navigate({
+    to: "/project/$slug",
+    params: { slug: target._id || slugify(target.projectName) },
+  });
+  setQuery("");
+  setFocused(false);
+  inputRef.current?.blur();
+};
 
   const submitSearch = () => {
-    if (results.length > 0) {
-      goToDraft(results[0].projectName);
+    if (searchResults.length > 0) {
+      goToDraft(searchResults[0]);
     } else if (query.trim()) {
       toast(`No drafts found for "${query.trim()}"`);
     }
@@ -220,11 +269,16 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
 
           {focused && query.trim() && (
             <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-              {results.length > 0 ? (
-                results.map((d) => (
+              {isSearching ? (
+  <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
+    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+    Searching database...
+  </div>
+) : searchResults.length > 0 ? (
+  searchResults.map((d) => (
                   <button
                     key={d.projectName}
-                    onMouseDown={() => goToDraft(d.projectName)}
+                    onMouseDown={() => goToDraft(d)}
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/60"
                   >
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-[10px] font-bold text-primary">
@@ -239,9 +293,9 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-3 text-sm text-muted-foreground">
-                  No drafts match "{query}"
-                </div>
+                <div className="px-3 py-3 text-xs text-muted-foreground">
+  No drafts found matching "<span className="font-medium text-foreground">{query}</span>"
+</div>
               )}
             </div>
           )}
@@ -500,11 +554,47 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
                     )}
                   </Button>
                 </>
-              ) : (
-                <Button variant="outline" onClick={() => setSelectedNotif(null)} className="rounded-full px-5">
-                  Close
-                </Button>
-              )}
+             ) : selectedNotif?.type === "workspace_invite" &&
+     selectedNotif?.status === "pending" ? (
+  <>
+    <Button
+      variant="outline"
+      onClick={() => handleWorkspaceInviteRespond("decline")}
+      disabled={Boolean(processingAction)}
+      className="border-rose-500/40 text-rose-500 hover:bg-rose-500/10 hover:text-rose-500 rounded-full px-4"
+    >
+      {processingAction === ("decline" as any) ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          <X className="mr-1.5 h-3.5 w-3.5" /> Decline
+        </>
+      )}
+    </Button>
+
+    <Button
+      onClick={() => handleWorkspaceInviteRespond("accept")}
+      disabled={Boolean(processingAction)}
+      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5"
+    >
+      {processingAction === ("accept" as any) ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          <Check className="mr-1.5 h-3.5 w-3.5" /> Accept Invite
+        </>
+      )}
+    </Button>
+  </>
+) : (
+  <Button
+    variant="outline"
+    onClick={() => setSelectedNotif(null)}
+    className="rounded-full px-5"
+  >
+    Close
+  </Button>
+)}
             </DialogFooter>
           </DialogContent>
         </Dialog>
