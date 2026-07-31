@@ -130,6 +130,10 @@ function AdminUsersPage() {
   }, [isAdmin]);
 
   const filteredUsers = users.filter((u) => {
+    // Exclude administrator accounts from User Handling list
+    if (u.role === "admin" || u.email.toLowerCase() === "draftadmin@gmail.com") {
+      return false;
+    }
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (

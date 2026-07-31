@@ -3219,6 +3219,7 @@ function WorkspaceHomePage() {
 
 function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; draft: Draft | null }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<"overview" | "tasks" | "team">("overview");
   const [available, setAvailable] = useState(true);
   const [stage, setStage] = useState<Stage>((draft?.currentStage as Stage) || "Building");
@@ -3322,6 +3323,7 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                 members={teamData?.members || []}
                 ownerName={ownerName}
                 userRole={myMemberRole}
+                raisedHandsCount={draft?.raisedHands?.length || 0}
                 onInviteClick={
                   teamData?.members?.some((m: TeamMemberData) => m.userId === user?._id && m.role === "Owner")
                     ? () => setTab("team")
@@ -3392,11 +3394,19 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
               </Button>
               <Button
                 onClick={() => {
-                  if (pendingStage && draft?._id) {
-                    updateDraftStage(draft._id, pendingStage)
+                  const rawId = draft?._id || (draft as any)?.id || workspace?.draftId;
+                  const targetDraftId =
+                    typeof rawId === "string"
+                      ? rawId
+                      : rawId?._id?.toString() || rawId?.id?.toString() || "";
+
+                  if (pendingStage && targetDraftId) {
+                    updateDraftStage(targetDraftId, pendingStage)
                       .then(() => {
                         setStage(pendingStage);
-                        toast.success("Stage updated successfully!");
+                        queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
+                        queryClient.invalidateQueries({ queryKey: ["feed"] });
+                        toast.success(`Stage updated to ${pendingStage}!`);
                         refreshTeam();
                       })
                       .catch((err: any) => {
@@ -3405,6 +3415,8 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                       .finally(() => {
                         setPendingStage(null);
                       });
+                  } else {
+                    toast.error("Draft ID is required to update stage");
                   }
                 }}
               >
@@ -3501,6 +3513,7 @@ function ProjectHeader({
   onInviteClick,
   ownerName,
   userRole,
+  raisedHandsCount = 0,
 }: {
   stage: Stage;
   onStageClick: (s: Stage) => void;
@@ -3512,6 +3525,7 @@ function ProjectHeader({
   onInviteClick?: () => void;
   ownerName?: string;
   userRole?: string;
+  raisedHandsCount?: number;
 }) {
   const initials = projectName.slice(0, 2).toUpperCase();
 
@@ -3640,62 +3654,31 @@ function ProjectHeader({
 
       <Separator className="my-6" />
 
-      {/* row 2: revival score + stage tracker + contributors */}
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_auto]">
-        <RevivalScore />
+      {/* row 2: actual revival requests count + stage tracker */}
+      <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-center">
+        <RevivalRequestsCard count={raisedHandsCount} />
         <StageTracker current={stage} onSelect={onStageClick} />
-        <div className="flex flex-col items-start gap-2 lg:items-end">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Contributors
-          </span>
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {members.slice(0, 4).map((c: TeamMemberData) => {
-                const initials = c.name
-                  ? c.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-                  : "UN";
-                return (
-                  <Avatar key={c.userId} className="h-7 w-7 ring-2 ring-card">
-                    <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                );
-              })}
-              {members.length > 4 && (
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-muted text-[10px] font-semibold ring-2 ring-card">
-                  +{members.length - 4}
-                </span>
-              )}
-            </div>
-            {onInviteClick && (
-              <Button onClick={onInviteClick} size="sm" variant="ghost" className="h-8 rounded-full text-xs">
-                <UserPlus className="mr-1 h-3.5 w-3.5" /> Invite
-              </Button>
-            )}
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
-function RevivalScore() {
+function RevivalRequestsCard({ count }: { count: number }) {
   return (
-    <div className="rounded-xl border border-border bg-background p-4">
+    <div className="rounded-xl border border-border bg-background p-4 min-w-[190px]">
       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        <span>Revival Score</span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--revive)]/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-normal text-[color:var(--revive)]">
-          <ArrowUpRight className="h-3 w-3" /> +4
+        <span>Revival Requests</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <Zap className="h-3 w-3" /> Live
         </span>
       </div>
       <div className="mt-2 flex items-end gap-2">
-        <span className="font-display text-4xl font-semibold leading-none tracking-tight">72</span>
-        <span className="pb-1 text-xs text-muted-foreground">/100</span>
+        <span className="font-display text-3xl font-bold leading-none tracking-tight">{count}</span>
+        <span className="pb-0.5 text-xs text-muted-foreground">raised hand{count !== 1 ? "s" : ""}</span>
       </div>
-      <div className="mt-3 flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Status</span>
-        <span className="font-medium text-[color:var(--revive)]">Good</span>
+      <div className="mt-3 flex items-center justify-between text-xs border-t border-border/40 pt-2">
+        <span className="text-muted-foreground">Revival Interest</span>
+        <span className="font-medium text-emerald-600 dark:text-emerald-400">{count > 0 ? `${count} Request${count > 1 ? "s" : ""}` : "No Requests Yet"}</span>
       </div>
     </div>
   );
@@ -3970,12 +3953,13 @@ function OverviewTab({
 
   const confidenceScore = activeAnalysis?.score || 91;
 
-  // Snapshot metrics
+  // Real Snapshot metrics
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter((t) => t.status === "Done").length;
-  const fileSeed = draft?._id ? parseInt(draft._id.slice(-3), 16) : 42;
-  const simulatedFiles = isNaN(fileSeed) ? 18 : (fileSeed % 15) + 8 + (draft?.techStack?.length || 0) * 3;
-  const simulatedCommits = isNaN(fileSeed) ? 132 : (fileSeed % 120) + 40 + doneTasks * 5;
+  const realContributors = teamData?.members?.length || (draft?.collaborators?.length ? draft.collaborators.length + 1 : 1);
+  const realRevivalRequests = draft?.raisedHands?.length || 0;
+  const realUpvotes = draft?.upvotes || 0;
+  const realViews = draft?.views || 0;
 
   // Unified activity generator
   const activities: Array<{
@@ -4138,21 +4122,21 @@ function OverviewTab({
       {/* Row 2: Project Snapshot · Top Activity */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <Card title="Project Snapshot">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             {[
               { label: "Tasks", value: `${totalTasks}`, sub: `${doneTasks} done` },
-              { label: "Contributors", value: draft?.teamSize || "1", sub: "active" },
-              { label: "Files", value: `${simulatedFiles}` },
-              { label: "Commits", value: `${simulatedCommits}` },
+              { label: "Contributors", value: `${realContributors}`, sub: realContributors > 1 ? "team members" : "owner" },
+              { label: "Revivals", value: `${realRevivalRequests}`, sub: realRevivalRequests > 0 ? "active requests" : "0 requests" },
+              { label: "Upvotes", value: `${realUpvotes}`, sub: `${realViews} views` },
             ].map((m) => (
-              <div key={m.label}>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <div key={m.label} className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-tight truncate">
                   {m.label}
                 </div>
                 <div className="mt-1 font-display text-xl font-semibold leading-none">
                   {m.value}
                 </div>
-                {m.sub && <div className="mt-1 text-[11px] text-muted-foreground">{m.sub}</div>}
+                {m.sub && <div className="mt-1 text-[11px] text-muted-foreground truncate">{m.sub}</div>}
               </div>
             ))}
           </div>

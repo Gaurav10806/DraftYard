@@ -637,13 +637,25 @@ router.get('/draft/:id', async (req, res) => {
 router.patch('/draft/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid draft ID format' });
+    }
+
     const { currentStage } = req.body;
     const draft = await Draft.findById(id);
     if (!draft) return res.status(404).json({ error: 'Draft not found' });
 
-    // Verify workspace membership (only owner can update stage)
-    if (draft.submittedBy?.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'Only the workspace owner can update this draft' });
+    // Verify owner or contributor access
+    const ownerId = draft.submittedBy?._id ? draft.submittedBy._id.toString() : draft.submittedBy?.toString();
+    const isOwner = ownerId === req.user._id.toString() || req.user.role === 'admin';
+
+    const TeamMember = require('../models/TeamMember');
+    const teamMemberRecord = await TeamMember.findOne({ draftId: id, userId: req.user._id });
+    const isContributor = teamMemberRecord && (teamMemberRecord.role === 'Owner' || teamMemberRecord.role === 'Contributor');
+
+    if (!isOwner && !isContributor) {
+      return res.status(403).json({ error: 'Only workspace owners or contributors can update this stage' });
     }
 
     const previousStage = draft.currentStage;

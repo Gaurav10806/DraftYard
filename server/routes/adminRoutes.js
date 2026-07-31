@@ -87,10 +87,15 @@ router.get('/public-settings', async (req, res) => {
 // Protect all admin routes with auth and admin role check
 router.use(requireAuth, requireAdmin);
 
-// GET /api/admin/users - Get all users with draft count and warning count
+// GET /api/admin/users - Get all users with draft count and warning count (excluding admin accounts)
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+    const users = await User.find({
+      role: { $ne: 'admin' },
+      email: { $ne: 'draftadmin@gmail.com' },
+    })
+      .select('-password')
+      .sort({ createdAt: -1 });
 
     const userStats = await Promise.all(
       users.map(async (u) => {

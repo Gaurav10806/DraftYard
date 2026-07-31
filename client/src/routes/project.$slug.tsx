@@ -401,7 +401,10 @@ function ProjectHero({
   isOwner: boolean;
 }) {
   const navigate = useNavigate();
-  const revivalScore = 78;
+  const raisedHandsCount = draft.raisedHands?.length || 0;
+  const upvotes = draft.upvotes || 0;
+  const bookmarks = draft.bookmarks || 0;
+  const revivalScore = Math.min(99, Math.max(35, 45 + upvotes * 2 + raisedHandsCount * 15 + bookmarks * 3));
 
   const handleContinueEditing = async () => {
     if (!draft._id) {

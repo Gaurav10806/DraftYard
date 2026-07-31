@@ -638,8 +638,17 @@ export async function leaveWorkspace(draftId: string): Promise<{ success: boolea
   return res.json();
 }
 
-export async function updateDraftStage(draftId: string, currentStage: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/draft/${draftId}`, {
+export async function updateDraftStage(draftId: any, currentStage: string): Promise<any> {
+  const cleanId =
+    typeof draftId === "string"
+      ? draftId
+      : draftId?._id?.toString() || draftId?.id?.toString() || "";
+
+  if (!cleanId || cleanId === "[object Object]") {
+    throw new Error("Invalid draft ID format");
+  }
+
+  const res = await fetch(`${API_BASE}/draft/${cleanId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

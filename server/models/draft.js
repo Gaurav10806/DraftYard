@@ -8,7 +8,7 @@ const draftSchema = new mongoose.Schema({
   domain: { type: String, enum: ['web', 'mobile', 'ml', 'game', 'hardware', 'other'], required: true },
   techStack: { type: [String], default: [] },
   teamSize: { type: String, enum: ['solo', '2-3', '4+'], required: true },
-  currentStage: { type: String, enum: ['Idea only', 'Prototype', '50% done', 'Almost complete', 'Launched but abandoned'], required: true },
+  currentStage: { type: String, required: true, default: 'Idea' },
   stage: { type: String, default: '' },
   status: { type: String, default: 'active' },
   failureReason: { type: String, required: true, trim: true },
