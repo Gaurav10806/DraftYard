@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const BlockedEmail = require('../models/BlockedEmail');
+const AdminSetting = require('../models/AdminSetting');
 
 const signToken = (userId, role) =>
   jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -21,6 +22,14 @@ const register = async (req, res) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Check platform registration settings
+    const adminSettings = await AdminSetting.findOne({ key: 'global' });
+    if (adminSettings && adminSettings.allowRegistrations === false && cleanEmail !== 'draftadmin@gmail.com') {
+      return res.status(403).json({
+        error: 'New user registrations are currently disabled by the platform administrator.',
+      });
+    }
 
     // Check if email is blacklisted
     const isBlocked = await BlockedEmail.findOne({ email: cleanEmail });

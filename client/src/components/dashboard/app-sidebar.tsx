@@ -48,7 +48,7 @@ const primaryAdminItems = [
   { title: "Insights", url: "/insights-lab", icon: BarChart2 },
   { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
   { title: "Profile", url: "/profile", icon: UserCircle },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Admin Settings", url: "/admin-settings", icon: Settings },
 ];
 
 export function AppSidebar() {

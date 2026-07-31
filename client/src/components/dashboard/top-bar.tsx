@@ -19,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ import {
   respondToNotification,
   respondToWorkspaceInvite,
   searchDrafts,
+  fetchPublicSettings,
   type AppNotification,
   type SearchResultDraft,
 } from "@/lib/api";
@@ -86,6 +88,12 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
   const [searchResults, setSearchResults] = useState<SearchResultDraft[]>([]);
 const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: publicSettings } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: fetchPublicSettings,
+    refetchInterval: 15000,
+  });
 
   const displayName = user?.name || user?.email?.split("@")[0] || "there";
    const initials = getInitials(user?.name, user?.email);
@@ -234,8 +242,35 @@ const [isSearching, setIsSearching] = useState(false);
   };
 
   return (
-    <header className="flex flex-col gap-4 border-b border-border/60 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col w-full">
+      {/* Maintenance Mode Notice */}
+      {publicSettings?.maintenanceMode && (
+        <div className="flex items-center justify-center gap-2 bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{publicSettings.maintenanceNotice || "Platform is currently in maintenance mode. Core services are read-only."}</span>
+        </div>
+      )}
+
+      {/* Active Global System Announcement Banner */}
+      {publicSettings?.announcementActive && publicSettings.announcementText && (
+        <div
+          className={`flex items-center justify-center gap-2 border-b px-4 py-2 text-xs font-medium ${
+            publicSettings.announcementType === "warning"
+              ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+              : publicSettings.announcementType === "destructive"
+              ? "border-rose-500/30 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+              : publicSettings.announcementType === "success"
+              ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "border-primary/30 bg-primary/10 text-primary"
+          }`}
+        >
+          <Bell className="h-3.5 w-3.5 shrink-0" />
+          <span>{publicSettings.announcementText}</span>
+        </div>
+      )}
+
+      <header className="flex flex-col gap-4 border-b border-border/60 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
         <SidebarTrigger />
         {showGreeting && (
           <div>
@@ -600,5 +635,6 @@ const [isSearching, setIsSearching] = useState(false);
         </Dialog>
       )}
     </header>
+    </div>
   );
 }

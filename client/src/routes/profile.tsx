@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { getInitials } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapPin,
@@ -410,7 +411,7 @@ function ProfilePage() {
       ? "On Hold" 
       : "Building") as ProjectStatus,
     stack: draft.techStack.slice(0, 3),
-    updated: `Updated ${getTimeSince(draft.lastWorkedOn)}`,
+    updated: `Updated ${getTimeSince(draft.lastWorkedOn ? new Date(draft.lastWorkedOn) : null)}`,
     icon: draft.projectName.slice(0, 2).toUpperCase(),
     tint: getTintForProject(draft.domain),
   }));
@@ -848,8 +849,19 @@ function ProfilePage() {
                     </div>
 
                     {/* Following / Followers / Mutual list */}
-                    <ul className="flex flex-col gap-2">
-                      {listReal.slice(0, 3).map((u) => (
+                    {(() => {
+                      const listSource = tab === "following" ? followingData : tab === "followers" ? followersData : mutualFollowers;
+                      const listReal = listSource.map((u: any) => ({
+                        _id: u._id || u.id || u.email || String(Math.random()),
+                        name: u.fullName || u.name || u.username || "User",
+                        handle: u.username ? `@${u.username}` : (u.email || u.handle || ""),
+                        initials: getInitials(u.fullName || u.name || u.username, u.email),
+                        state: tab === "following" ? ("Following" as const) : ("Follow" as const),
+                      }));
+
+                      return (
+                        <ul className="flex flex-col gap-2">
+                          {listReal.slice(0, 3).map((u) => (
                         <li key={u._id} className="flex items-center gap-3 rounded-lg bg-background/50 px-2 py-2">
                           <Avatar className="h-9 w-9">
                             <AvatarFallback className="bg-primary/12 text-[11px] font-semibold text-primary">
@@ -878,6 +890,8 @@ function ProfilePage() {
                         </li>
                       )}
                     </ul>
+                  );
+                })()}
 
                     {/* ── Always-visible suggestions ── */}
                     {suggestionsData.length > 0 && (
@@ -996,35 +1010,50 @@ function ProfilePage() {
             </div>
           </div>
 
-          <ul className="max-h-80 overflow-y-auto p-2">
-            {filteredReal.length === 0 && (
-              <li className="p-6 text-center text-sm text-muted-foreground">No results.</li>
-            )}
-            {filteredReal.map((u) => (
-              <li key={u._id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-background/60">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-primary/12 text-[11px] font-semibold text-primary">
-                    {u.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{u.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {u.handle}
-                  </div>
-                </div>
-                <Button
-                  variant={u.state === "Following" ? "outline" : "default"}
-                  size="sm"
-                  className="h-7 px-3 text-xs"
-                  onClick={() => handleFollowToggle(u._id, u.state)}
-                  disabled={followMutation.isPending || unfollowMutation.isPending}
-                >
-                  {u.state}
-                </Button>
-              </li>
-            ))}
-          </ul>
+          {(() => {
+            const modalListSource = modal === "following" ? followingData : modal === "followers" ? followersData : mutualFollowers;
+            const filteredReal = modalListSource
+              .map((u: any) => ({
+                _id: u._id || u.id || u.email || String(Math.random()),
+                name: u.fullName || u.name || u.username || "User",
+                handle: u.username ? `@${u.username}` : (u.email || u.handle || ""),
+                initials: getInitials(u.fullName || u.name || u.username, u.email),
+                state: modal === "following" ? ("Following" as const) : ("Follow" as const),
+              }))
+              .filter((u) => u.name.toLowerCase().includes(query.toLowerCase()) || u.handle.toLowerCase().includes(query.toLowerCase()));
+
+            return (
+              <ul className="max-h-80 overflow-y-auto p-2">
+                {filteredReal.length === 0 && (
+                  <li className="p-6 text-center text-sm text-muted-foreground">No results.</li>
+                )}
+                {filteredReal.map((u) => (
+                  <li key={u._id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-background/60">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-primary/12 text-[11px] font-semibold text-primary">
+                        {u.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{u.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {u.handle}
+                      </div>
+                    </div>
+                    <Button
+                      variant={u.state === "Following" ? "outline" : "default"}
+                      size="sm"
+                      className="h-7 px-3 text-xs"
+                      onClick={() => handleFollowToggle(u._id, u.state)}
+                      disabled={followMutation.isPending || unfollowMutation.isPending}
+                    >
+                      {u.state}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
 
           <button
             onClick={() => setModal(null)}

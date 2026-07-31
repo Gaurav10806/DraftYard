@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { getInitials } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,8 @@ import {
   UsersRound,
   RotateCcw,
   Brain,
+  ShieldCheck,
+  Sliders,
 } from "lucide-react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
@@ -276,6 +278,8 @@ function SettingsPage() {
     }
   };
 
+  const isAdmin = authUser?.role === "admin" || authUser?.email?.toLowerCase() === "draftadmin@gmail.com";
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -285,14 +289,38 @@ function SettingsPage() {
 
           <main className="px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto flex max-w-6xl flex-col gap-6">
-              <div>
-                <h1 className="font-display text-2xl font-semibold tracking-tight">
-                  Settings
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Manage your account, preferences and privacy.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h1 className="font-display text-2xl font-semibold tracking-tight">
+                    Settings
+                  </h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Manage your account, preferences and privacy.
+                  </p>
+                </div>
+
+                {isAdmin && (
+                  <Button size="sm" asChild className="gap-2 shadow-sm">
+                    <Link to="/admin-settings">
+                      <Sliders className="h-4 w-4" /> Admin System Settings
+                    </Link>
+                  </Button>
+                )}
               </div>
+
+              {isAdmin && (
+                <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 text-xs font-medium text-primary">
+                  <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <span className="font-semibold">Administrator Privileges Active:</span> Looking for platform-wide configurations, system announcements, AI engine parameters, or diagnostic tools?
+                  </div>
+                  <Button size="sm" variant="outline" asChild className="shrink-0 gap-1 text-xs border-primary/40 hover:bg-primary/20">
+                    <Link to="/admin-settings">
+                      Open Admin Settings →
+                    </Link>
+                  </Button>
+                </div>
+              )}
 
               {/* Row 1: Profile + Account */}
               <div className="grid gap-6 lg:grid-cols-2">

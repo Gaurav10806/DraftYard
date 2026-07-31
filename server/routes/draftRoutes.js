@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const Draft = require('../models/draft');
 const Notification = require('../models/Notification');
+const AdminSetting = require('../models/AdminSetting');
 const { requireAuth } = require('../middleware/authMiddleware');
 
 function getRawHexId(val) {
@@ -230,6 +231,28 @@ router.get('/insights/global', async (req, res) => {
 // POST /api/draft
 router.post('/draft', optionalAuth, async (req, res) => {
   try {
+    const adminSettings = await AdminSetting.findOne({ key: 'global' });
+    if (adminSettings) {
+      const isUserAdmin = req.user && (req.user.role === 'admin' || req.user.email?.toLowerCase() === 'draftadmin@gmail.com');
+      // 1. Maintenance Mode Enforcement
+      if (adminSettings.maintenanceMode && !isUserAdmin) {
+        return res.status(503).json({
+          error: adminSettings.maintenanceNotice || 'Platform is in maintenance mode. Core services are read-only.',
+        });
+      }
+
+      // 2. Max Drafts Quota Enforcement
+      if (req.user && !isUserAdmin) {
+        const userDraftCount = await Draft.countDocuments({ submittedBy: req.user._id });
+        const maxLimit = adminSettings.maxDraftsPerUser || 50;
+        if (userDraftCount >= maxLimit) {
+          return res.status(400).json({
+            error: `Draft submission limit reached (${userDraftCount}/${maxLimit}). Please delete or archive old drafts before creating new ones.`,
+          });
+        }
+      }
+    }
+
     const body = { ...req.body };
     // If the caller is authenticated, link the draft to their account
     if (req.user) body.submittedBy = req.user._id;

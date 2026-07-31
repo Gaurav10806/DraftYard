@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Draft = require('../models/draft');
 const Notification = require('../models/Notification');
 const BlockedEmail = require('../models/BlockedEmail');
+const AdminSetting = require('../models/AdminSetting');
 const { requireAuth, requireAdmin } = require('../middleware/authMiddleware');
 
 // Helper to safely find user by ID, ObjectId, or email without throwing Mongoose CastError
@@ -59,6 +60,29 @@ function getUserDraftQuery(user) {
 
   return { $or: conditions };
 }
+
+// GET /api/admin/public-settings - Public endpoint for global announcement banner, maintenance status, and signup rules
+router.get('/public-settings', async (req, res) => {
+  try {
+    let settings = await AdminSetting.findOne({ key: 'global' });
+    if (!settings) {
+      settings = await AdminSetting.create({ key: 'global' });
+    }
+    res.json({
+      maintenanceMode: !!settings.maintenanceMode,
+      maintenanceNotice: settings.maintenanceNotice,
+      allowRegistrations: settings.allowRegistrations ?? true,
+      announcementActive: !!settings.announcementActive,
+      announcementText: settings.announcementText,
+      announcementType: settings.announcementType || 'info',
+      maxDraftsPerUser: settings.maxDraftsPerUser || 50,
+      maxFileUploadMb: settings.maxFileUploadMb || 25,
+      autoModeration: settings.autoModeration ?? true,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Protect all admin routes with auth and admin role check
 router.use(requireAuth, requireAdmin);
@@ -282,4 +306,117 @@ router.delete('/blocked-emails/:id', async (req, res) => {
   }
 });
 
+// GET /api/admin/settings - Retrieve global admin settings
+router.get('/settings', async (req, res) => {
+  try {
+    let settings = await AdminSetting.findOne({ key: 'global' });
+    if (!settings) {
+      settings = await AdminSetting.create({ key: 'global' });
+    }
+    res.json(settings);
+  } catch (err) {
+    console.error('Error fetching admin settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/settings - Save/Update global admin settings
+router.put('/settings', async (req, res) => {
+  try {
+    const updateData = req.body;
+    updateData.updatedBy = req.user._id;
+
+    const settings = await AdminSetting.findOneAndUpdate(
+      { key: 'global' },
+      { $set: updateData },
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    res.json({ message: 'Admin settings updated successfully', settings });
+  } catch (err) {
+    console.error('Error updating admin settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/settings/reset - Reset admin settings to factory defaults
+router.post('/settings/reset', async (req, res) => {
+  try {
+    await AdminSetting.deleteOne({ key: 'global' });
+    const newSettings = await AdminSetting.create({
+      key: 'global',
+      updatedBy: req.user._id,
+    });
+    res.json({ message: 'Admin settings reset to defaults', settings: newSettings });
+  } catch (err) {
+    console.error('Error resetting admin settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/system-stats - Comprehensive real-time system metrics
+router.get('/system-stats', async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments({});
+    const totalDrafts = await Draft.countDocuments({});
+    const blockedCount = await BlockedEmail.countDocuments({});
+    const adminCount = await User.countDocuments({ role: 'admin' });
+    const warningsSent = await Notification.countDocuments({ type: 'warning' });
+
+    const uptimeSeconds = process.uptime();
+    const dbStateMap = { 0: 'Disconnected', 1: 'Connected', 2: 'Connecting', 3: 'Disconnecting' };
+    const dbStatus = dbStateMap[mongoose.connection.readyState] || 'Unknown';
+
+    res.json({
+      totalUsers,
+      totalDrafts,
+      blockedCount,
+      adminCount,
+      warningsSent,
+      uptimeSeconds: Math.floor(uptimeSeconds),
+      dbStatus,
+      nodeVersion: process.version,
+      memoryUsageMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+    });
+  } catch (err) {
+    console.error('Error fetching system stats:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/export-audit - Export system audit report JSON
+router.get('/export-audit', async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password').lean();
+    const blocked = await BlockedEmail.find({}).lean();
+    const settings = await AdminSetting.findOne({ key: 'global' }).lean();
+
+    const auditReport = {
+      exportedAt: new Date().toISOString(),
+      exportedBy: req.user.email,
+      environment: process.env.NODE_ENV || 'development',
+      systemOverview: {
+        totalUsers: users.length,
+        totalBlocked: blocked.length,
+      },
+      settings,
+      blockedEmails: blocked,
+      userListSummary: users.map((u) => ({
+        id: u._id,
+        email: u.email,
+        role: u.role,
+        createdAt: u.createdAt,
+      })),
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=draftyard-system-audit.json');
+    res.json(auditReport);
+  } catch (err) {
+    console.error('Error generating audit export:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

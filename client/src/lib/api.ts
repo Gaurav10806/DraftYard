@@ -722,9 +722,12 @@ export type UserProfile = {
   github?: string;
   linkedin?: string;
   portfolio?: string;
+  skills?: string[];
   createdAt?: string;
   updatedAt?: string;
 };
+
+export type CompassRoute = string | { to: string; search?: Record<string, any> };
 
 export async function updateUserProfile(data: Partial<UserProfile>): Promise<UserProfile> {
   const res = await fetch(`${API_BASE}/user/profile`, {
@@ -1254,8 +1257,8 @@ export async function renameReview(reviewId: string, projectName: string): Promi
 }
 
 export type CompassFeedData = {
-  items: { key: string; title: string; sub: string; route: string }[];
-  cta: { label: string; route: string };
+  items: { key: string; title: string; sub: string; route: CompassRoute }[];
+  cta: { label: string; route: CompassRoute };
 };
 
 export async function fetchCompassFeed(mode: string): Promise<CompassFeedData> {
@@ -1455,7 +1458,130 @@ export async function unblockEmailAdmin(blockedId: string): Promise<any> {
   }
 
   return res.json();
-}   // <-- THIS BRACE IS MISSING
+}
+
+export type PublicSystemSettings = {
+  maintenanceMode: boolean;
+  maintenanceNotice: string;
+  allowRegistrations: boolean;
+  announcementActive: boolean;
+  announcementText: string;
+  announcementType: "info" | "warning" | "success" | "destructive";
+  maxDraftsPerUser: number;
+  maxFileUploadMb: number;
+  autoModeration: boolean;
+};
+
+export async function fetchPublicSettings(): Promise<PublicSystemSettings> {
+  const res = await fetch(`${API_BASE}/admin/public-settings`);
+  if (!res.ok) {
+    return {
+      maintenanceMode: false,
+      maintenanceNotice: "",
+      allowRegistrations: true,
+      announcementActive: false,
+      announcementText: "",
+      announcementType: "info",
+      maxDraftsPerUser: 50,
+      maxFileUploadMb: 25,
+      autoModeration: true,
+    };
+  }
+  return res.json();
+}
+
+export type AdminSystemSettings = {
+  key: string;
+  maintenanceMode: boolean;
+  maintenanceNotice: string;
+  allowRegistrations: boolean;
+  maxDraftsPerUser: number;
+  maxFileUploadMb: number;
+  autoModeration: boolean;
+
+  announcementActive: boolean;
+  announcementText: string;
+  announcementType: "info" | "warning" | "success" | "destructive";
+
+  defaultAiModel: string;
+  maxDailyAiQueriesPerUser: number;
+  aiTemperature: number;
+  mlBackendUrl: string;
+  aiAutoSuggestions: boolean;
+
+  enforceStrongPasswords: boolean;
+  sessionLifetimeHours: number;
+  auditLogging: boolean;
+  masterApiKey: string;
+  updatedAt?: string;
+};
+
+export type AdminSystemStats = {
+  totalUsers: number;
+  totalDrafts: number;
+  blockedCount: number;
+  adminCount: number;
+  warningsSent: number;
+  uptimeSeconds: number;
+  dbStatus: string;
+  nodeVersion: string;
+  memoryUsageMb: number;
+};
+
+export async function fetchAdminSettings(): Promise<AdminSystemSettings> {
+  const res = await fetch(`${API_BASE}/admin/settings`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch admin settings");
+  }
+  return res.json();
+}
+
+export async function updateAdminSettings(
+  settings: Partial<AdminSystemSettings>
+): Promise<{ message: string; settings: AdminSystemSettings }> {
+  const res = await fetch(`${API_BASE}/admin/settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update admin settings");
+  }
+  return res.json();
+}
+
+export async function resetAdminSettings(): Promise<{
+  message: string;
+  settings: AdminSystemSettings;
+}> {
+  const res = await fetch(`${API_BASE}/admin/settings/reset`, {
+    method: "POST",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to reset admin settings");
+  }
+  return res.json();
+}
+
+export async function fetchAdminSystemStats(): Promise<AdminSystemStats> {
+  const res = await fetch(`${API_BASE}/admin/system-stats`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch system stats");
+  }
+  return res.json();
+}
 
 export type SearchResultDraft = {
   _id: string;

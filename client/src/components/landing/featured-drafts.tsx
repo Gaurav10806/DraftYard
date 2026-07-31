@@ -91,7 +91,7 @@ export function FeaturedDrafts() {
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{d.oneLiner}</p>
               
               <div className="mt-3 flex flex-wrap gap-1">
-                {(d.tags || []).slice(0, 2).map((tag) => (
+                {(d.tags || []).slice(0, 2).map((tag: string) => (
                   <Badge key={tag} variant="outline" className="text-[10px]">
                     {tag}
                   </Badge>

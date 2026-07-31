@@ -202,7 +202,7 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
         externalLinks: step1Data.externalLinks ?? "",
         tasks: wsTaskList,
         milestones: wsMilestoneList,
-        attachments: values.attachments ?? "",
+        attachments: Array.isArray(values.attachments) ? values.attachments : (values.attachments ? [values.attachments] : []),
       });
 
       toast.success("Workspace created! Let's build.");
