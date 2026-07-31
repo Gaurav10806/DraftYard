@@ -2988,6 +2988,7 @@ import {
   type JoinRequestData,
   type ActivityLogData,
   type TeamResponseData,
+  fetchDraftById,
   sendAiChatMessage,
   leaveWorkspace,
 } from "@/lib/api";
@@ -3023,11 +3024,22 @@ export const Route = createFileRoute("/workspace")({
 
     try {
       workspace = await fetchWorkspace(draftId);
-      const feedResponse = await fetchFeed();
-      draft = feedResponse.data.find((d) => d._id === draftId) ?? null;
+      if (
+        workspace &&
+        workspace.draftId &&
+        typeof workspace.draftId === "object" &&
+        (workspace.draftId as any).projectName
+      ) {
+        draft = workspace.draftId as unknown as Draft;
+      } else {
+        draft = await fetchDraftById(draftId);
+      }
     } catch {
-      workspace = null;
-      draft = null;
+      try {
+        draft = await fetchDraftById(draftId);
+      } catch {
+        draft = null;
+      }
     }
 
     return { workspace, draft, draftId };
@@ -3291,7 +3303,20 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
     refreshTasks();
   }, [draft?._id]);
 
-  const projectName = draft?.projectName || "Project";
+  const populatedDraft =
+    workspace?.draftId && typeof workspace.draftId === "object"
+      ? (workspace.draftId as any)
+      : null;
+
+  const projectName =
+    draft?.projectName || populatedDraft?.projectName || "Draft Workspace";
+
+  const projectDescription =
+    draft?.oneLiner ||
+    draft?.description ||
+    populatedDraft?.oneLiner ||
+    populatedDraft?.description ||
+    "";
 
   const aiContext = {
     draft,
@@ -3319,7 +3344,7 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                 available={available}
                 onAvailableChange={setAvailable}
                 projectName={projectName}
-                description={draft?.oneLiner || ""}
+                description={projectDescription}
                 members={teamData?.members || []}
                 ownerName={ownerName}
                 userRole={myMemberRole}
@@ -3580,7 +3605,7 @@ function ProjectHeader({
               )}
             </div>
             <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              {description || "AI-powered project for building."}
+              {description || "Collaborative project workspace."}
             </p>
           </div>
         </div>

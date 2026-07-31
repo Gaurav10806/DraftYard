@@ -143,6 +143,14 @@ export async function fetchMyDrafts(): Promise<Draft[]> {
   return res.json();
 }
 
+export async function fetchDraftById(id: string): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${id}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error("Failed to fetch draft details");
+  return res.json();
+}
+
 export type NewDraft = {
   projectName: string;
   oneLiner: string;

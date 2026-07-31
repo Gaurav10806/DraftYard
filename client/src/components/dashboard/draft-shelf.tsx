@@ -126,7 +126,11 @@ export function DraftShelf() {
                   className="group/card relative snap-start shrink-0 w-64 cursor-pointer rounded-2xl border border-border/60 bg-background p-4 shadow-sm transition-all duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-xl hover:border-primary/50 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent),0_18px_40px_-18px_color-mix(in_oklab,var(--primary)_40%,transparent)]"
                 >
                   <div className="flex items-center justify-between">
-                    {pinned ? (
+                    {d.isOwner === false || d._sharedRole ? (
+                      <Badge variant="outline" className="rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 capitalize">
+                        {d._sharedRole || "Contributor"}
+                      </Badge>
+                    ) : pinned ? (
                       <Badge className="rounded-full bg-tint-peach text-foreground hover:bg-tint-peach">
                         <Star className="mr-1 h-3 w-3" /> Pinned
                       </Badge>
