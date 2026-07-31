@@ -41,10 +41,18 @@ MAX_MATCHES = 50
 # (highest TF-IDF weight first).
 MAX_KEYWORDS_SHOWN = 8
 
-# Minimum word length for substring (partial-word) matching. Below this,
-# containment checks throw up too much noise (e.g. "art" inside "start",
-# "smart", "cart" — all unrelated).
+# Minimum word length for *bidirectional* containment matching (query word
+# inside draft word, or vice versa). Below this, containment checks throw up
+# too much noise (e.g. "art" inside "start", "smart", "cart" — all unrelated).
 MIN_SUBSTRING_LEN = 4
+
+# Minimum length for *prefix-only* matching — this covers a user typing a
+# partial word (e.g. "cro" while typing "crop"). Because it only matches
+# when the draft word STARTS WITH the query (not "contains" anywhere), it
+# stays safe at shorter lengths: "cro" -> "crop"/"crowdfunding" matches,
+# but "art" does NOT match "start"/"smart"/"cart" since none of those start
+# with "art".
+MIN_PREFIX_LEN = 2
 
 # Synthetic score for substring-only matches (no exact word shared).
 # Deliberately capped under the "Medium" threshold in _priority — a
@@ -67,19 +75,36 @@ def _priority(score: float) -> str:
 
 
 def _substring_overlap(query_words: set, draft_words: set) -> set:
-    """Words from `draft_words` that contain, or are contained in, some
-    word in `query_words` (excluding exact matches, which are already
-    handled by the TF-IDF pass). Returns the draft-side words so the
-    match reason stays human-readable, e.g. querying "health" against a
-    draft containing "healthtech" returns {"healthtech"}."""
+    """Words from `draft_words` that partially match some word in
+    `query_words` (excluding exact matches, which are already handled by
+    the TF-IDF pass). Two kinds of partial match, so short *half-typed*
+    queries still surface results without reintroducing noise:
+
+    1. Bidirectional containment for words >= MIN_SUBSTRING_LEN on both
+       sides (query word inside draft word, or vice versa) — covers
+       compound vocabulary, e.g. querying "health" against a draft
+       containing "healthtech" returns {"healthtech"}.
+    2. Prefix-only matching for shorter query words (>= MIN_PREFIX_LEN)
+       — covers a user typing a partial word, e.g. "cro" against a draft
+       containing "crop" returns {"crop"}. This is intentionally
+       prefix-only (draft word must START WITH the query), not general
+       containment, so short queries can't match noise like "art"
+       inside "start"/"smart"/"cart".
+
+    Returns the draft-side words so the match reason stays human-readable.
+    """
     hits = set()
     for qw in query_words:
-        if len(qw) < MIN_SUBSTRING_LEN:
+        if len(qw) < MIN_PREFIX_LEN:
             continue
         for dw in draft_words:
-            if dw == qw or len(dw) < MIN_SUBSTRING_LEN:
+            if dw == qw:
                 continue
-            if qw in dw or dw in qw:
+            if len(qw) >= MIN_SUBSTRING_LEN and len(dw) >= MIN_SUBSTRING_LEN:
+                if qw in dw or dw in qw:
+                    hits.add(dw)
+                    continue
+            if len(dw) >= MIN_SUBSTRING_LEN and dw.startswith(qw):
                 hits.add(dw)
     return hits
 

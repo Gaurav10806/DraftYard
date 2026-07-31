@@ -711,11 +711,11 @@ ${attachedContext ? `Additional User Attachment: ${attachedContext}` : ""}`
     try {
       if (forceAnalysis && selectedDraft) {
         // Call structured idea analysis
-        const analysis = await fetchAiIdeaAnalysis(
-          selectedDraft.projectName,
-          selectedDraft.oneLiner,
-          projContext
-        );
+        const analysis = await fetchAiIdeaAnalysis({
+          projectName: selectedDraft.projectName,
+          pitch: selectedDraft.oneLiner,
+          context: projContext,
+        });
 
         const aiMsg: ChatMessageItem = {
           id: `a-${Date.now()}`,

@@ -1089,11 +1089,33 @@ export async function fetchAiIdeaAnalysis(input: {
   projectName?: string;
   pitch: string;
   context: string;
-}): Promise<AiIdeaAnalysis> {
+}): Promise<AiIdeaAnalysis>;
+export async function fetchAiIdeaAnalysis(
+  projectName: string | undefined,
+  pitch: string,
+  context: string
+): Promise<AiIdeaAnalysis>;
+export async function fetchAiIdeaAnalysis(
+  inputOrProjectName:
+    | { projectName?: string; pitch: string; context: string }
+    | string
+    | undefined,
+  pitchArg?: string,
+  contextArg?: string
+): Promise<AiIdeaAnalysis> {
+  const payload =
+    typeof inputOrProjectName === "object" && inputOrProjectName !== null
+      ? inputOrProjectName
+      : {
+          projectName: inputOrProjectName,
+          pitch: pitchArg ?? "",
+          context: contextArg ?? "",
+        };
+
   const res = await fetch(`${ML_API_BASE}/api/ml/idea-analysis/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -1104,6 +1126,8 @@ export async function fetchAiIdeaAnalysis(input: {
   const data = await res.json();
   return data.analysis;
 }
+
+export const getIdeaAnalysis = fetchAiIdeaAnalysis;
 
 // ===== Idea Review (MongoDB persistence) =====
 

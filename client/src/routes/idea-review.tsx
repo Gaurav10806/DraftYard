@@ -91,6 +91,80 @@ const emptyForm: FormState = {
   context: "",
 };
 
+// ---------------- Fallback analysis (only used when the live Gemini call fails) ----------------
+// These used to be fixed objects, so every idea showed the exact same
+// "Recommended Tech Stack" and "Development Roadmap" whenever AI analysis
+// (see fetchAiIdeaAnalysis) didn't come back. They now read the pitch +
+// context text so the fallback is at least idea-specific instead of
+// identical for every submission. This is only a safety net — when the AI
+// call succeeds, aiAnalysis.techStack / aiAnalysis.roadmap (already
+// generated per-idea by the prompt in idea_analysis_views.py) are used
+// instead, see handleAnalyze below.
+
+function buildFallbackStack(text: string) {
+  const t = text.toLowerCase();
+  const has = (...words: string[]) => words.some((w) => t.includes(w));
+
+  const frontend = has("mobile app", "ios", "android", "react native")
+    ? "React Native"
+    : has("landing page", "marketing site", "blog", "content site")
+    ? "Next.js"
+    : has("dashboard", "admin panel", "analytics")
+    ? "React + Tailwind"
+    : "React";
+
+  const backend = has("realtime", "real-time", "live chat", "socket", "multiplayer")
+    ? "Node.js + Socket.io"
+    : has("ml", "machine learning", "recommendation", "prediction", "classification", "model")
+    ? "Django (Python)"
+    : has("microservice", "high scale", "high-scale", "enterprise")
+    ? "Node.js (Express, microservices)"
+    : "Node.js (Express)";
+
+  const database = has("graph", "social network", "relationship")
+    ? "Neo4j"
+    : has("transaction", "payment", "finance", "banking", "inventory", "order", "booking")
+    ? "PostgreSQL"
+    : "MongoDB";
+
+  const ai = has("chatbot", "gpt", "llm", "generative", "nlp", "chat assistant", "conversational")
+    ? "OpenAI / Gemini API"
+    : has("recommendation", "prediction", "classification", "ml model", "machine learning")
+    ? "scikit-learn / TensorFlow"
+    : has("image", "vision", "photo", "ocr", "scan")
+    ? "OpenCV + Vision API"
+    : "OpenAI API";
+
+  const hosting = has("mobile app", "ios", "android")
+    ? "Expo EAS"
+    : has("high scale", "enterprise", "high-scale")
+    ? "AWS (EC2/ECS)"
+    : "Vercel";
+
+  return { frontend, backend, database, ai, hosting };
+}
+
+function buildFallbackRoadmap(text: string) {
+  const t = text.toLowerCase();
+  const complex = /\b(ml|ai|machine learning|blockchain|realtime|real-time|recommendation)\b/.test(t);
+  return complex
+    ? [
+        { week: "Week 1", label: "Research & Scoping" },
+        { week: "Week 2", label: "UI/UX Design" },
+        { week: "Week 3–4", label: "Core Backend Setup" },
+        { week: "Week 5–6", label: "AI/ML Integration" },
+        { week: "Week 7", label: "Testing & Refinement" },
+        { week: "Week 8", label: "Beta Launch" },
+      ]
+    : [
+        { week: "Week 1", label: "Research" },
+        { week: "Week 2", label: "UI/UX Design" },
+        { week: "Week 3", label: "Backend Setup" },
+        { week: "Week 4", label: "Core Features" },
+        { week: "Week 5", label: "Testing" },
+        { week: "Week 6", label: "Launch MVP" },
+      ];
+}
 
 // ---------------- Page ----------------
 
@@ -208,13 +282,7 @@ function IdeaReviewShell() {
             ? "Strong potential based on community data and AI analysis. Focus on a lean MVP first."
             : "No similar DraftYard projects were found. This analysis is based on market research and AI reasoning."),
         similarProjects: matches,
-        recommendedStack: aiAnalysis?.techStack ?? {
-          frontend: "React",
-          backend: "Node.js",
-          database: "MongoDB",
-          ai: "OpenAI API",
-          hosting: "Vercel",
-        },
+        recommendedStack: aiAnalysis?.techStack ?? buildFallbackStack(`${form.pitch} ${form.context}`),
         risks: aiAnalysis
           ? {
               feasibility: aiAnalysis.feasibility,
@@ -251,14 +319,7 @@ function IdeaReviewShell() {
           "Limit AI usage and optimize for low cost",
           "Validate with 20–30 users before expanding features",
         ],
-        roadmap: aiAnalysis?.roadmap ?? [
-          { week: "Week 1", label: "Research" },
-          { week: "Week 2", label: "UI/UX Design" },
-          { week: "Week 3–4", label: "Backend Setup" },
-          { week: "Week 5–6", label: "AI Integration" },
-          { week: "Week 7", label: "Testing" },
-          { week: "Week 8", label: "Launch MVP" },
-        ],
+        roadmap: aiAnalysis?.roadmap ?? buildFallbackRoadmap(`${form.pitch} ${form.context}`),
         finalNote:
           aiAnalysis?.finalNote ??
           (matches.length > 0
@@ -654,6 +715,17 @@ function ReportView({ report }: { report: Review }) {
       {/* AI Analysis */}
       <section>
         <SectionTitle number={2} title="AI Analysis" subtitle={report.similarProjects && report.similarProjects.length > 0 ? "Enhanced by DraftYard project data." : "Based on market research and AI reasoning."} />
+        {report.aiAnalysisError && (
+          <div className="mt-3 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 px-4 py-3">
+            <p className="text-sm font-medium text-amber-600">
+              Live AI analysis unavailable — showing a generic estimate instead.
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {report.aiAnalysisError} Check that GEMINI_API_KEY is set correctly in ml-backend/.env
+              and that the ML backend can reach the Gemini API.
+            </p>
+          </div>
+        )}
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <MetricCard
             title="Feasibility"

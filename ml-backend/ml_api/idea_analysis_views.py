@@ -105,9 +105,16 @@ def idea_analysis(request):
             timeout=30,
         )
     except requests.RequestException as exc:
+        print(f"[idea_analysis] Gemini request failed: {exc}")
         return Response({"error": f"Couldn't reach Gemini: {exc}"}, status=502)
 
     if resp.status_code != 200:
+        # Print the full body server-side (not just the 500-char slice sent
+        # to the client) — this is almost always the fastest way to see
+        # *why* every request is falling back to generic data, e.g. an
+        # invalid/expired GEMINI_API_KEY, an unsupported model name, or a
+        # quota/region block.
+        print(f"[idea_analysis] Gemini API error ({resp.status_code}): {resp.text}")
         return Response(
             {"error": f"Gemini API error ({resp.status_code}): {resp.text[:500]}"},
             status=502,
