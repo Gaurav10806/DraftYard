@@ -599,10 +599,19 @@ router.get('/revival-board', async (req, res) => {
 // GET /api/drafts/mine -> drafts belonging to or shared with the authenticated user
 router.get('/drafts/mine', requireAuth, async (req, res) => {
   try {
-    const userId = req.user._id;
+    const rawUserId = req.user._id;
+    const userIdStr = rawUserId ? rawUserId.toString() : '';
+    const userIdObj = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+      ? new mongoose.Types.ObjectId(userIdStr)
+      : rawUserId;
 
     // 1. Fetch owned drafts
-    const ownedDrafts = await Draft.find({ submittedBy: userId })
+    const ownedDrafts = await Draft.find({
+      $or: [
+        { submittedBy: userIdObj },
+        { submittedBy: userIdStr }
+      ]
+    })
       .populate({
         path: 'submittedBy',
         select: 'name username avatar'
@@ -614,19 +623,38 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const ownedDraftIds = new Set(ownedDrafts.map(d => d._id.toString()));
+    const ownedDraftObjIds = ownedDrafts.map(d => d._id);
+    const ownedDraftIdStrs = new Set(ownedDrafts.map(d => d._id.toString()));
 
     // 2. Fetch TeamMember records for this user to get shared drafts and roles
     const TeamMember = require('../models/TeamMember');
-    const teamMemberships = await TeamMember.find({ userId }).lean();
-    const teamDraftIds = teamMemberships.map(tm => tm.draftId ? tm.draftId.toString() : '');
+    const teamMemberships = await TeamMember.find({
+      $or: [
+        { userId: userIdObj },
+        { userId: userIdStr }
+      ]
+    }).lean();
+
+    const teamDraftObjIds = [];
+    const membershipMap = new Map();
+
+    teamMemberships.forEach(tm => {
+      if (tm.draftId) {
+        const idStr = tm.draftId.toString();
+        membershipMap.set(idStr, tm.role);
+        if (!ownedDraftIdStrs.has(idStr) && mongoose.Types.ObjectId.isValid(idStr)) {
+          teamDraftObjIds.push(new mongoose.Types.ObjectId(idStr));
+        }
+      }
+    });
 
     // 3. Query shared drafts (either in collaborators array or in TeamMember records)
     const sharedDraftsDocs = await Draft.find({
-      _id: { $nin: Array.from(ownedDraftIds) },
+      _id: { $nin: ownedDraftObjIds },
       $or: [
-        { collaborators: userId },
-        ...(teamDraftIds.length > 0 ? [{ _id: { $in: teamDraftIds } }] : [])
+        { collaborators: userIdObj },
+        { collaborators: userIdStr },
+        ...(teamDraftObjIds.length > 0 ? [{ _id: { $in: teamDraftObjIds } }] : [])
       ]
     })
       .populate({
@@ -641,11 +669,6 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
       .lean();
 
     // Map roles for shared drafts
-    const membershipMap = new Map();
-    teamMemberships.forEach(tm => {
-      if (tm.draftId) membershipMap.set(tm.draftId.toString(), tm.role);
-    });
-
     const formattedOwned = ownedDrafts.map(d => ({
       ...d,
       isOwner: true,
@@ -669,6 +692,7 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
 
     res.json([...formattedOwned, ...formattedShared]);
   } catch (err) {
+    console.error('Error fetching mine drafts:', err);
     res.status(500).json({ error: err.message });
   }
 });
