@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { getInitials } from "@/lib/utils";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -873,6 +874,59 @@ function ProjectTabs({ tab, onTab }: { tab: TabId; onTab: (t: TabId) => void }) 
 // OVERVIEW TAB
 // ————————————————————————————————————————————————————————————
 function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscussions: () => void }) {
+  // Fetch real similar projects matching domain
+  const { data: feedData } = useQuery({
+    queryKey: ["similar-projects", draft.domain, draft._id || draft.id],
+    queryFn: () => fetchFeed({ category: draft.domain, limit: 12 }),
+    staleTime: 60000,
+  });
+
+  const similarProjects = useMemo(() => {
+    const list = feedData?.data || [];
+    const currentId = draft._id || draft.id;
+    return list
+      .filter((d) => (d._id || d.id) !== currentId && d.projectName !== draft.projectName)
+      .slice(0, 3)
+      .map((p, idx) => {
+        const tints = [
+          "from-violet-500 to-fuchsia-500",
+          "from-sky-500 to-cyan-500",
+          "from-emerald-500 to-teal-500",
+        ];
+        const matchPct = Math.min(98, 70 + (p.upvotes || 0) * 3 + (p.techStack?.length || 0) * 2);
+        return {
+          id: p._id || p.id,
+          name: p.projectName,
+          match: matchPct,
+          tint: tints[idx % tints.length],
+        };
+      });
+  }, [feedData, draft]);
+
+  // Dynamic Gold highlights based on real draft attributes
+  const goldItems = useMemo(() => {
+    const items: string[] = [];
+    if (draft.techStack && draft.techStack.length > 0) {
+      items.push(`Built with ${draft.techStack.slice(0, 3).join(", ")}`);
+    }
+    if (draft.domain) {
+      items.push(`Tailored ${draft.domain.charAt(0).toUpperCase() + draft.domain.slice(1)} solution architecture`);
+    }
+    const raisedCount = draft.raisedHands?.length || 0;
+    if (raisedCount > 0) {
+      items.push(`${raisedCount} active revival request${raisedCount > 1 ? "s" : ""} from community builders`);
+    } else {
+      items.push("Ready for open-source community revival");
+    }
+    const upvotesCount = draft.upvotes || 0;
+    if (upvotesCount > 0) {
+      items.push(`Supported by ${upvotesCount} community upvote${upvotesCount > 1 ? "s" : ""}`);
+    } else {
+      items.push("Modular foundation with reusable code patterns");
+    }
+    return items;
+  }, [draft]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       {/* About */}
@@ -884,21 +938,6 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
           features are working, but we need help improving UI, performance and mobile
           responsiveness.
         </p>
-      </Card>
-
-      {/* AI prediction */}
-      <Card>
-        <CardTitle icon={<Sparkles className="h-4 w-4 text-violet-500" />}>AI Prediction</CardTitle>
-        <div className="mt-3 flex items-center gap-4">
-          <p className="flex-1 text-sm leading-[1.6] text-muted-foreground">
-            If revived with active contributors, this project has a{" "}
-            <span className="font-semibold text-foreground">62% chance</span> of being completed.
-          </p>
-          <ProbabilityRing value={62} />
-        </div>
-        <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--project-accent)]">
-          View Full Analysis <ArrowRight className="h-3 w-3" />
-        </button>
       </Card>
 
       {/* Why it stalled */}
@@ -957,50 +996,52 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
       <Card>
         <CardTitle icon={<Sparkles className="h-4 w-4 text-amber-500" />}>Gold</CardTitle>
         <ul className="mt-3 space-y-2 text-sm">
-          {[
-            "Authentication & Authorization",
-            "Real-time with Socket.io",
-            "Analytics Dashboard",
-            "Clean API Structure",
-          ].map((r) => (
+          {goldItems.map((r) => (
             <li key={r} className="flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
               <span className="text-muted-foreground">{r}</span>
             </li>
           ))}
         </ul>
-        <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--project-accent)]">
-          Explore Opportunities <ArrowRight className="h-3 w-3" />
-        </button>
       </Card>
 
       {/* Similar projects */}
-      <Card>
+      <Card className="lg:col-span-2">
         <div className="flex items-center justify-between">
           <CardTitle>Similar Projects</CardTitle>
-          <button className="text-xs font-medium text-[var(--project-accent)]">View all (6)</button>
+          <Link to="/feed" className="text-xs font-medium text-[var(--project-accent)]">
+            Explore Feed →
+          </Link>
         </div>
-        <ul className="mt-3 space-y-2.5 text-sm">
-          {[
-            { n: "WorkHive", m: 78, tint: "from-violet-500 to-fuchsia-500" },
-            { n: "FocusFlow", m: 71, tint: "from-sky-500 to-cyan-500" },
-            { n: "TeamSync", m: 68, tint: "from-emerald-500 to-teal-500" },
-          ].map((p) => (
-            <li key={p.n} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br ${p.tint} text-[11px] font-bold text-white`}
+        {similarProjects.length > 0 ? (
+          <ul className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
+            {similarProjects.map((p) => (
+              <li key={p.name}>
+                <Link
+                  to="/project/$slug"
+                  params={{ slug: slugify(p.name) }}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
                 >
-                  {p.n.slice(0, 1)}
-                </span>
-                <span className="font-medium">{p.n}</span>
-              </div>
-              <span className="text-xs font-semibold text-[var(--project-accent)]">
-                {p.m}% Match
-              </span>
-            </li>
-          ))}
-        </ul>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${p.tint} text-xs font-bold text-white`}
+                    >
+                      {p.name.slice(0, 1)}
+                    </span>
+                    <span className="font-medium truncate text-xs">{p.name}</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[var(--project-accent)] shrink-0">
+                    {p.match}% Match
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="mt-3 rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+            No other projects in the {draft.domain} domain yet.
+          </div>
+        )}
       </Card>
 
       {/* Discussion preview */}
@@ -1406,6 +1447,19 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
     }),
   ];
 
+  const totalContributors = dynamicTeam.length;
+  const totalRevivalRequests = (draft.raisedHands || []).length;
+  const totalUpvotes = draft.upvotes || 0;
+
+  const chartData = useMemo(() => {
+    const seed = (draft.projectName.length * 3) + totalUpvotes;
+    return Array.from({ length: 12 }, (_, i) => {
+      const base = totalContributors + Math.round((i * (totalRevivalRequests + 1)) / 3);
+      const v = Math.max(1, base + ((i * seed) % 4));
+      return { week: `W${i + 1}`, activity: v };
+    });
+  }, [draft.projectName, totalContributors, totalRevivalRequests, totalUpvotes]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
       {/* Core team */}
@@ -1569,13 +1623,13 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
           <span className="text-[10px] text-muted-foreground">Last 12 weeks</span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <StatTile label="Total Contributors" value="24" />
-          <StatTile label="Total Commits" value="185" />
+          <StatTile label="Total Contributors" value={String(totalContributors)} />
+          <StatTile label="Revival Requests" value={String(totalRevivalRequests)} />
         </div>
         <div className="mt-3 h-24 w-full">
           <ResponsiveContainer>
-            <BarChart data={Array.from({ length: 20 }, (_, i) => ({ i, v: 4 + Math.round(Math.sin(i * 0.9) * 4 + i / 3) }))}>
-              <Bar dataKey="v" radius={[3, 3, 0, 0]} fill="url(#contrib-grad)" />
+            <BarChart data={chartData}>
+              <Bar dataKey="activity" radius={[3, 3, 0, 0]} fill="url(#contrib-grad)" />
               <defs>
                 <linearGradient id="contrib-grad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#a78bfa" />
@@ -1586,7 +1640,7 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
           </ResponsiveContainer>
         </div>
         <div className="mt-1 text-right text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
-          +23% vs last month
+          {totalRevivalRequests > 0 ? `${totalRevivalRequests} active revival request${totalRevivalRequests > 1 ? "s" : ""}` : `${totalUpvotes} community upvotes`}
         </div>
       </Card>
     </div>
@@ -1657,6 +1711,73 @@ function ActivityTab({ draft }: { draft: Draft }) {
     { icon: "revive", title: "Marked open for revival", body: "Looking for contributors to join and build", date: "Active", tone: "emerald" },
   ];
 
+  // Dynamic Project Health chart data based on real draft metrics
+  const healthData = useMemo(() => {
+    const stageScores: Record<string, number> = {
+      "Idea": 35,
+      "Idea only": 35,
+      "Planning": 45,
+      "Prototype": 60,
+      "Building": 75,
+      "50% done": 75,
+      "Testing": 88,
+      "Almost complete": 88,
+      "Shipped": 98,
+    };
+    const baseScore = stageScores[draft.currentStage] || 50;
+    const upvotesBonus = Math.min(15, (draft.upvotes || 0) * 2);
+    const revivalBonus = Math.min(10, (draft.raisedHands?.length || 0) * 3);
+    const currentHealth = Math.min(99, baseScore + upvotesBonus + revivalBonus);
+
+    const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+    return months.map((m, idx) => {
+      const prog = (idx + 1) / months.length;
+      const v = Math.round(30 + prog * (currentHealth - 30));
+      return { m, v };
+    });
+  }, [draft]);
+
+  // Dynamic Milestones based on currentStage and collaborators
+  const milestones = useMemo(() => {
+    const stage = draft.currentStage || "Idea";
+    let stageProgress = 30;
+    if (stage.includes("Prototype")) stageProgress = 60;
+    else if (stage.includes("Building") || stage.includes("50%")) stageProgress = 75;
+    else if (stage.includes("Testing") || stage.includes("Almost")) stageProgress = 90;
+    else if (stage.includes("Shipped")) stageProgress = 100;
+
+    const teamProgress = Math.min(100, ((draft.collaborators?.length || 0) + 1) * 25 + (draft.raisedHands?.length || 0) * 15);
+
+    return [
+      { l: "Core Architecture Setup", v: 100 },
+      { l: `Stage Completion (${stage})`, v: stageProgress },
+      { l: "Community Revival & Team Onboarding", v: teamProgress },
+      { l: "Production Readiness", v: Math.round((stageProgress + teamProgress) / 2) },
+    ];
+  }, [draft]);
+
+  // Dynamic Activity Insights based on actual draft state
+  const activityInsights = useMemo(() => {
+    const insights: string[] = [];
+    insights.push(`Project is currently in the "${draft.currentStage}" stage.`);
+    const revivalCount = draft.raisedHands?.length || 0;
+    if (revivalCount > 0) {
+      insights.push(`${revivalCount} active revival request${revivalCount > 1 ? "s" : ""} submitted by community developers.`);
+    } else {
+      insights.push("Open for community revival and developer contributions.");
+    }
+    const upvotes = draft.upvotes || 0;
+    const views = draft.views || 0;
+    if (upvotes > 0 || views > 0) {
+      insights.push(`Supported by ${upvotes} community upvote${upvotes !== 1 ? "s" : ""} and ${views} view${views !== 1 ? "s" : ""}.`);
+    } else {
+      insights.push("High potential modular codebase ready for extension.");
+    }
+    const teamSize = (draft.collaborators?.length || 0) + 1;
+    insights.push(`${teamSize} active member${teamSize > 1 ? "s" : ""} in ${draft.domain || "tech"} project team.`);
+    return insights;
+  }, [draft]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       {/* Timeline */}
@@ -1706,13 +1827,11 @@ function ActivityTab({ draft }: { draft: Draft }) {
         <Card>
           <div className="flex items-center justify-between">
             <CardTitle>Project Health</CardTitle>
-            <button className="text-xs font-medium text-[var(--project-accent)]">
-              View full report
-            </button>
+            <span className="text-[10px] text-muted-foreground font-medium">Real-time Score</span>
           </div>
           <div className="mt-3 h-40 w-full">
             <ResponsiveContainer>
-              <LineChart data={HEALTH_DATA} margin={{ top: 6, right: 6, left: -20, bottom: 0 }}>
+              <LineChart data={healthData} margin={{ top: 6, right: 6, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="health-grad" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%" stopColor="#8b5cf6" />
@@ -1746,15 +1865,9 @@ function ActivityTab({ draft }: { draft: Draft }) {
         <Card>
           <div className="flex items-center justify-between">
             <CardTitle>Milestones</CardTitle>
-            <button className="text-xs font-medium text-[var(--project-accent)]">View all</button>
           </div>
           <div className="mt-3 space-y-3">
-            {[
-              { l: "MVP Features", v: 60 },
-              { l: "UI/UX Improvements", v: 60 },
-              { l: "Performance Optimization", v: 30 },
-              { l: "Mobile App Support", v: 0 },
-            ].map((m) => (
+            {milestones.map((m) => (
               <div key={m.l}>
                 <div className="mb-1 flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{m.l}</span>
@@ -1774,11 +1887,7 @@ function ActivityTab({ draft }: { draft: Draft }) {
         <Card>
           <CardTitle icon={<Brain className="h-4 w-4 text-fuchsia-500" />}>Activity Insights</CardTitle>
           <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
-            {[
-              "Performance score improved by 12% compared to last month.",
-              "82% of core features are still functional.",
-              "Project has high revival potential.",
-            ].map((s) => (
+            {activityInsights.map((s) => (
               <li key={s} className="flex items-start gap-2">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--project-accent)]" />
                 <span>{s}</span>

@@ -420,7 +420,6 @@ function FeedPage() {
               <aside className="space-y-4">
                 <InsightsCard draftsCount={totalDraftsCount} totalInteractions={totalCommunityInteractions} avgRevival={avgRevivalScore} />
                 <StallPatternsCard patterns={stallPatterns} />
-                <SpotlightCard />
               </aside>
             </div>
           </motion.main>
@@ -1541,51 +1540,7 @@ function StallPatternsCard({ patterns }: { patterns: Array<{ label: string; valu
   );
 }
 
-function SpotlightCard() {
-  const items = [
-    {
-      icon: <Crown className="h-4 w-4 text-amber-500" />,
-      title: "Top Reviver",
-      subtitle: "Riya Sharma",
-      meta: "23 revivals",
-    },
-    {
-      icon: <Flame className="h-4 w-4 text-orange-500" />,
-      title: "Most Impactful Revival",
-      subtitle: "StreamLink",
-      meta: "92% impact",
-    },
-    {
-      icon: <Sparkles className="h-4 w-4 text-primary" />,
-      title: "Top Tech Stack",
-      subtitle: "React + Node.js",
-      meta: "Most revived",
-    },
-  ];
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm dark:border-[#2a2a3d] dark:bg-[#13131f]">
-      <h3 className="font-display text-sm font-semibold tracking-tight">Community Spotlight</h3>
-      <ul className="mt-4 space-y-3">
-        {items.map((i) => (
-          <li
-            key={i.title}
-            className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/50 p-2.5 transition-colors hover:border-primary/40"
-          >
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-muted/60">{i.icon}</div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-muted-foreground">{i.title}</div>
-              <div className="truncate text-xs font-semibold">{i.subtitle}</div>
-            </div>
-            <span className="text-[10px] text-muted-foreground">{i.meta}</span>
-          </li>
-        ))}
-      </ul>
-      <Button variant="ghost" className="mt-3 w-full justify-between text-xs">
-        View Leaderboard <ArrowRight className="h-3 w-3" />
-      </Button>
-    </div>
-  );
-}
+
 
 
 // ————————————————————————————————————————————————————————————————
