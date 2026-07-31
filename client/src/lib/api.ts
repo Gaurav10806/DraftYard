@@ -512,6 +512,17 @@ export async function updateTaskChecklist(taskId: string, checklist: TaskCheckli
   return res.json();
 }
 
+export async function fetchPublicUserProfile(userId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/user/profile/${userId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch user profile");
+  }
+  return res.json();
+}
+
 // ===== Team APIs =====
 
 export type TeamMemberData = {

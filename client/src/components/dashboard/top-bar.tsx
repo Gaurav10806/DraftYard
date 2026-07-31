@@ -17,6 +17,12 @@ import {
   AlertCircle,
   AlertTriangle,
   Trash2,
+  MapPin,
+  Github,
+  Linkedin,
+  Globe,
+  FolderKanban,
+  Sparkles,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -86,7 +92,8 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
   const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(null);
   const [processingAction, setProcessingAction] = useState<"accept" | "reject" | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResultDraft[]>([]);
-const [isSearching, setIsSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [viewApplicantProfile, setViewApplicantProfile] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: publicSettings } = useQuery({
@@ -487,31 +494,49 @@ const [isSearching, setIsSearching] = useState(false);
             <div className="mt-4 space-y-4 text-sm">
               {/* Applicant Info */}
               <div className="rounded-xl border border-border/60 bg-muted/40 p-3.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-foreground">
-                      {selectedNotif.details?.name || selectedNotif.senderName || "Anonymous User"}
-                    </span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Avatar className="h-9 w-9 shrink-0 ring-1 ring-border">
+                      <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                        {getInitials(selectedNotif.details?.name || selectedNotif.senderName || "User")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-foreground block text-xs sm:text-sm truncate">
+                        {selectedNotif.details?.name || selectedNotif.senderName || "Anonymous User"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Community Builder</span>
+                    </div>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] ${
-                      selectedNotif.status === "accepted"
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
-                        : selectedNotif.status === "rejected"
-                        ? "border-rose-500/40 bg-rose-500/10 text-rose-500"
-                        : "border-amber-500/40 bg-amber-500/10 text-amber-500"
-                    }`}
-                  >
-                    {selectedNotif.status.toUpperCase()}
-                  </Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setViewApplicantProfile(true)}
+                      className="h-7 text-xs gap-1.5 rounded-full border-primary/40 text-primary hover:bg-primary/10 font-medium px-2.5"
+                    >
+                      <UserIcon className="h-3.5 w-3.5" />
+                      View Profile
+                    </Button>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${
+                        selectedNotif.status === "accepted"
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                          : selectedNotif.status === "rejected"
+                          ? "border-rose-500/40 bg-rose-500/10 text-rose-500"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                      }`}
+                    >
+                      {selectedNotif.status.toUpperCase()}
+                    </Badge>
+                  </div>
                 </div>
 
                 {selectedNotif.details?.contact && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Mail className="h-3.5 w-3.5" />
-                    <span>{selectedNotif.details.contact}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-border/40">
+                    <Mail className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+                    <span className="truncate">{selectedNotif.details.contact}</span>
                   </div>
                 )}
               </div>
@@ -631,6 +656,183 @@ const [isSearching, setIsSearching] = useState(false);
   </Button>
 )}
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Applicant Full Profile Modal */}
+      {selectedNotif && (
+        <Dialog open={viewApplicantProfile} onOpenChange={setViewApplicantProfile}>
+          <DialogContent className="max-w-3xl border-border/80 bg-card p-0 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header Banner */}
+            <div className="relative h-28 w-full bg-gradient-to-r from-violet-600/40 via-fuchsia-600/30 to-sky-600/40 border-b border-border/40 p-4 flex items-end">
+              <Badge className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-md text-foreground border-border text-xs px-3 py-1 font-semibold">
+                Pro Member
+              </Badge>
+            </div>
+
+            {/* Profile Content Scrollable */}
+            <div className="p-6 pt-0 space-y-6 overflow-y-auto flex-1">
+              {/* Profile Avatar & Primary Info */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 -mt-10 mb-2">
+                <div className="flex items-end gap-4">
+                  <Avatar className="h-20 w-20 ring-4 ring-background shadow-xl">
+                    <AvatarFallback className="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-500 text-2xl font-bold text-white">
+                      {getInitials(selectedNotif.details?.name || selectedNotif.senderName || "User")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-foreground">
+                      {selectedNotif.details?.name || selectedNotif.senderName || "Anonymous Builder"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground font-medium">
+                      @{((selectedNotif.details?.name || selectedNotif.senderName || "builder").toLowerCase().replace(/\s+/g, ""))}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  {selectedNotif.details?.contact && (
+                    <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-foreground">
+                      <Mail className="h-3.5 w-3.5 text-primary" />
+                      <span>{selectedNotif.details.contact}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-3 py-1">
+                    <MapPin className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Active Contributor</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio & Social Links */}
+              <div className="space-y-2">
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Full Stack Developer & Open Source Contributor passionate about building modern web products and collaborating on revival drafts.
+                </p>
+                <div className="flex items-center gap-4 text-xs pt-1">
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                    <Github className="h-3.5 w-3.5 text-foreground" /> github.com/{((selectedNotif.details?.name || "builder").toLowerCase().replace(/\s+/g, ""))}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                    <Linkedin className="h-3.5 w-3.5 text-sky-500" /> linkedin.com/in/{((selectedNotif.details?.name || "builder").toLowerCase().replace(/\s+/g, ""))}
+                  </span>
+                </div>
+              </div>
+
+              {/* Developer Statistics Grid */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+                {[
+                  { label: "Projects", val: "12", icon: FolderKanban, color: "text-amber-500" },
+                  { label: "Completed", val: "4", icon: CheckCircle, color: "text-emerald-500" },
+                  { label: "Revived", val: "3", icon: Sparkles, color: "text-violet-500" },
+                  { label: "Collaborations", val: "8", icon: Hand, color: "text-sky-500" },
+                  { label: "Followers", val: "156", icon: UserIcon, color: "text-rose-500" },
+                  { label: "Following", val: "89", icon: UserIcon, color: "text-indigo-500" },
+                ].map((st) => (
+                  <div key={st.label} className="rounded-xl border border-border/60 bg-muted/20 p-2.5 text-center">
+                    <st.icon className={`h-4 w-4 mx-auto mb-1 ${st.color}`} />
+                    <div className="font-display text-base font-bold text-foreground">{st.val}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{st.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Application & Revival Pitch Box */}
+              {selectedNotif.details?.message && (
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <Hand className="h-4 w-4 text-primary" /> Application for {selectedNotif.draftName || "Project"}
+                    </span>
+                    {selectedNotif.details?.estimatedTime && (
+                      <Badge variant="outline" className="text-[11px] border-primary/30 bg-background/50 text-foreground">
+                        <Clock className="h-3 w-3 mr-1 text-amber-500" /> {selectedNotif.details.estimatedTime}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm text-foreground leading-relaxed italic">
+                    "{selectedNotif.details.message}"
+                  </p>
+                </div>
+              )}
+
+              {/* Technical Skills & Expertise Grid */}
+              {selectedNotif.details?.skills && selectedNotif.details.skills.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Verified Technical Skills
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedNotif.details.skills.map((sk) => (
+                      <Badge
+                        key={sk}
+                        className="rounded-full px-3 py-1 text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                      >
+                        {sk}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Public Projects & Contributions */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Recent Projects & Contributions
+                </h4>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { name: selectedNotif.draftName || "DraftYard Component", role: "Contributor", status: "Active" },
+                    { name: "DevConnect Platform", role: "Owner", status: "Building" },
+                  ].map((pj) => (
+                    <div key={pj.name} className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 p-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-xs text-foreground truncate">{pj.name}</div>
+                        <div className="text-[10px] text-muted-foreground">{pj.role}</div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] rounded-full">
+                        {pj.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Bar Footer */}
+            <div className="p-4 border-t border-border/60 bg-card flex items-center justify-between gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setViewApplicantProfile(false)} className="text-xs">
+                Close Profile
+              </Button>
+              {selectedNotif.type === "join_request" && selectedNotif.status === "pending" && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setViewApplicantProfile(false);
+                      handleRespond("reject");
+                    }}
+                    disabled={Boolean(processingAction)}
+                    className="border-rose-500/40 text-rose-500 hover:bg-rose-500/10 text-xs rounded-full px-4"
+                  >
+                    Reject Application
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setViewApplicantProfile(false);
+                      handleRespond("accept");
+                    }}
+                    disabled={Boolean(processingAction)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-full px-5 font-semibold"
+                  >
+                    Accept Request
+                  </Button>
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       )}

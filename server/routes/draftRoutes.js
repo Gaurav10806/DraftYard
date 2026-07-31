@@ -596,10 +596,13 @@ router.get('/revival-board', async (req, res) => {
 
 
 
-// GET /api/drafts/mine -> drafts belonging to the authenticated user
+// GET /api/drafts/mine -> drafts belonging to or shared with the authenticated user
 router.get('/drafts/mine', requireAuth, async (req, res) => {
   try {
-    const drafts = await Draft.find({ submittedBy: req.user._id })
+    const userId = req.user._id;
+
+    // 1. Fetch owned drafts
+    const ownedDrafts = await Draft.find({ submittedBy: userId })
       .populate({
         path: 'submittedBy',
         select: 'name username avatar'
@@ -608,8 +611,63 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
         path: 'collaborators',
         select: 'name username avatar'
       })
-      .sort({ createdAt: -1 });
-    res.json(drafts);
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const ownedDraftIds = new Set(ownedDrafts.map(d => d._id.toString()));
+
+    // 2. Fetch TeamMember records for this user to get shared drafts and roles
+    const TeamMember = require('../models/TeamMember');
+    const teamMemberships = await TeamMember.find({ userId }).lean();
+    const teamDraftIds = teamMemberships.map(tm => tm.draftId ? tm.draftId.toString() : '');
+
+    // 3. Query shared drafts (either in collaborators array or in TeamMember records)
+    const sharedDraftsDocs = await Draft.find({
+      _id: { $nin: Array.from(ownedDraftIds) },
+      $or: [
+        { collaborators: userId },
+        ...(teamDraftIds.length > 0 ? [{ _id: { $in: teamDraftIds } }] : [])
+      ]
+    })
+      .populate({
+        path: 'submittedBy',
+        select: 'name username avatar'
+      })
+      .populate({
+        path: 'collaborators',
+        select: 'name username avatar'
+      })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    // Map roles for shared drafts
+    const membershipMap = new Map();
+    teamMemberships.forEach(tm => {
+      if (tm.draftId) membershipMap.set(tm.draftId.toString(), tm.role);
+    });
+
+    const formattedOwned = ownedDrafts.map(d => ({
+      ...d,
+      isOwner: true,
+      userRole: 'Owner',
+    }));
+
+    const formattedShared = sharedDraftsDocs.map(d => {
+      const draftIdStr = d._id.toString();
+      const role = membershipMap.get(draftIdStr) || 'Contributor';
+      const ownerObj = d.submittedBy;
+      const ownerName = typeof ownerObj === 'object' && ownerObj ? (ownerObj.name || ownerObj.username || 'Owner') : 'Owner';
+
+      return {
+        ...d,
+        isOwner: false,
+        userRole: role,
+        _sharedRole: role,
+        _ownerName: ownerName,
+      };
+    });
+
+    res.json([...formattedOwned, ...formattedShared]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

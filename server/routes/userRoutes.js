@@ -24,6 +24,27 @@ router.get('/user/profile', requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// GET /api/user/profile/:id - Fetch public profile of any user by ID
+router.get('/user/profile/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
+    const user = await User.findById(id)
+      .select('-password')
+      .populate('followers', 'name username email avatar')
+      .populate('following', 'name username email avatar');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const obj = user.toJSON();
+    obj.fullName = obj.name || obj.username || 'Developer';
+    res.json(obj);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // PATCH /api/user/profile - Update current user's profile
 router.patch('/user/profile', requireAuth, async (req, res) => {
@@ -634,6 +655,14 @@ router.post('/notifications/:id/respond', requireAuth, async (req, res) => {
         await Draft.findByIdAndUpdate(notification.draftId, {
           $addToSet: { collaborators: notification.sender },
         });
+
+        // Ensure TeamMember entry exists
+        const TeamMember = require('../models/TeamMember');
+        await TeamMember.findOneAndUpdate(
+          { draftId: notification.draftId, userId: notification.sender },
+          { role: 'Contributor' },
+          { upsert: true, new: true }
+        );
 
         // Notify applicant about acceptance
         await Notification.create({
