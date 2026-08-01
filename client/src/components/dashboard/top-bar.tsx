@@ -60,6 +60,7 @@ import {
   respondToWorkspaceInvite,
   searchDrafts,
   fetchPublicSettings,
+  fetchPublicUserProfile,
   type AppNotification,
   type SearchResultDraft,
 } from "@/lib/api";
@@ -94,6 +95,9 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
   const [searchResults, setSearchResults] = useState<SearchResultDraft[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [viewApplicantProfile, setViewApplicantProfile] = useState(false);
+  const [applicantProfile, setApplicantProfile] = useState<any | null>(null);
+  const [applicantProfileLoading, setApplicantProfileLoading] = useState(false);
+  const [applicantProfileError, setApplicantProfileError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: publicSettings } = useQuery({
@@ -120,6 +124,28 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
     }
   };
 
+  const loadApplicantProfile = async (notif: AppNotification | null) => {
+    if (!notif?.sender?._id) {
+      setApplicantProfile(null);
+      setApplicantProfileError(null);
+      return;
+    }
+
+    setApplicantProfileLoading(true);
+    setApplicantProfileError(null);
+    try {
+      const profile = await fetchPublicUserProfile(notif.sender._id);
+      setApplicantProfile(profile);
+    } catch (error) {
+      setApplicantProfileError(
+        error instanceof Error ? error.message : "Could not load profile details"
+      );
+      setApplicantProfile(null);
+    } finally {
+      setApplicantProfileLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 15000);
@@ -139,6 +165,8 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
 
   const handleSelectNotification = async (n: AppNotification) => {
     setSelectedNotif(n);
+    setApplicantProfile(null);
+    setApplicantProfileError(null);
     if (!n.read) {
       try {
         await markNotificationRead(n._id);
@@ -512,7 +540,10 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setViewApplicantProfile(true)}
+                      onClick={async () => {
+                        await loadApplicantProfile(selectedNotif);
+                        setViewApplicantProfile(true);
+                      }}
                       className="h-7 text-xs gap-1.5 rounded-full border-primary/40 text-primary hover:bg-primary/10 font-medium px-2.5"
                     >
                       <UserIcon className="h-3.5 w-3.5" />
@@ -662,12 +693,21 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
 
       {/* Applicant Full Profile Modal */}
       {selectedNotif && (
-        <Dialog open={viewApplicantProfile} onOpenChange={setViewApplicantProfile}>
+        <Dialog
+          open={viewApplicantProfile}
+          onOpenChange={(open) => {
+            setViewApplicantProfile(open);
+            if (!open) {
+              setApplicantProfile(null);
+              setApplicantProfileError(null);
+            }
+          }}
+        >
           <DialogContent className="max-w-3xl border-border/80 bg-card p-0 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header Banner */}
             <div className="relative h-28 w-full bg-gradient-to-r from-violet-600/40 via-fuchsia-600/30 to-sky-600/40 border-b border-border/40 p-4 flex items-end">
               <Badge className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-md text-foreground border-border text-xs px-3 py-1 font-semibold">
-                Pro Member
+                {applicantProfile?.username ? "Verified User" : "Community Builder"}
               </Badge>
             </div>
 
@@ -678,126 +718,178 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
                 <div className="flex items-end gap-4">
                   <Avatar className="h-20 w-20 ring-4 ring-background shadow-xl">
                     <AvatarFallback className="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-500 text-2xl font-bold text-white">
-                      {getInitials(selectedNotif.details?.name || selectedNotif.senderName || "User")}
+                      {getInitials(
+                        applicantProfile?.fullName ||
+                          applicantProfile?.name ||
+                          selectedNotif.details?.name ||
+                          selectedNotif.senderName ||
+                          "User"
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <h2 className="font-display text-xl font-bold text-foreground">
-                      {selectedNotif.details?.name || selectedNotif.senderName || "Anonymous Builder"}
+                      {applicantProfile?.fullName ||
+                        applicantProfile?.name ||
+                        selectedNotif.details?.name ||
+                        selectedNotif.senderName ||
+                        "Anonymous Builder"}
                     </h2>
                     <p className="text-xs text-muted-foreground font-medium">
-                      @{((selectedNotif.details?.name || selectedNotif.senderName || "builder").toLowerCase().replace(/\s+/g, ""))}
+                      @{(
+                        applicantProfile?.username ||
+                        applicantProfile?.fullName ||
+                        applicantProfile?.name ||
+                        selectedNotif.details?.name ||
+                        selectedNotif.senderName ||
+                        "builder"
+                      )
+                        .toString()
+                        .toLowerCase()
+                        .replace(/\s+/g, "")}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  {selectedNotif.details?.contact && (
+                  {(applicantProfile?.email || selectedNotif.details?.contact) && (
                     <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-foreground">
                       <Mail className="h-3.5 w-3.5 text-primary" />
-                      <span>{selectedNotif.details.contact}</span>
+                      <span>{applicantProfile?.email || selectedNotif.details?.contact}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-3 py-1">
                     <MapPin className="h-3.5 w-3.5 text-amber-500" />
-                    <span>Active Contributor</span>
+                    <span>{applicantProfile?.bio ? "Member" : "New Member"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Bio & Social Links */}
-              <div className="space-y-2">
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Full Stack Developer & Open Source Contributor passionate about building modern web products and collaborating on revival drafts.
-                </p>
-                <div className="flex items-center gap-4 text-xs pt-1">
-                  <span className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                    <Github className="h-3.5 w-3.5 text-foreground" /> github.com/{((selectedNotif.details?.name || "builder").toLowerCase().replace(/\s+/g, ""))}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                    <Linkedin className="h-3.5 w-3.5 text-sky-500" /> linkedin.com/in/{((selectedNotif.details?.name || "builder").toLowerCase().replace(/\s+/g, ""))}
-                  </span>
+              {applicantProfileLoading ? (
+                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  Loading real profile details...
                 </div>
-              </div>
-
-              {/* Developer Statistics Grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
-                {[
-                  { label: "Projects", val: "12", icon: FolderKanban, color: "text-amber-500" },
-                  { label: "Completed", val: "4", icon: CheckCircle, color: "text-emerald-500" },
-                  { label: "Revived", val: "3", icon: Sparkles, color: "text-violet-500" },
-                  { label: "Collaborations", val: "8", icon: Hand, color: "text-sky-500" },
-                  { label: "Followers", val: "156", icon: UserIcon, color: "text-rose-500" },
-                  { label: "Following", val: "89", icon: UserIcon, color: "text-indigo-500" },
-                ].map((st) => (
-                  <div key={st.label} className="rounded-xl border border-border/60 bg-muted/20 p-2.5 text-center">
-                    <st.icon className={`h-4 w-4 mx-auto mb-1 ${st.color}`} />
-                    <div className="font-display text-base font-bold text-foreground">{st.val}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{st.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Application & Revival Pitch Box */}
-              {selectedNotif.details?.message && (
-                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-primary uppercase tracking-wider flex items-center gap-1.5">
-                      <Hand className="h-4 w-4 text-primary" /> Application for {selectedNotif.draftName || "Project"}
-                    </span>
-                    {selectedNotif.details?.estimatedTime && (
-                      <Badge variant="outline" className="text-[11px] border-primary/30 bg-background/50 text-foreground">
-                        <Clock className="h-3 w-3 mr-1 text-amber-500" /> {selectedNotif.details.estimatedTime}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs sm:text-sm text-foreground leading-relaxed italic">
-                    "{selectedNotif.details.message}"
-                  </p>
+              ) : applicantProfileError ? (
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-600">
+                  {applicantProfileError}
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Bio & Social Links */}
+                  <div className="space-y-2">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                      {applicantProfile?.bio?.trim() || "This builder has not added a bio yet."}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                      {applicantProfile?.github?.trim() && (
+                        <a
+                          href={applicantProfile.github.startsWith("http") ? applicantProfile.github : `https://${applicantProfile.github}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <Github className="h-3.5 w-3.5 text-foreground" /> {applicantProfile.github}
+                        </a>
+                      )}
+                      {applicantProfile?.linkedin?.trim() && (
+                        <a
+                          href={applicantProfile.linkedin.startsWith("http") ? applicantProfile.linkedin : `https://${applicantProfile.linkedin}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <Linkedin className="h-3.5 w-3.5 text-sky-500" /> {applicantProfile.linkedin}
+                        </a>
+                      )}
+                      {applicantProfile?.portfolio?.trim() && (
+                        <a
+                          href={applicantProfile.portfolio.startsWith("http") ? applicantProfile.portfolio : `https://${applicantProfile.portfolio}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <Globe className="h-3.5 w-3.5 text-emerald-500" /> {applicantProfile.portfolio}
+                        </a>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Technical Skills & Expertise Grid */}
-              {selectedNotif.details?.skills && selectedNotif.details.skills.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Verified Technical Skills
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedNotif.details.skills.map((sk) => (
-                      <Badge
-                        key={sk}
-                        className="rounded-full px-3 py-1 text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                      >
-                        {sk}
-                      </Badge>
+                  {/* Developer Statistics Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {[
+                      {
+                        label: "Skills",
+                        val: (applicantProfile?.skills?.filter(Boolean) ?? []).length.toString(),
+                        icon: Sparkles,
+                        color: "text-violet-500",
+                      },
+                      {
+                        label: "Followers",
+                        val: Array.isArray(applicantProfile?.followers) ? applicantProfile.followers.length.toString() : "0",
+                        icon: UserIcon,
+                        color: "text-rose-500",
+                      },
+                      {
+                        label: "Following",
+                        val: Array.isArray(applicantProfile?.following) ? applicantProfile.following.length.toString() : "0",
+                        icon: UserIcon,
+                        color: "text-indigo-500",
+                      },
+                      {
+                        label: "Joined",
+                        val: applicantProfile?.createdAt ? new Date(applicantProfile.createdAt).getFullYear().toString() : "—",
+                        icon: CheckCircle,
+                        color: "text-emerald-500",
+                      },
+                    ].map((st) => (
+                      <div key={st.label} className="rounded-xl border border-border/60 bg-muted/20 p-2.5 text-center">
+                        <st.icon className={`h-4 w-4 mx-auto mb-1 ${st.color}`} />
+                        <div className="font-display text-base font-bold text-foreground">{st.val}</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{st.label}</div>
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
 
-              {/* Public Projects & Contributions */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Recent Projects & Contributions
-                </h4>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {[
-                    { name: selectedNotif.draftName || "DraftYard Component", role: "Contributor", status: "Active" },
-                    { name: "DevConnect Platform", role: "Owner", status: "Building" },
-                  ].map((pj) => (
-                    <div key={pj.name} className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 p-3">
-                      <div className="min-w-0">
-                        <div className="font-medium text-xs text-foreground truncate">{pj.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{pj.role}</div>
+                  {/* Application & Revival Pitch Box */}
+                  {selectedNotif.details?.message && (
+                    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-xs text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          <Hand className="h-4 w-4 text-primary" /> Application for {selectedNotif.draftName || "Project"}
+                        </span>
+                        {selectedNotif.details?.estimatedTime && (
+                          <Badge variant="outline" className="text-[11px] border-primary/30 bg-background/50 text-foreground">
+                            <Clock className="h-3 w-3 mr-1 text-amber-500" /> {selectedNotif.details.estimatedTime}
+                          </Badge>
+                        )}
                       </div>
-                      <Badge variant="outline" className="text-[10px] rounded-full">
-                        {pj.status}
-                      </Badge>
+                      <p className="text-xs sm:text-sm text-foreground leading-relaxed italic">
+                        "{selectedNotif.details.message}"
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  )}
+
+                  {/* Technical Skills & Expertise Grid */}
+                  {((applicantProfile?.skills?.filter(Boolean) ?? []) as string[]).length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Skills
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {(applicantProfile?.skills?.filter(Boolean) ?? []).map((sk: string) => (
+                          <Badge
+                            key={sk}
+                            className="rounded-full px-3 py-1 text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                          >
+                            {sk}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Action Bar Footer */}
