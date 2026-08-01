@@ -34,14 +34,17 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { drafts } from "@/data/drafts";
-import { fetchFeed, createWorkspace } from "@/lib/api";
+import { fetchFeed, createWorkspace, fetchWorkspace, updateWorkspace } from "@/lib/api";
 import { slugify } from "@/routes/project.$slug";
 import { type WorkspaceTask, type WorkspaceMilestone } from "@/lib/workspace-store";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/workspace-setup/$slug")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: typeof search.edit === "string" ? search.edit === "true" : Boolean(search.edit),
+  }),
   head: () => ({ meta: [{ title: "Workspace Setup · DraftYard" }] }),
-  loader: async ({ params }) => {
+  loader: async ({ params, location }) => {
     try {
       // Fetch all drafts to find by slug
       let allDrafts: any[] = [];
@@ -56,27 +59,31 @@ export const Route = createFileRoute("/workspace-setup/$slug")({
       }
       
       const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug);
-      if (draft) return { draft };
+      if (draft) {
+        const workspace = await fetchWorkspace(draft._id);
+        return { draft, workspace };
+      }
     } catch {
       /* fallback */
     }
     const draft = drafts.find((d) => slugify(d.projectName) === params.slug);
-    return { draft: draft ?? null };
+    const workspace = draft?._id ? await fetchWorkspace(draft._id) : null;
+    return { draft: draft ?? null, workspace };
   },
   component: WorkspaceSetupPage,
 });
 
 // ── Schema ──────────────────────────────────────────────────────
 const step1Schema = z.object({
-  longDescription: z.string().min(10, "Please write at least 10 characters"),
-  featuresCompleted: z.string().min(5, "List at least one completed feature"),
-  currentBlockers: z.string().min(5, "Describe what's blocking you"),
-  externalLinks: z.string().optional(),
+  longDescription: z.string().default(""),
+  featuresCompleted: z.string().default(""),
+  currentBlockers: z.string().default(""),
+  externalLinks: z.string().optional().default(""),
 });
 
 const step2Schema = z.object({
-  tasks: z.array(z.string().min(1)).min(1, "Add at least one task"),
-  milestones: z.array(z.string().min(1)).min(1, "Add at least one milestone"),
+  tasks: z.array(z.string()),
+  milestones: z.array(z.string()),
 });
 
 const step3Schema = z.object({
@@ -89,8 +96,8 @@ type Step3Values = z.infer<typeof step3Schema>;
 
 // ── Page shell ──────────────────────────────────────────────────
 function WorkspaceSetupPage() {
-  const { draft } = Route.useLoaderData();
-   const { user } = useAuth();
+  const { draft, workspace } = Route.useLoaderData();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -116,9 +123,9 @@ function WorkspaceSetupPage() {
                 <ChevronRight className="h-3 w-3" />
                 <span>{draft?.projectName ?? "Project"}</span>
                 <ChevronRight className="h-3 w-3" />
-                <span className="text-foreground">Workspace Setup</span>
+                <span className="text-foreground">{workspace ? "Edit Workspace" : "Workspace Setup"}</span>
               </nav>
-              <WorkspaceSetupForm draft={draft} />
+              <WorkspaceSetupForm draft={draft} existingWorkspace={workspace} />
             </main>
           </SidebarInset>
         </div>
@@ -128,9 +135,10 @@ function WorkspaceSetupPage() {
 }
 
 // ── Multi-step form ─────────────────────────────────────────────
-function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: string } | null }) {
+function WorkspaceSetupForm({ draft, existingWorkspace }: { draft: { _id?: string; projectName: string } | null; existingWorkspace?: any }) {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const isEditMode = Boolean(existingWorkspace);
 
   // Step 2 state: dynamic task / milestone lists
   const [taskInputs, setTaskInputs] = useState<string[]>([""]);
@@ -152,6 +160,33 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
     mode: "onChange",
   });
 
+  useEffect(() => {
+    if (!isEditMode || !existingWorkspace) return;
+
+    const initialTasks = (existingWorkspace.tasks || []).map((task: any) => task.title || "").filter(Boolean);
+    const initialMilestones = (existingWorkspace.milestones || []).map((milestone: any) => milestone.label || "").filter(Boolean);
+
+    form1.reset({
+      longDescription: existingWorkspace.longDescription || "",
+      featuresCompleted: existingWorkspace.featuresCompleted || "",
+      currentBlockers: existingWorkspace.currentBlockers || "",
+      externalLinks: existingWorkspace.externalLinks || "",
+    });
+    form3.reset({ attachments: existingWorkspace.attachments?.join("\n") || "" });
+    setTaskInputs(initialTasks.length > 0 ? initialTasks : [""]);
+    setMilestoneInputs(initialMilestones.length > 0 ? initialMilestones : [""]);
+    setStep1Data({
+      longDescription: existingWorkspace.longDescription || "",
+      featuresCompleted: existingWorkspace.featuresCompleted || "",
+      currentBlockers: existingWorkspace.currentBlockers || "",
+      externalLinks: existingWorkspace.externalLinks || "",
+    });
+    setStep2Data({
+      tasks: initialTasks.length > 0 ? initialTasks : [],
+      milestones: initialMilestones.length > 0 ? initialMilestones : [],
+    });
+  }, [existingWorkspace, form1, form3, isEditMode]);
+
   const goNext = async () => {
     if (step === 1) {
       const ok = await form1.trigger();
@@ -161,8 +196,6 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
     } else if (step === 2) {
       const validTasks = taskInputs.filter((t) => t.trim().length > 0);
       const validMilestones = milestoneInputs.filter((m) => m.trim().length > 0);
-      if (validTasks.length === 0) { toast.error("Add at least one task"); return; }
-      if (validMilestones.length === 0) { toast.error("Add at least one milestone"); return; }
       setStep2Data({ tasks: validTasks, milestones: validMilestones });
       setStep(3);
     }
@@ -194,7 +227,7 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
     }));
 
     try {
-      const workspace = await createWorkspace({
+      const payload = {
         draftId: draft._id,
         longDescription: step1Data.longDescription,
         featuresCompleted: step1Data.featuresCompleted,
@@ -203,9 +236,16 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
         tasks: wsTaskList,
         milestones: wsMilestoneList,
         attachments: Array.isArray(values.attachments) ? values.attachments : (values.attachments ? [values.attachments] : []),
-      });
+      };
 
-      toast.success("Workspace created! Let's build.");
+      if (isEditMode && existingWorkspace) {
+        await updateWorkspace(draft._id, payload);
+        toast.success("Workspace updated.");
+      } else {
+        await createWorkspace(payload);
+        toast.success("Workspace created! Let's build.");
+      }
+
       navigate({ to: "/workspace", search: { draftId: draft._id } });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create workspace";
@@ -227,10 +267,14 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
       <div className="rounded-3xl border border-border/40 bg-card/45 backdrop-blur-xl p-6 sm:p-8 shadow-2xl relative">
         {/* Header */}
         <div className="text-center sm:text-left">
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Workspace Setup</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            {isEditMode ? "Edit Workspace" : "Workspace Setup"}
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground max-w-md">
             {draft?.projectName
-              ? `Setting up workspace for ${draft.projectName}. Fill in the details to unlock full AI insights.`
+              ? isEditMode
+                ? `Update the saved workspace details for ${draft.projectName}.`
+                : `Setting up workspace for ${draft.projectName}. Fill in the details to unlock full AI insights.`
               : "Fill in the details to unlock full AI insights."}
           </p>
         </div>
@@ -453,7 +497,7 @@ function WorkspaceSetupForm({ draft }: { draft: { _id?: string; projectName: str
                       type="submit"
                       className="rounded-xl h-10 font-medium bg-gradient-to-r from-primary to-purple-600 hover:brightness-110 shadow-lg"
                     >
-                      Create Workspace
+                      {isEditMode ? "Save Changes" : "Create Workspace"}
                     </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground text-center">

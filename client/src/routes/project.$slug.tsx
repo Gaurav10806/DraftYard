@@ -364,8 +364,9 @@ function ProjectTopBar() {
                 toast("Signed out");
                 navigate({ to: "/login" });
               }}
+              className="text-rose-500 focus:text-rose-500"
             >
-              <LogOut className="mr-2 h-4 w-4" /> Log out
+              <LogOut className="mr-2 h-4 w-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -2901,6 +2901,7 @@ import { ChevronRight, Plus, Calendar, Zap } from "lucide-react";
 import {
   ArrowRight,
   ArrowUpRight,
+  AlertTriangle,
   Bot,
   CheckCircle2,
   Circle,
@@ -2915,6 +2916,7 @@ import {
   Lightbulb,
   LineChart,
   Link2,
+  ListChecks,
   Lock,
   MoreHorizontal,
   Paperclip,
@@ -2960,6 +2962,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useMyDrafts } from "@/hooks/use-drafts";
 import { stageToProgress } from "@/lib/drafts-insights";
+import { slugify } from "@/routes/project.$slug";
 import {
   fetchWorkspace,
   type WorkspaceData,
@@ -3231,6 +3234,7 @@ function WorkspaceHomePage() {
 
 function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; draft: Draft | null }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"overview" | "tasks" | "team">("overview");
   const [available, setAvailable] = useState(true);
@@ -3354,6 +3358,20 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
                     ? () => setTab("team")
                     : undefined
                 }
+                onEditForm={() => {
+                  const targetDraftId = draft?._id || (draft as any)?.id || workspace?.draftId;
+                  if (!targetDraftId) {
+                    toast.error("Draft ID is required to edit the workspace form");
+                    return;
+                  }
+
+                  const slug = slugify(projectName || "workspace");
+                  navigate({
+                    to: "/workspace-setup/$slug",
+                    params: { slug },
+                    search: { edit: true },
+                  });
+                }}
               />
 
               <TabBar
@@ -3513,8 +3531,9 @@ function WorkspaceTopBar({ projectName }: { projectName: string }) {
                 toast("Signed out");
                 navigate({ to: "/login" });
               }}
+              className="text-rose-500 focus:text-rose-500"
             >
-              <LogOut className="mr-2 h-4 w-4" /> Log out
+              <LogOut className="mr-2 h-4 w-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -3539,6 +3558,7 @@ function ProjectHeader({
   ownerName,
   userRole,
   raisedHandsCount = 0,
+  onEditForm,
 }: {
   stage: Stage;
   onStageClick: (s: Stage) => void;
@@ -3551,6 +3571,7 @@ function ProjectHeader({
   ownerName?: string;
   userRole?: string;
   raisedHandsCount?: number;
+  onEditForm?: () => void;
 }) {
   const initials = projectName.slice(0, 2).toUpperCase();
 
@@ -3611,6 +3632,16 @@ function ProjectHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {onEditForm && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={onEditForm}
+            >
+              <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Edit form
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -4054,6 +4085,23 @@ function OverviewTab({
   // Tags
   const tags = draft?.techStack || ["React", "Node.js", "MongoDB"];
 
+  const workspaceSummary = workspace?.longDescription?.trim() || draft?.description || "No workspace summary has been added yet.";
+  const completedFeatures = (workspace?.featuresCompleted || "")
+    .split(/\n|•|-/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const blockers = (workspace?.currentBlockers || "")
+    .split(/\n|•|-/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const externalLinks = (workspace?.externalLinks || "")
+    .split(/\n|,/) 
+    .map((link) => link.trim())
+    .filter(Boolean);
+  const workspaceMilestones = (workspace?.milestones || []).filter((m: any) => m?.label?.trim());
+  const workspaceTasks = (workspace?.tasks || []).filter((t: any) => t?.title?.trim());
+  const workspaceAttachments = (workspace?.attachments || []).filter(Boolean);
+
   // Blocker / Completed tasks notes layout
   const completedTasks = tasks.filter((t) => t.status === "Done");
   let noteContent: ReactNode;
@@ -4226,30 +4274,162 @@ function OverviewTab({
         </Card>
       </div>
 
-      {/* Row 3: Recent Notes · Tags */}
+      {/* Row 3: Workspace Blueprint · Recent Notes */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
-        <Card title="Recent Notes">
-          {noteContent}
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>─ System note</span>
-            <span className="text-muted-foreground/50">·</span>
-            <span>Recently updated</span>
-          </div>
-        </Card>
+        <div className="space-y-6">
+          <Card title="Workspace Blueprint">
+            <div className="space-y-5">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Project Overview
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">
+                  {workspaceSummary}
+                </p>
+              </div>
 
-        <Card title="Tags">
-          <div className="flex flex-wrap gap-2">
-            {tags.map((t) => (
-              <Badge
-                key={t}
-                variant="outline"
-                className="rounded-full border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
-              >
-                {t}
-              </Badge>
-            ))}
-          </div>
-        </Card>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <Rocket className="h-3.5 w-3.5 text-emerald-500" /> Completed Features
+                  </div>
+                  {completedFeatures.length > 0 ? (
+                    <ul className="mt-3 space-y-2 text-sm text-foreground">
+                      {completedFeatures.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">No completed features recorded yet.</p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <Shield className="h-3.5 w-3.5 text-amber-500" /> Current Blockers
+                  </div>
+                  {blockers.length > 0 ? (
+                    <ul className="mt-3 space-y-2 text-sm text-foreground">
+                      {blockers.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">No blockers reported yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {externalLinks.length > 0 && (
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <Link2 className="h-3.5 w-3.5 text-primary" /> Links
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {externalLinks.map((link) => (
+                      <a
+                        key={link}
+                        href={link.startsWith("http") ? link : `https://${link}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        <span className="truncate">{link}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(workspaceMilestones.length > 0 || workspaceTasks.length > 0) && (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {workspaceMilestones.length > 0 && (
+                    <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        <Sparkles className="h-3.5 w-3.5 text-violet-500" /> Milestones
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {workspaceMilestones.map((milestone: any) => (
+                          <div key={milestone.id || milestone.label}>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-foreground">{milestone.label}</span>
+                              <span className="text-xs text-muted-foreground">{milestone.progress ?? 0}%</span>
+                            </div>
+                            <Progress value={milestone.progress ?? 0} className="mt-1 h-1.5" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {workspaceTasks.length > 0 && (
+                    <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        <ListChecks className="h-3.5 w-3.5 text-sky-500" /> Workspace Tasks
+                      </div>
+                      <ul className="mt-3 space-y-2 text-sm text-foreground">
+                        {workspaceTasks.map((task: any) => (
+                          <li key={task.id || task.title} className="flex items-start gap-2">
+                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-500" />
+                            <span>{task.title}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {workspaceAttachments.length > 0 && (
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <Paperclip className="h-3.5 w-3.5 text-primary" /> Attachments
+                  </div>
+                  <ul className="mt-3 space-y-2 text-sm text-foreground">
+                    {workspaceAttachments.map((attachment) => (
+                      <li key={attachment} className="flex items-start gap-2">
+                        <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                        <span>{attachment}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card title="Recent Notes">
+            {noteContent}
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>─ System note</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span>Recently updated</span>
+            </div>
+          </Card>
+
+          <Card title="Tags">
+            <div className="flex flex-wrap gap-2">
+              {tags.map((t) => (
+                <Badge
+                  key={t}
+                  variant="outline"
+                  className="rounded-full border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                >
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
