@@ -12,12 +12,26 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
     },
-    password: { type: String, required: true, minlength: 6, select: false },
+    password: {
+  type: String,
+  required: false,
+  minlength: 6,
+  select: false,
+},
     role: {
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
     },
+    googleId: { type: String, default: '' },
+provider: {
+  type: String,
+  enum: ['local', 'google'],
+  default: 'local',
+},
+
+emailVerified: { type: Boolean, default: false },
+lastLogin: { type: Date, default: Date.now },
     username: { type: String, default: '', trim: true },
     bio: { type: String, default: '', trim: true },
     avatar: { type: String, default: '' },
@@ -35,13 +49,14 @@ following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
 // Hash the password before saving, only if it changed
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+  if (!this.isModified('password') || !this.password) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
 userSchema.methods.comparePassword = function (candidate) {
-  return bcrypt.compare(candidate, this.password);
+  if (!this.password) return Promise.resolve(false);
+return bcrypt.compare(candidate, this.password);
 };
 
 // Never leak the password hash if a doc is serialized to JSON

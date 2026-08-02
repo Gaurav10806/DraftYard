@@ -25,6 +25,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StackIntelligenceRouteImport } from './routes/stack-intelligence'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ProjectSlugRouteImport } from './routes/project.$slug'
 import { Route as WorkspaceSetupSlugRouteImport } from './routes/workspace-setup.$slug'
 
@@ -108,6 +109,11 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectSlugRoute = ProjectSlugRouteImport.update({
   id: '/project/$slug',
   path: '/project/$slug',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/project/$slug': typeof ProjectSlugRoute
   '/workspace-setup/$slug': typeof WorkspaceSetupSlugRoute
 }
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/project/$slug': typeof ProjectSlugRoute
   '/workspace-setup/$slug': typeof WorkspaceSetupSlugRoute
 }
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/stack-intelligence': typeof StackIntelligenceRoute
   '/workspace': typeof WorkspaceRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/project/$slug': typeof ProjectSlugRoute
   '/workspace-setup/$slug': typeof WorkspaceSetupSlugRoute
 }
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/stack-intelligence'
     | '/workspace'
+    | '/auth/callback'
     | '/project/$slug'
     | '/workspace-setup/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/stack-intelligence'
     | '/workspace'
+    | '/auth/callback'
     | '/project/$slug'
     | '/workspace-setup/$slug'
   id:
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/stack-intelligence'
     | '/workspace'
+    | '/auth/callback'
     | '/project/$slug'
     | '/workspace-setup/$slug'
   fileRoutesById: FileRoutesById
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   StackIntelligenceRoute: typeof StackIntelligenceRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   ProjectSlugRoute: typeof ProjectSlugRoute
   WorkspaceSetupSlugRoute: typeof WorkspaceSetupSlugRoute
 }
@@ -378,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/project/$slug': {
       id: '/project/$slug'
       path: '/project/$slug'
@@ -412,6 +432,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   StackIntelligenceRoute: StackIntelligenceRoute,
   WorkspaceRoute: WorkspaceRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   ProjectSlugRoute: ProjectSlugRoute,
   WorkspaceSetupSlugRoute: WorkspaceSetupSlugRoute,
 }

@@ -48,6 +48,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
+  const googleLogin = async (data: { credential?: string; idToken?: string; code?: string; user?: any }): Promise<ApiUser> => {
+    const { token, user } = await authApi.googleAuth(data);
+    localStorage.setItem(TOKEN_KEY, token);
+    setUser(user);
+    return user;
+  };
+
+  const loginWithToken = async (token: string): Promise<ApiUser> => {
+    localStorage.setItem(TOKEN_KEY, token);
+    const { user } = await authApi.me();
+    setUser(user);
+    return user;
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
@@ -56,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, login, register, logout }}
+      value={{ user, isLoading, isAuthenticated: !!user, login, register,loginWithToken,googleLogin, logout }}
     >
       {children}
     </AuthContext.Provider>

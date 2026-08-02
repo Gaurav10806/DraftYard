@@ -7,7 +7,14 @@ export type ApiUser = {
   name: string;
   email: string;
   role: "user" | "admin";
+  avatar?: string;
+  googleId?: string;
+  provider?: "local" | "google";
+  
+  emailVerified?: boolean;
+  lastLogin?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type AuthResponse = {
@@ -56,6 +63,14 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+ 
+  googleAuth: (data: { credential?: string; idToken?: string; code?: string; user?: any }) =>
+    request<AuthResponse>("/api/auth/google", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getGoogleAuthUrl: () => request<{ url: string }>("/api/auth/google/url"),
 
   me: () => request<{ user: ApiUser }>("/api/auth/me"),
 };

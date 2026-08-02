@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
+import { GoogleAuthButton } from "@/components/auth/google-button";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,18 @@ function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const errorParam = params.get("error");
+
+  if (errorParam) {
+    toast.error(decodeURIComponent(errorParam));
+
+    // Remove error query parameter after showing it
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}, []); 
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -77,6 +89,7 @@ function Login() {
         </>
       }
     >
+        <GoogleAuthButton />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
