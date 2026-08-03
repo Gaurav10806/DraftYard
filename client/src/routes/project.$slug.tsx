@@ -5,6 +5,8 @@ import {
   navigateToWorkspace,
   updateDraftInsights,
   raiseHand,
+  getRevivalEligibility,
+  markProjectRevived,
 } from "@/lib/api";
 import { getInitials } from "@/lib/utils";
 import { useMemo, useState } from "react";
@@ -232,6 +234,15 @@ function ProjectPage() {
 
   const canManage = isOwner || isCollaborator;
 
+  const hasRequestedJoin = Boolean(
+    user &&
+      draft.raisedHands &&
+      Array.isArray(draft.raisedHands) &&
+      draft.raisedHands.some((rh: any) =>
+        rh.userId === user._id || (rh.userId && typeof rh.userId === 'object' && rh.userId._id === user._id)
+      )
+  );
+
   // Request to Join modal state
   const [joinOpen, setJoinOpen] = useState(false);
 
@@ -403,6 +414,49 @@ function ProjectHero({
   isOwner: boolean;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const isCollaborator = Boolean(
+    user &&
+      draft.collaborators &&
+      Array.isArray(draft.collaborators) &&
+      draft.collaborators.some((c) =>
+        typeof c === "object" && c !== null ? c._id === user._id : String(c) === String(user._id)
+      )
+  );
+
+  const hasRequestedJoin = Boolean(
+    user &&
+      draft.raisedHands &&
+      Array.isArray(draft.raisedHands) &&
+      draft.raisedHands.some((rh: any) =>
+        rh.userId === user._id || (rh.userId && typeof rh.userId === 'object' && rh.userId._id === user._id)
+      )
+  );
+
+  const [localRevivalStatus, setLocalRevivalStatus] = useState(draft.revivalStatus || 'open_for_revival');
+  const [isMarkingRevived, setIsMarkingRevived] = useState(false);
+
+  const { data: eligibility } = useQuery({
+    queryKey: ["revival-eligibility", draft._id],
+    queryFn: () => getRevivalEligibility(draft._id || ""),
+    enabled: !!draft._id && !!isOwner && localRevivalStatus !== 'revived',
+  });
+
+  const handleMarkRevived = async () => {
+    if (!draft._id) return;
+    setIsMarkingRevived(true);
+    try {
+      await markProjectRevived(draft._id);
+      setLocalRevivalStatus('revived');
+      toast.success("Congratulations! Project has been successfully marked as Revived! 🔥");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to mark project as revived");
+    } finally {
+      setIsMarkingRevived(false);
+    }
+  };
+
   const raisedHandsCount = draft.raisedHands?.length || 0;
   const upvotes = draft.upvotes || 0;
   const bookmarks = draft.bookmarks || 0;
@@ -451,10 +505,15 @@ function ProjectHero({
             <h1 className="font-display text-3xl font-bold tracking-tight">
               {draft.projectName}
             </h1>
-            {draft.raisedHands && draft.raisedHands.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-medium text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-300" />
-                Open for Revival
+            {localRevivalStatus === 'revived' ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/12 px-2.5 py-1 text-xs font-medium text-orange-600 ring-1 ring-orange-500/30 dark:text-orange-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-500 dark:bg-orange-300" />
+                🔥 Revived
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/12 px-2.5 py-1 text-xs font-medium text-purple-600 ring-1 ring-purple-500/30 dark:text-purple-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 dark:bg-purple-300" />
+                🟣 Open for Revival
               </span>
             )}
             {isOwner && (
@@ -479,9 +538,10 @@ function ProjectHero({
                 <div className="font-medium">Project Owner</div>
               </div>
             </div>
-            <MetaCol label="Created" value={createdDate} />
-            <MetaCol label="Last Active" value={updatedDate} />
-            <MetaCol label="Category" value={draft.domain ? draft.domain.charAt(0).toUpperCase() + draft.domain.slice(1) : "General"} />
+            <MetaCol label="Category" value={draft.category || "General"} />
+            <MetaCol label="Domain" value={draft.domain || "N/A"} />
+            <MetaCol label="Buried" value={createdDate} />
+            <MetaCol label="Activity" value={updatedDate} />
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5">
             {draft.techStack.slice(0, 6).map((t) => (
@@ -511,12 +571,26 @@ function ProjectHero({
 
         {/* Actions — owner/collaborator vs public */}
         <div className="flex w-full flex-col gap-2 lg:w-52">
-          {canManage ? (
+          {isOwner ? (
             <Button
               onClick={handleContinueEditing}
               className="w-full gap-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--primary)_60%,transparent)] hover:brightness-110"
             >
               <Edit3 className="h-4 w-4" /> Manage Workspace
+            </Button>
+          ) : isCollaborator ? (
+            <Button
+              onClick={handleContinueEditing}
+              className="w-full gap-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--primary)_60%,transparent)] hover:brightness-110"
+            >
+              <Edit3 className="h-4 w-4" /> Open Workspace
+            </Button>
+          ) : hasRequestedJoin ? (
+            <Button
+              disabled
+              className="w-full gap-2 rounded-lg bg-muted text-muted-foreground cursor-not-allowed border border-border/40"
+            >
+              <Send className="h-4 w-4" /> Request Pending
             </Button>
           ) : (
             <Button
@@ -526,6 +600,17 @@ function ProjectHero({
               <Send className="h-4 w-4" /> Request to Join
             </Button>
           )}
+
+          {isOwner && localRevivalStatus !== 'revived' && eligibility?.isEligible && (
+            <Button
+              onClick={handleMarkRevived}
+              disabled={isMarkingRevived}
+              className="w-full gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-[0_10px_30px_-10px_rgba(249,115,22,0.55)] hover:brightness-110"
+            >
+              🔥 Mark as Revived
+            </Button>
+          )}
+
           <Button variant="outline" onClick={onBookmark} className="w-full gap-2 rounded-lg">
             <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} /> Bookmark
           </Button>

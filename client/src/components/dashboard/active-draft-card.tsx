@@ -79,8 +79,8 @@ export function ActiveDraftCard() {
           <div className="flex items-center gap-2">
             <h3 className="font-display text-[22px] font-semibold leading-tight tracking-tight">{d.projectName}</h3>
             <Badge variant="secondary" className="rounded-full text-[10px]">
-              <span className="mr-1 h-1.5 w-1.5 rounded-full bg-[color:var(--revive)]" />
-              {d.raisedHands && d.raisedHands.length > 0 ? "Open for revival" : "Buried"}
+              <span className={`mr-1 h-1.5 w-1.5 rounded-full ${d.revivalStatus === 'revived' ? 'bg-orange-500' : 'bg-purple-500'}`} />
+              {d.revivalStatus === 'revived' ? "🔥 Revived" : "🟣 Open for Revival"}
             </Badge>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{d.oneLiner}</p>

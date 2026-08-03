@@ -198,7 +198,7 @@ export function DraftShelf() {
 
                   <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span className="truncate">{author}</span>
-                    <span>{isOpenForRevival ? "Open" : `${(d.views || 0).toLocaleString()} views`}</span>
+                    <span>{d.revivalStatus === 'revived' ? "🔥 Revived" : "🟣 Open for Revival"}</span>
                   </div>
 
                   {/* Reveal quick actions on hover */}

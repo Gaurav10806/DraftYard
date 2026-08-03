@@ -304,7 +304,7 @@ router.get('/draft/by-slug/:slug', async (req, res) => {
 // GET /api/feed
 router.get('/feed', optionalAuth, async (req, res) => {
   try {
-    const { search, category, techStack, stage, status, openForRevival, sort, page = 1, limit = 10 } = req.query;
+    const { search, category, techStack, stage, status, openForRevival, revivalStatus, sort, page = 1, limit = 10 } = req.query;
     const userId = req.user?._id; // Get authenticated user ID
     
     const pageNum = Math.max(1, parseInt(page) || 1);
@@ -350,8 +350,10 @@ router.get('/feed', optionalAuth, async (req, res) => {
     }
 
     // Open for Revival filter
-    if (openForRevival === 'true') {
-      matchStage.$or = matchStage.$or ? [...matchStage.$or, { openForRevival: true }, { raisedHands: { $exists: true, $ne: [] } }] : [{ openForRevival: true }, { raisedHands: { $exists: true, $ne: [] } }];
+    if (openForRevival === 'true' || revivalStatus === 'open_for_revival') {
+      matchStage.revivalStatus = { $ne: 'revived' };
+    } else if (revivalStatus) {
+      matchStage.revivalStatus = revivalStatus;
     }
 
     pipeline.push({ $match: matchStage });
@@ -446,6 +448,9 @@ router.get('/feed', optionalAuth, async (req, res) => {
       createdAt: 1,
       updatedAt: 1,
       openForRevival: 1,
+      revivalStatus: 1,
+      revivedAt: 1,
+      collaborators: 1,
       tags: 1,
       difficulty: 1,
       failureReason: 1,
@@ -1653,6 +1658,185 @@ router.get('/stack-intelligence', async (req, res) => {
     });
 
     res.json(techList);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/draft/:id/revival-eligibility - Check if draft is eligible for revival
+router.get('/draft/:id/revival-eligibility', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const Draft = require('../models/draft');
+    const Task = require('../models/Task');
+    const TeamMember = require('../models/TeamMember');
+    const User = require('../models/User');
+
+    const draft = await Draft.findById(id);
+    if (!draft) return res.status(404).json({ error: 'Draft not found' });
+
+    // 1. Check if at least one contributor has joined
+    const teamMembers = await TeamMember.find({ draftId: id, role: 'Contributor' });
+    const hasContributor = (draft.collaborators && draft.collaborators.length > 0) || teamMembers.length > 0;
+
+    // Get the Owner
+    const ownerId = draft.submittedBy;
+    const ownerUser = ownerId ? await User.findById(ownerId) : null;
+
+    // Get all Contributors
+    const contributorIds = teamMembers.map(m => m.userId).concat(draft.collaborators || []);
+    const contributors = await User.find({ _id: { $in: contributorIds } });
+
+    // Helper to match string against user details
+    const userMatchesStr = (user, str) => {
+      if (!str || !user) return false;
+      const cleanStr = str.trim().toLowerCase();
+      const name = (user.name || '').trim().toLowerCase();
+      const username = (user.username || '').trim().toLowerCase();
+      const email = (user.email || '').trim().toLowerCase();
+      return cleanStr === name || cleanStr === username || cleanStr === email || name.includes(cleanStr) || cleanStr.includes(name);
+    };
+
+    // 2. Check if at least one collaborative task/checklist item has been completed
+    const tasks = await Task.find({ draftId: id });
+    let hasCompletedTask = false;
+
+    for (const task of tasks) {
+      const isTaskDone = task.status === 'Done';
+      const isAnyChecklistItemDone = task.checklist && task.checklist.some(item => item.completed);
+
+      if (isTaskDone || isAnyChecklistItemDone) {
+        const assigneeStr = task.assignee;
+        if (!assigneeStr) continue;
+
+        const createdById = task.createdBy;
+        const isAssigneeOwner = ownerUser && userMatchesStr(ownerUser, assigneeStr);
+        const isAssigneeContributor = contributors.some(c => userMatchesStr(c, assigneeStr));
+        const isCreatorOwner = createdById && ownerId && createdById.toString() === ownerId.toString();
+        const isCreatorContributor = createdById && contributorIds.some(cid => cid.toString() === createdById.toString());
+
+        let isCollaborative = false;
+
+        if (createdById) {
+          if (isCreatorOwner && isAssigneeContributor) {
+            isCollaborative = true;
+          } else if (isCreatorContributor && isAssigneeOwner) {
+            isCollaborative = true;
+          }
+        } else {
+          // Fallback for legacy tasks without createdBy
+          if (isAssigneeContributor || isAssigneeOwner) {
+            isCollaborative = true;
+          }
+        }
+
+        if (isCollaborative) {
+          hasCompletedTask = true;
+          break;
+        }
+      }
+    }
+
+    res.json({
+      hasContributor,
+      hasCompletedTask,
+      isEligible: hasContributor && hasCompletedTask
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/draft/:id/mark-revived - Owner manually marks project as revived
+router.patch('/draft/:id/mark-revived', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const Draft = require('../models/draft');
+    const draft = await Draft.findById(id);
+
+    if (!draft) return res.status(404).json({ error: 'Draft not found' });
+
+    // Verify Owner
+    if (draft.submittedBy?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Only the project owner can mark it as revived' });
+    }
+
+    // Check status
+    if (draft.revivalStatus === 'revived') {
+      return res.status(400).json({ error: 'Project is already revived' });
+    }
+
+    // Call eligibility check helper logic
+    const Task = require('../models/Task');
+    const TeamMember = require('../models/TeamMember');
+    const User = require('../models/User');
+
+    const teamMembers = await TeamMember.find({ draftId: id, role: 'Contributor' });
+    const hasContributor = (draft.collaborators && draft.collaborators.length > 0) || teamMembers.length > 0;
+
+    const ownerId = draft.submittedBy;
+    const ownerUser = ownerId ? await User.findById(ownerId) : null;
+    const contributorIds = teamMembers.map(m => m.userId).concat(draft.collaborators || []);
+    const contributors = await User.find({ _id: { $in: contributorIds } });
+
+    const userMatchesStr = (user, str) => {
+      if (!str || !user) return false;
+      const cleanStr = str.trim().toLowerCase();
+      const name = (user.name || '').trim().toLowerCase();
+      const username = (user.username || '').trim().toLowerCase();
+      const email = (user.email || '').trim().toLowerCase();
+      return cleanStr === name || cleanStr === username || cleanStr === email || name.includes(cleanStr) || cleanStr.includes(name);
+    };
+
+    const tasks = await Task.find({ draftId: id });
+    let hasCompletedTask = false;
+
+    for (const task of tasks) {
+      const isTaskDone = task.status === 'Done';
+      const isAnyChecklistItemDone = task.checklist && task.checklist.some(item => item.completed);
+
+      if (isTaskDone || isAnyChecklistItemDone) {
+        const assigneeStr = task.assignee;
+        if (!assigneeStr) continue;
+
+        const createdById = task.createdBy;
+        const isAssigneeOwner = ownerUser && userMatchesStr(ownerUser, assigneeStr);
+        const isAssigneeContributor = contributors.some(c => userMatchesStr(c, assigneeStr));
+        const isCreatorOwner = createdById && ownerId && createdById.toString() === ownerId.toString();
+        const isCreatorContributor = createdById && contributorIds.some(cid => cid.toString() === createdById.toString());
+
+        let isCollaborative = false;
+
+        if (createdById) {
+          if (isCreatorOwner && isAssigneeContributor) {
+            isCollaborative = true;
+          } else if (isCreatorContributor && isAssigneeOwner) {
+            isCollaborative = true;
+          }
+        } else {
+          if (isAssigneeContributor || isAssigneeOwner) {
+            isCollaborative = true;
+          }
+        }
+
+        if (isCollaborative) {
+          hasCompletedTask = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasContributor || !hasCompletedTask) {
+      return res.status(400).json({ error: 'Project does not satisfy the revival conditions' });
+    }
+
+    // Update draft status
+    draft.revivalStatus = 'revived';
+    draft.revivedAt = new Date();
+    draft.openForRevival = false; // no longer open for revival since it is revived
+    await draft.save();
+
+    res.json(draft);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

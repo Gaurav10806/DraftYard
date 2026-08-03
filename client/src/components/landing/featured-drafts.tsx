@@ -81,9 +81,13 @@ export function FeaturedDrafts() {
             <article key={d._id} className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
               <div className="flex items-center justify-between">
                 <Badge variant="secondary" className="capitalize">{d.domain}</Badge>
-                {isOpenForRevival && (
-                  <span className="inline-flex items-center gap-1 text-xs text-[color:var(--revive)]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--revive)]" /> Open
+                {d.revivalStatus === 'revived' ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-orange-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> 🔥 Revived
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs text-purple-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500" /> 🟣 Open
                   </span>
                 )}
               </div>

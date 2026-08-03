@@ -39,6 +39,8 @@ export type Draft = {
   }>;
   tags?: string[];
   openForRevival?: boolean;
+  revivalStatus?: 'open_for_revival' | 'revived';
+  revivedAt?: string | null;
   raisedHands?: {
     name: string;
     message: string;
@@ -88,6 +90,7 @@ function getAuthHeaders(): Record<string, string> {
     }
     if (filters?.status) params.append('status', filters.status);
     if (filters?.openForRevival) params.append('openForRevival', 'true');
+    if (filters?.revivalStatus) params.append('revivalStatus', filters.revivalStatus);
     if (filters?.sort) params.append('sort', filters.sort);
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
@@ -111,7 +114,8 @@ function getAuthHeaders(): Record<string, string> {
   stallPattern?: string;
   status?: string;
   openForRevival?: boolean;
-sort?: string;
+  revivalStatus?: string;
+  sort?: string;
   page?: number;
   limit?: number;
 };
@@ -943,6 +947,29 @@ export async function toggleOpenForRevival(draftId: string): Promise<Draft> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to toggle open for revival");
+  }
+  return res.json();
+}
+
+export async function getRevivalEligibility(draftId: string): Promise<{ hasContributor: boolean; hasCompletedTask: boolean; isEligible: boolean }> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/revival-eligibility`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to check revival eligibility");
+  }
+  return res.json();
+}
+
+export async function markProjectRevived(draftId: string): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${draftId}/mark-revived`, {
+    method: "PATCH",
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to mark project as revived");
   }
   return res.json();
 }

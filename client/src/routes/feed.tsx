@@ -188,7 +188,7 @@ function FeedPage() {
     stage: selectedStages.length > 0 ? selectedStages : undefined,
     category: selectedCategory || undefined,
     status: selectedStatus || undefined,
-    openForRevival: tab === "open" ? true : undefined,
+    revivalStatus: tab === "open" ? "open_for_revival" : tab === "revived" ? "revived" : undefined,
     sort: tab === "revived" ? "recentlyupdated" : tab === "recent" ? "oldest" : sortBy,
   };
 

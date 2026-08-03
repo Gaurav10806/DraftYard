@@ -30,7 +30,9 @@ const draftSchema = new mongoose.Schema({
   bookmarkedBy: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: [] },
   collaborators: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: [] },
   tags: { type: [String], default: [] },
-  openForRevival: { type: Boolean, default: false },
+  openForRevival: { type: Boolean, default: true },
+  revivalStatus: { type: String, enum: ['open_for_revival', 'revived'], default: 'open_for_revival' },
+  revivedAt: { type: Date, default: null },
   lastWorkedOn: { type: String, default: null },
   raisedHands: {
     type: [

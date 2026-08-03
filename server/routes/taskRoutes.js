@@ -48,6 +48,7 @@ router.post('/tasks', requireAuth, async (req, res) => {
     
     const task = new Task({
       draftId,
+      createdBy: req.user._id,
       title,
       description,
       status: status || 'Todo',
