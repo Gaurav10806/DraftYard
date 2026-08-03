@@ -46,6 +46,9 @@ router.patch('/review/:id', requireAuth, async (req, res) => {
       aiAnalysisUsed,
       aiAnalysisError,
       matchError,
+      communityStatistics,
+      overallAnalysis,
+      scoreDimensions,
     } = req.body;
 
     const review = await Review.findById(req.params.id);
@@ -71,6 +74,9 @@ router.patch('/review/:id', requireAuth, async (req, res) => {
     if (typeof aiAnalysisUsed === 'boolean') review.aiAnalysisUsed = aiAnalysisUsed;
     if (aiAnalysisError !== undefined) review.aiAnalysisError = aiAnalysisError;
     if (matchError !== undefined) review.matchError = matchError;
+    if (communityStatistics) review.communityStatistics = communityStatistics;
+    if (overallAnalysis) review.overallAnalysis = overallAnalysis;
+    if (scoreDimensions) review.scoreDimensions = scoreDimensions;
 
     await review.save();
     res.json(review);

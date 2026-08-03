@@ -17,8 +17,8 @@ console.log("Connected Host:", mongoose.connection.host);
 console.log("✅ MongoDB Connected");
     
     // Trigger revival analytics database migration
-    const runRevivalMigration = require("../migration_revival_runner");
-    runRevivalMigration();
+      // const runRevivalMigration = require("../migration_revival_runner");
+      // runRevivalMigration();
 
   } catch (err) {
     console.error("❌ MongoDB Connection Error:");

@@ -1,155 +1,32 @@
-"""
-Matches a newly submitted idea against every existing draft using
-literal word-overlap (TF-IDF weighted), not full-sentence semantic
-similarity.
-
-How it works:
-- Every draft's text and the user's pitch/context are tokenized into
-  individual words (lowercased, punctuation stripped, common English
-  stopwords like "the"/"a"/"and" removed).
-- TF-IDF gives each word a weight: common words across the whole
-  corpus (e.g. "app", "project") count for less, rare/specific words
-  (e.g. "invoicing", "aquarium") count for more.
-- Cosine similarity between the query's word-vector and a draft's
-  word-vector is mathematically zero unless they share at least one
-  *exact* word — so on its own this would miss compound vocabulary
-  like "healthtech" when someone types "health".
-- To cover that, drafts with zero exact-word overlap get a second
-  pass: substring containment in either direction (query word inside
-  a draft word, or vice versa), for words long enough that the match
-  is meaningful (see MIN_SUBSTRING_LEN). These are weaker signals than
-  an exact shared word, so they're always bucketed "Low" priority via
-  a capped synthetic score, and the matched draft-side word is shown
-  so it's clear *why* it surfaced (e.g. "health" -> "healthtech").
-- No model training is required for this: TF-IDF is fit fresh on the
-  current corpus + query on every request (this is fast even for
-  thousands of drafts). If DraftYard's draft count grows very large,
-  the vectorizer could be persisted the same way classifier.py
-  persists its TF-IDF/KMeans model — not needed at this scale.
-"""
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import re
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .mongo_utils import get_burials_collection, get_workspaces_collection
+from .rag_services import (
+    RetrievalService,
+    ReRankingService,
+    PromptBuilder,
+    LLMGenerationService,
+    AnalyticsService
+)
 
-# Hard cap so a large database can't return hundreds of rows at once.
-MAX_MATCHES = 50
-
-# How many overlapping words to surface per match, for transparency
-# (highest TF-IDF weight first).
+MAX_MATCHES = 10
 MAX_KEYWORDS_SHOWN = 8
 
-# Minimum word length for *bidirectional* containment matching (query word
-# inside draft word, or vice versa). Below this, containment checks throw up
-# too much noise (e.g. "art" inside "start", "smart", "cart" — all unrelated).
-MIN_SUBSTRING_LEN = 4
-
-# Minimum length for *prefix-only* matching — this covers a user typing a
-# partial word (e.g. "cro" while typing "crop"). Because it only matches
-# when the draft word STARTS WITH the query (not "contains" anywhere), it
-# stays safe at shorter lengths: "cro" -> "crop"/"crowdfunding" matches,
-# but "art" does NOT match "start"/"smart"/"cart" since none of those start
-# with "art".
-MIN_PREFIX_LEN = 2
-
-# Synthetic score for substring-only matches (no exact word shared).
-# Deliberately capped under the "Medium" threshold in _priority — a
-# partial-word hit is always a weaker signal than a real shared word,
-# so it should never outrank an exact-overlap match.
-SUBSTRING_SCORE_PER_WORD = 0.02
-SUBSTRING_SCORE_CAP = 0.10
-
-
 def _priority(score: float) -> str:
-    """Bucket a raw TF-IDF cosine score into a priority label. These
-    thresholds sit lower than a semantic-embedding scale would, because
-    a literal word-overlap score of e.g. 0.3 already means a strong
-    share of specific vocabulary in common."""
-    if score >= 0.30:
+    if score >= 0.70:
         return "High"
-    if score >= 0.12:
+    if score >= 0.40:
         return "Medium"
     return "Low"
-
-
-def _substring_overlap(query_words: set, draft_words: set) -> set:
-    """Words from `draft_words` that partially match some word in
-    `query_words` (excluding exact matches, which are already handled by
-    the TF-IDF pass). Two kinds of partial match, so short *half-typed*
-    queries still surface results without reintroducing noise:
-
-    1. Bidirectional containment for words >= MIN_SUBSTRING_LEN on both
-       sides (query word inside draft word, or vice versa) — covers
-       compound vocabulary, e.g. querying "health" against a draft
-       containing "healthtech" returns {"healthtech"}.
-    2. Prefix-only matching for shorter query words (>= MIN_PREFIX_LEN)
-       — covers a user typing a partial word, e.g. "cro" against a draft
-       containing "crop" returns {"crop"}. This is intentionally
-       prefix-only (draft word must START WITH the query), not general
-       containment, so short queries can't match noise like "art"
-       inside "start"/"smart"/"cart".
-
-    Returns the draft-side words so the match reason stays human-readable.
-    """
-    hits = set()
-    for qw in query_words:
-        if len(qw) < MIN_PREFIX_LEN:
-            continue
-        for dw in draft_words:
-            if dw == qw:
-                continue
-            if len(qw) >= MIN_SUBSTRING_LEN and len(dw) >= MIN_SUBSTRING_LEN:
-                if qw in dw or dw in qw:
-                    hits.add(dw)
-                    continue
-            if len(dw) >= MIN_SUBSTRING_LEN and dw.startswith(qw):
-                hits.add(dw)
-    return hits
-
-
-def _draft_text(doc: dict, ws: dict = None) -> str:
-    """Combine every meaningful text field on a draft and its associated workspace document into one string,
-    so matching checks both the draft metadata and workspace long descriptions, features, blockers, tasks, etc."""
-    parts = [
-        doc.get("projectName", ""),
-        doc.get("oneLiner", ""),
-        doc.get("description", ""),
-        doc.get("category", ""),
-        doc.get("domain", ""),
-        " ".join(doc.get("techStack") or []),
-        " ".join(doc.get("tags") or []),
-        doc.get("failureReason", ""),
-        doc.get("developmentMethodology", ""),
-        doc.get("salvageable", ""),
-    ]
-    if ws:
-        parts.extend([
-            ws.get("longDescription", ""),
-            ws.get("featuresCompleted", ""),
-            ws.get("currentBlockers", ""),
-            ws.get("externalLinks", ""),
-        ])
-        tasks = ws.get("tasks") or []
-        if isinstance(tasks, list):
-            parts.extend([t.get("title", "") for t in tasks if isinstance(t, dict)])
-        milestones = ws.get("milestones") or []
-        if isinstance(milestones, list):
-            parts.extend([m.get("label", "") for m in milestones if isinstance(m, dict)])
-
-    return " ".join(p for p in parts if p)
 
 
 @api_view(["POST"])
 def idea_match(request):
     """
-    POST body: { "projectName"?: str, "pitch": str, "context": str }
-    Returns every draft that shares at least one significant word with
-    the query, ranked by TF-IDF weighted word-overlap (highest first),
-    each tagged with a priority bucket and the matched keywords.
-    Matches across draft metadata as well as workspace long descriptions,
-    completed features, blockers, tasks, and milestones.
+    Upgraded Hybrid RAG Match Pipeline.
+    POST body: { "projectName"?: str, "pitch": str, "context": str, "projectId"?: str, "excludeSelf"?: bool }
     """
     project_name = (request.data.get("projectName") or "").strip()
     pitch = (request.data.get("pitch") or "").strip()
@@ -162,109 +39,150 @@ def idea_match(request):
             status=400,
         )
 
-    docs = list(get_burials_collection().find(
-        {},
-        {
-            "projectName": 1, "oneLiner": 1, "description": 1, "category": 1, "domain": 1,
-            "techStack": 1, "tags": 1, "currentStage": 1, "failureReason": 1,
-            "developmentMethodology": 1, "isAnonymous": 1,
-        },
-    ))
+    # Resolve origin draft ID for the query
+    origin_draft_id = request.data.get("projectId") or request.data.get("draftId")
+    exclude_self = request.data.get("excludeSelf", False)
 
-    if not docs:
-        return Response({"query": query_text, "matchCount": 0, "matches": []})
+    if not origin_draft_id and project_name:
+        match_draft = get_burials_collection().find_one({"projectName": {"$regex": f"^{re.escape(project_name)}$", "$options": "i"}})
+        if match_draft:
+            origin_draft_id = str(match_draft["_id"])
 
-    # Fetch workspace documents linked to drafts (by draftId) to include longDescription, blockers, etc.
-    workspaces_by_draft_id = {}
-    try:
-        ws_docs = list(get_workspaces_collection().find(
-            {},
-            {
-                "draftId": 1,
-                "longDescription": 1,
-                "featuresCompleted": 1,
-                "currentBlockers": 1,
-                "externalLinks": 1,
-                "tasks": 1,
-                "milestones": 1,
-            }
-        ))
-        for ws in ws_docs:
-            draft_id_val = ws.get("draftId")
-            if draft_id_val:
-                workspaces_by_draft_id[str(draft_id_val)] = ws
-    except Exception:
-        # Non-fatal fallback if workspaces collection doesn't exist yet
-        pass
-
-    corpus_texts = [
-        _draft_text(d, workspaces_by_draft_id.get(str(d.get("_id"))))
-        for d in docs
-    ]
-
-    # Fit TF-IDF on the corpus + query together so the vocabulary
-    # (and each word's importance) reflects both sides. Unigrams only,
-    # per-word matching rather than exact-phrase matching.
-    vectorizer = TfidfVectorizer(
-        stop_words="english",
-        token_pattern=r"(?u)\b[a-zA-Z]{2,}\b",
-        ngram_range=(1, 1),
+    # 1. Retrieve candidates via vector search
+    candidates = RetrievalService.retrieve_similar_drafts(
+        query_text, 
+        top_k=20, 
+        origin_draft_id=origin_draft_id, 
+        exclude_self=exclude_self
     )
-    all_texts = corpus_texts + [query_text]
-    tfidf_matrix = vectorizer.fit_transform(all_texts)
+    
+    # Check if empty database
+    if not candidates:
+        return Response({
+            "query": query_text,
+            "matchCount": 0,
+            "matches": [],
+            "matchedDrafts": [],
+            "similarityScore": "0.0",
+            "aiInsights": {
+                "summary": "No drafts found in the database to compare against.",
+                "commonFailures": [],
+                "successPatterns": [],
+                "recommendedStack": [],
+                "roadmap": [],
+                "risks": [],
+                "revivalSuggestions": [],
+                "overallAnalysis": "No drafts found in the database to compare against.",
+                "overallScore": 0,
+                "scoreDimensions": []
+            },
+            "communityStatistics": {
+                "totalDrafts": 0,
+                "retrievedMatches": 0,
+                "highestSimilarity": 0.0,
+                "averageSimilarity": 0.0,
+                "confidenceScore": "Low",
+                "confidenceLevel": "Low",
+                "confidenceExplanation": "Insufficient matching projects found in DraftYard database.",
+                "commonFailure": "None",
+                "commonTech": "None",
+                "avgProjectStage": "None",
+                "mostSuccessfulCategory": "None",
+                "avgCompletionRate": 0,
+                "stageDistribution": {},
+                "techFrequency": [],
+                "failureFrequency": [],
+                "completionDistribution": {},
+                "completionStatistics": {"averageProgress": 0, "progressRange": "0%", "totalCount": 0}
+            }
+        })
 
-    corpus_vectors = tfidf_matrix[:-1]
-    query_vector = tfidf_matrix[-1]
+    # 2. Extract metadata query fields (for re-ranking)
+    tech_stack = request.data.get("techStack") or []
+    if not tech_stack:
+        common_techs = ["react", "vue", "angular", "node", "express", "django", "flask", "fastapi", "spring", "rails", "laravel", "python", "javascript", "typescript", "golang", "rust", "java", "c++", "c#", "mongodb", "postgresql", "mysql", "sqlite", "docker", "kubernetes", "aws", "gcp", "firebase", "supabase", "next.js", "tailwind"]
+        tech_stack = [t for t in common_techs if t in query_text.lower()]
+        
+    tags = request.data.get("tags") or []
+    category = request.data.get("category") or ""
+    current_stage = request.data.get("currentStage") or ""
+    
+    query_metadata = {
+        "techStack": tech_stack,
+        "tags": tags,
+        "category": category,
+        "currentStage": current_stage
+    }
 
-    # This is 0 for any draft that shares zero vocabulary with the
-    # query — cosine similarity of TF-IDF vectors with no common
-    # nonzero dimensions is mathematically zero.
-    similarities = cosine_similarity(query_vector, corpus_vectors)[0]
+    # 3. Hybrid Re-ranking
+    ranked = ReRankingService.re_rank(
+        query_metadata, 
+        candidates, 
+        top_n=MAX_MATCHES, 
+        origin_draft_id=origin_draft_id, 
+        exclude_self=exclude_self
+    )
 
-    analyzer = vectorizer.build_analyzer()
-    query_words = set(analyzer(query_text))
-    vocab_idf = dict(zip(vectorizer.get_feature_names_out(), vectorizer.idf_))
+    # 4. Compute community stats
+    community_stats = AnalyticsService.compute_community_stats(ranked)
 
-    # Build (doc, text, score, matched_keywords) for every draft: exact
-    # TF-IDF overlap where it exists, otherwise fall back to substring
-    # (partial-word) overlap with a capped synthetic score.
-    candidates = []
-    for d, text, s in zip(docs, corpus_texts, similarities):
-        draft_words = set(analyzer(text))
-        s = float(s)
-
-        if s > 0:
-            shared = draft_words & query_words
-            keywords = sorted(shared, key=lambda w: vocab_idf.get(w, 0), reverse=True)
-        else:
-            substring_hits = _substring_overlap(query_words, draft_words)
-            if not substring_hits:
-                continue  # zero exact overlap and zero substring overlap — not a match
-            s = min(SUBSTRING_SCORE_CAP, SUBSTRING_SCORE_PER_WORD * len(substring_hits))
-            keywords = sorted(substring_hits)
-
-        candidates.append((d, s, keywords[:MAX_KEYWORDS_SHOWN]))
-
-    ranked = sorted(candidates, key=lambda triple: triple[1], reverse=True)[:MAX_MATCHES]
-
+    # 5. Format matches for response
     matches = []
-    for d, s, keywords in ranked:
+    q_words = set(query_text.lower().split())
+    for item in ranked:
+        d = item["draft"]
+        score = item["hybridScore"]
+        d_text = (d.get("oneLiner") or "") + " " + (d.get("description") or "")
+        d_words = set(d_text.lower().split())
+        shared = d_words & q_words
+        keywords = list(shared)[:MAX_KEYWORDS_SHOWN]
+        
         matches.append({
             "id": str(d.get("_id")),
-            "projectName": "Anonymous submission" if d.get("isAnonymous") else d.get("projectName"),
+            "projectName": d.get("projectName"),
             "oneLiner": d.get("oneLiner"),
             "domain": d.get("domain"),
             "techStack": d.get("techStack", []),
             "currentStage": d.get("currentStage"),
             "failureReason": d.get("failureReason"),
-            "similarity": round(s, 4),
-            "similarityPct": round(s * 100, 1),
-            "priority": _priority(s),
+            "similarity": round(score, 4),
+            "similarityPct": round(score * 100, 1),
+            "priority": _priority(score),
             "matchedKeywords": keywords,
+            "revivalStatus": d.get("revivalStatus"),
+            "openForRevival": d.get("openForRevival"),
+            "scoreBreakdown": item["scoreBreakdown"],
+            "rawSimilarityBreakdown": item["rawSimilarityBreakdown"],
+            "weightedHybridScore": item["weightedHybridScore"],
+            "rankingReasons": item["rankingReasons"],
+            "retrievalReasons": item["retrievalReasons"],
+            "isCurrentProject": item["isCurrentProject"],
+            "matchLabel": item["matchLabel"]
         })
+
+    # 6. RAG Prompt Building & LLM Insights Generation
+    rag_prompt = PromptBuilder.build_rag_prompt(pitch, context, ranked)
+    ai_insights = LLMGenerationService.generate_insights(rag_prompt)
+
+    # Calculate overall similarity score (highest similarity score)
+    top_similarity = str(round(ranked[0]["hybridScore"] * 100, 1)) if ranked else "0.0"
 
     return Response({
         "query": query_text,
         "matchCount": len(matches),
         "matches": matches,
+        "matchedDrafts": matches,
+        "similarityScore": top_similarity,
+        "aiInsights": ai_insights,
+        "communityStatistics": community_stats
     })
+
+
+@api_view(["POST", "GET"])
+def sync_embeddings(request):
+    try:
+        from .rag_services import EmbeddingService
+        EmbeddingService.sync_draft_embeddings()
+        return Response({"status": "success", "message": "All draft embeddings checked and synchronized."})
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)

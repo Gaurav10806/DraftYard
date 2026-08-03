@@ -1098,12 +1098,44 @@ export type DraftMatch = {
   similarityPct: number;
   priority: "High" | "Medium" | "Low";
   matchedKeywords: string[];
+  revivalStatus?: string;
+  openForRevival?: boolean;
+  scoreBreakdown?: {
+    semantic: number;
+    tech: number;
+    tags: number;
+    category: number;
+    stage: number;
+    quality: number;
+  };
+  rankingReasons?: string[];
+  retrievalReasons?: string[];
+  isCurrentProject?: boolean;
 };
 
 export type IdeaMatchResult = {
   query: string;
   matchCount: number;
   matches: DraftMatch[];
+  matchedDrafts?: DraftMatch[];
+  similarityScore?: string;
+  aiInsights?: any;
+  communityStatistics?: {
+    totalDrafts: number;
+    retrievedMatches: number;
+    highestSimilarity: number;
+    averageSimilarity: number;
+    confidenceScore: "High" | "Medium" | "Low";
+    commonFailure: string;
+    commonTech: string;
+    avgProjectStage: string;
+    mostSuccessfulCategory: string;
+    avgCompletionRate: number;
+    stageDistribution: Record<string, number>;
+    techFrequency: { name: string; count: number }[];
+    failureFrequency: { name: string; count: number }[];
+    completionStatistics: { averageProgress: number; progressRange: string; totalCount: number };
+  };
 };
 
 export async function matchIdea(input: {
@@ -1227,6 +1259,24 @@ export type Review = {
   aiAnalysisUsed: boolean;
   aiAnalysisError: string | null;
   matchError: string | null;
+  overallAnalysis?: string;
+  scoreDimensions?: { dimension: string; score: number; reason: string }[];
+  communityStatistics?: {
+    totalDrafts: number;
+    retrievedMatches: number;
+    highestSimilarity: number;
+    averageSimilarity: number;
+    confidenceScore: "High" | "Medium" | "Low";
+    commonFailure: string;
+    commonTech: string;
+    avgProjectStage: string;
+    mostSuccessfulCategory: string;
+    avgCompletionRate: number;
+    stageDistribution: Record<string, number>;
+    techFrequency: { name: string; count: number }[];
+    failureFrequency: { name: string; count: number }[];
+    completionStatistics: { averageProgress: number; progressRange: string; totalCount: number };
+  };
   createdAt?: string;
   updatedAt?: string;
 };

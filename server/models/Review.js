@@ -11,6 +11,14 @@ const reviewSchema = new mongoose.Schema(
     score: { type: Number, default: null },
     verdict: { type: String, enum: ['Worth Building', 'Needs Refinement', 'Reconsider'], default: null },
     summary: { type: String, default: '' },
+    overallAnalysis: { type: String, default: '' },
+    scoreDimensions: [
+      {
+        dimension: String,
+        score: Number,
+        reason: String,
+      }
+    ],
     
     // Matched Drafts
     similarProjects: [
@@ -25,6 +33,19 @@ const reviewSchema = new mongoose.Schema(
         techStack: [String],
         currentStage: String,
         failureReason: String,
+        revivalStatus: String,
+        openForRevival: Boolean,
+        scoreBreakdown: {
+          semantic: Number,
+          tech: Number,
+          tags: Number,
+          category: Number,
+          stage: Number,
+          quality: Number,
+        },
+        rankingReasons: [String],
+        retrievalReasons: [String],
+        isCurrentProject: Boolean,
       }
     ],
     
@@ -60,6 +81,27 @@ const reviewSchema = new mongoose.Schema(
     aiAnalysisUsed: { type: Boolean, default: false },
     aiAnalysisError: { type: String, default: null },
     matchError: { type: String, default: null },
+    
+    communityStatistics: {
+      totalDrafts: Number,
+      retrievedMatches: Number,
+      highestSimilarity: Number,
+      averageSimilarity: Number,
+      confidenceScore: String,
+      commonFailure: String,
+      commonTech: String,
+      avgProjectStage: String,
+      mostSuccessfulCategory: String,
+      avgCompletionRate: Number,
+      stageDistribution: mongoose.Schema.Types.Mixed,
+      techFrequency: [{ name: String, count: Number }],
+      failureFrequency: [{ name: String, count: Number }],
+      completionStatistics: {
+        averageProgress: Number,
+        progressRange: String,
+        totalCount: Number,
+      },
+    },
   },
   { timestamps: true, collection: 'reviews' }
 );

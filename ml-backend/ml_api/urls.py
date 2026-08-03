@@ -23,5 +23,6 @@ urlpatterns = [
     path("survival-check/", survival_views.survival_check, name="survival-check"),
     path("idea-analysis/", idea_analysis_views.idea_analysis),
     path("idea-match/", idea_match_views.idea_match),
+    path("sync-embeddings/", idea_match_views.sync_embeddings, name="sync-embeddings"),
     path("chat/", chat_views.chat),
 ]
