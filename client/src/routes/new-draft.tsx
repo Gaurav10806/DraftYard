@@ -73,6 +73,10 @@ const schema = z.object({
   currentStage: z.string().min(1, "Current Stage is required"),
   lastWorkedOn: z.string().min(1, "Last Worked On is required"),
   failureReason: z.string().min(1, "Why did this project stop? is required"),
+  estimatedHours: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : Number(val)),
+    z.number({ invalid_type_error: "Hours must be a number" }).positive("Hours must be greater than zero")
+  ),
   visibility: z.enum(["Public", "Private"]),
 });
 
@@ -237,6 +241,7 @@ function NewDraftForm() {
       currentStage: "",
       lastWorkedOn: "",
       failureReason: "",
+      estimatedHours: undefined as any,
       visibility: "Public",
     },
     mode: "onChange",
@@ -267,6 +272,7 @@ function NewDraftForm() {
       currentStage: STAGE_MAP[values.currentStage] || "Idea only", // Default/Mapped backend stage
       failureReason: values.failureReason,
       lastWorkedOn: values.lastWorkedOn,
+      estimatedHours: Number(values.estimatedHours),
       timeSpent: { value: 1, unit: "weeks" }, // Default required backend field
       projectLink: "",
       isAnonymous: false, // Default value
@@ -644,6 +650,31 @@ function NewDraftForm() {
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Estimated Development Hours */}
+                  <FormField
+                    control={form.control}
+                    name="estimatedHours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estimated Development Hours</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="e.g. 120"
+                            className="h-10 rounded-xl border border-border/60 bg-background/50 text-sm"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-[11px] leading-normal text-muted-foreground mt-1">
+                          Estimate the engineering effort spent on this project so far.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -14,6 +14,7 @@ export type Draft = {
   developmentMethodology?: string;
   timeSpent: { value: number; unit: string };
   estimatedTime?: string;
+  estimatedHours?: number;
   difficulty?: string;
   isAnonymous: boolean;
   projectLink?: string;
@@ -1043,6 +1044,9 @@ export type GlobalInsightsData = {
   total: number;
   revivalRate: number;
   totalRaisedHands: number;
+  activeRevivalDrafts: number;
+  revivalImpactScore: number;
+  estimatedDevTimeSaved: number;
   avgWeeksSpent: number;
   domains: Array<{ name: string; value: number; pct: number }>;
   techStacks: Array<{ name: string; value: number; pct: number }>;
@@ -1059,6 +1063,10 @@ export type GlobalInsightsData = {
     currentStage: string;
     failureReason: string;
   }>;
+  revivedByDomain?: Array<{ name: string; value: number }>;
+  avgWeeksBeforeStall?: number;
+  mostCommonStage?: { name: string; count: number };
+  topFailureReason?: { reason: string; count: number };
 };
 
 export async function fetchGlobalInsights(): Promise<GlobalInsightsData> {

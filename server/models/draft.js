@@ -18,6 +18,7 @@ const draftSchema = new mongoose.Schema({
     unit: { type: String, enum: ['days', 'weeks', 'months'], required: true }
   },
   estimatedTime: { type: String, default: '' },
+  estimatedHours: { type: Number, default: 0 },
   difficulty: { type: String, default: '' },
   isAnonymous: { type: Boolean, default: false },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },

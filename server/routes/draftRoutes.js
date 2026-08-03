@@ -133,9 +133,83 @@ router.get('/insights/global', async (req, res) => {
       });
     }
 
-    const revivalCount = allDrafts.filter(d => (d.raisedHands && d.raisedHands.length > 0) || d.openForRevival).length;
-    const revivalRate = Math.round((revivalCount / total) * 100);
+    const totalRevived = allDrafts.filter(d => d.revivalStatus === 'revived').length;
+    const revivalRate = total > 0 ? Number(((totalRevived / total) * 100).toFixed(1)) : 0.0;
     const totalRaisedHands = allDrafts.reduce((sum, d) => sum + (d.raisedHands ? d.raisedHands.length : 0), 0);
+
+    // Active Revival Drafts: openForRevival == true AND revivalStatus == "open_for_revival"
+    const activeRevivalDrafts = allDrafts.filter(d => d.openForRevival === true && d.revivalStatus === 'open_for_revival').length;
+
+    // Revival Impact Score
+    const Task = require('../models/Task');
+    const TeamMember = require('../models/TeamMember');
+    const User = require('../models/User');
+
+    const revivedDrafts = allDrafts.filter(d => d.revivalStatus === 'revived');
+    const revivedDraftIds = revivedDrafts.map(d => d._id);
+
+    let totalContributorsInRevived = 0;
+    for (const draft of revivedDrafts) {
+      const tmCount = await TeamMember.countDocuments({ draftId: draft._id, role: 'Contributor' });
+      const collCount = draft.collaborators ? draft.collaborators.length : 0;
+      totalContributorsInRevived += Math.max(tmCount, collCount);
+    }
+
+    let completedCollaborativeTasksCount = 0;
+    if (revivedDraftIds.length > 0) {
+      const revivedTasks = await Task.find({ draftId: { $in: revivedDraftIds } });
+      for (const task of revivedTasks) {
+        const isTaskDone = task.status === 'Done';
+        const isAnyChecklistItemDone = task.checklist && task.checklist.some(item => item.completed);
+        if (isTaskDone || isAnyChecklistItemDone) {
+          const draft = revivedDrafts.find(d => d._id.toString() === task.draftId.toString());
+          if (draft) {
+            const assigneeStr = task.assignee;
+            if (assigneeStr) {
+              const ownerId = draft.submittedBy;
+              const ownerUser = ownerId ? await User.findById(ownerId) : null;
+              
+              const teamMembers = await TeamMember.find({ draftId: draft._id, role: 'Contributor' });
+              const contributorIds = teamMembers.map(m => m.userId).concat(draft.collaborators || []);
+              const contributors = await User.find({ _id: { $in: contributorIds } });
+
+              const userMatchesStr = (user, str) => {
+                if (!str || !user) return false;
+                const cleanStr = str.trim().toLowerCase();
+                const name = (user.name || '').trim().toLowerCase();
+                const username = (user.username || '').trim().toLowerCase();
+                const email = (user.email || '').trim().toLowerCase();
+                return cleanStr === name || cleanStr === username || cleanStr === email || name.includes(cleanStr) || cleanStr.includes(name);
+              };
+
+              const isAssigneeOwner = ownerUser && userMatchesStr(ownerUser, assigneeStr);
+              const isAssigneeContributor = contributors.some(c => userMatchesStr(c, assigneeStr));
+              const createdById = task.createdBy;
+              const isCreatorOwner = createdById && ownerId && createdById.toString() === ownerId.toString();
+              const isCreatorContributor = createdById && contributorIds.some(cid => cid.toString() === createdById.toString());
+
+              let isCollaborative = false;
+              if (createdById) {
+                if (isCreatorOwner && isAssigneeContributor) isCollaborative = true;
+                else if (isCreatorContributor && isAssigneeOwner) isCollaborative = true;
+              } else {
+                if (isAssigneeContributor || isAssigneeOwner) isCollaborative = true;
+              }
+
+              if (isCollaborative) {
+                completedCollaborativeTasksCount++;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const rawImpactScore = (revivedDrafts.length * 15) + (totalContributorsInRevived * 8) + (completedCollaborativeTasksCount * 5);
+    const revivalImpactScore = Math.min(100, Math.max(0, rawImpactScore));
+
+    // Estimated Development Time Saved
+    const estimatedDevTimeSaved = revivedDrafts.reduce((sum, d) => sum + (d.estimatedHours || 0), 0);
 
     const domainMap = {};
     allDrafts.forEach(d => {
@@ -212,16 +286,94 @@ router.get('/insights/global', async (req, res) => {
         failureReason: d.failureReason || "Stalled in early development",
       }));
 
+    // Revived Projects by Domain aggregation
+    // Revived Projects by Domain aggregation
+    const revivedByDomain = await Draft.aggregate([
+      { $match: { revivalStatus: 'revived' } },
+      { $group: { _id: '$domain', count: { $sum: 1 } } },
+      { $project: { name: '$_id', value: '$count', _id: 0 } },
+      { $sort: { value: -1 } }
+    ]);
+
+    // 1. Avg Weeks Before Stall
+    const activeDraftsForStall = allDrafts.filter(d => d.status !== 'deleted');
+    let totalWeeksForStall = 0;
+    let validDraftsCountForStall = 0;
+    for (const d of activeDraftsForStall) {
+      if (d.timeSpent && typeof d.timeSpent.value === 'number') {
+        const val = d.timeSpent.value;
+        const unit = (d.timeSpent.unit || 'weeks').toLowerCase();
+        let weeks = val;
+        if (unit === 'days') {
+          weeks = val / 7;
+        } else if (unit === 'months') {
+          weeks = val * 4.34;
+        } else if (unit === 'years') {
+          weeks = val * 52;
+        }
+        totalWeeksForStall += weeks;
+        validDraftsCountForStall++;
+      }
+    }
+    const avgWeeksBeforeStall = validDraftsCountForStall > 0 ? Math.round(totalWeeksForStall / validDraftsCountForStall) : 0;
+
+    // 2. Most Common Stall Stage
+    const stageCounts = {};
+    activeDraftsForStall.forEach(d => {
+      const stage = d.currentStage || 'Prototype';
+      stageCounts[stage] = (stageCounts[stage] || 0) + 1;
+    });
+    let mostCommonStageName = 'None';
+    let mostCommonStageCount = 0;
+    Object.entries(stageCounts).forEach(([name, count]) => {
+      if (count > mostCommonStageCount) {
+        mostCommonStageCount = count;
+        mostCommonStageName = name;
+      }
+    });
+    const mostCommonStage = {
+      name: mostCommonStageName,
+      count: mostCommonStageCount
+    };
+
+    // 3. Top Stall Reason
+    const reasonCounts = {};
+    activeDraftsForStall.forEach(d => {
+      const reason = d.failureReason ? d.failureReason.trim() : '';
+      if (reason) {
+        reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+      }
+    });
+    let topFailureReasonText = 'None';
+    let topFailureReasonCount = 0;
+    Object.entries(reasonCounts).forEach(([reason, count]) => {
+      if (count > topFailureReasonCount) {
+        topFailureReasonCount = count;
+        topFailureReasonText = reason;
+      }
+    });
+    const topFailureReason = {
+      reason: topFailureReasonText,
+      count: topFailureReasonCount
+    };
+
     res.json({
       total,
       revivalRate,
       totalRaisedHands,
+      activeRevivalDrafts,
+      revivalImpactScore,
+      estimatedDevTimeSaved,
       avgWeeksSpent,
       domains,
       techStacks,
       whyDied,
       stages,
       recentBurials,
+      revivedByDomain,
+      avgWeeksBeforeStall,
+      mostCommonStage,
+      topFailureReason,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

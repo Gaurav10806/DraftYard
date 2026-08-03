@@ -217,21 +217,21 @@ function OverviewTab({ data }: { data: GlobalInsightsData }) {
         />
         <MetricCard
           icon={<Sparkles className="h-4 w-4 text-emerald-500" />}
-          label="Revival Potential Rate"
+          label="Platform Revival Rate"
           value={`${data.revivalRate}%`}
-          subtext="Projects with revival interest"
+          subtext="Drafts successfully revived"
         />
         <MetricCard
           icon={<Hand className="h-4 w-4 text-fuchsia-500" />}
-          label="Total Join Requests"
+          label="Total Hand Raises"
           value={data.totalRaisedHands.toLocaleString()}
-          subtext="Community hand raises"
+          subtext="Collaborator requests"
         />
         <MetricCard
-          icon={<Clock className="h-4 w-4 text-sky-500" />}
-          label="Avg Weeks Spent"
-          value={`${data.avgWeeksSpent} wks`}
-          subtext="Average time before stall"
+          icon={<Rocket className="h-4 w-4 text-violet-500" />}
+          label="Active Revival Drafts"
+          value={data.activeRevivalDrafts.toString()}
+          subtext="Ready for takeover"
         />
       </div>
 
@@ -276,28 +276,6 @@ function OverviewTab({ data }: { data: GlobalInsightsData }) {
           </div>
         </Card>
       </div>
-
-      {/* Recent Burials / Submissions */}
-      <Card>
-        <SectionTitle icon={Flame} title="Recent Project Submissions" subtitle="Latest database entries needing revival" />
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {data.recentBurials.map((draft) => (
-            <Link key={draft.id} to="/project/$slug" params={{ slug: slugify(draft.projectName) }}>
-              <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-4 transition-all hover:border-primary/40 hover:bg-muted/40">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm">{draft.projectName}</span>
-                  <Badge variant="outline" className="text-[10px]">{draft.domain}</Badge>
-                </div>
-                <p className="line-clamp-2 text-xs text-muted-foreground">{draft.oneLiner}</p>
-                <div className="mt-auto flex items-center justify-between text-[11px] text-muted-foreground pt-2">
-                  <span>Stage: {draft.currentStage}</span>
-                  <span className="text-emerald-500 font-semibold">{draft.raisedHands} join requests</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 }
@@ -391,42 +369,62 @@ function TechnologyTab({ data }: { data: GlobalInsightsData }) {
 function StallDNATab({ data }: { data: GlobalInsightsData }) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Stage Distribution */}
-        <Card>
-          <SectionTitle icon={Activity} title="Project Stage Breakdown" subtitle="At what stage do projects stall?" />
-          <div className="mt-4 h-64 w-full">
-            <ResponsiveContainer>
-              <BarChart data={data.stages}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="value" fill="#ec4899" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Stall Prevention Guidelines */}
-        <Card>
-          <SectionTitle icon={ShieldAlert} title="Stall DNA Diagnostics" subtitle="How to prevent abandonment at each stage" />
-          <div className="mt-4 space-y-3">
-            <DiagnosticItem
-              stage="Idea Stage (10-20% done)"
-              fix="Document core scope in 1 page before building UI. Focus on the core value prop."
-            />
-            <DiagnosticItem
-              stage="Prototype Stage (30-50% done)"
-              fix="Seek early community feedback. Open project for co-builders before code rot."
-            />
-            <DiagnosticItem
-              stage="Late Stage (80%+ done)"
-              fix="Simplify deployment pipeline. Usually blocked by UI polish or domain/hosting friction."
-            />
-          </div>
-        </Card>
+      {/* TOP KPI ROW (3 CARDS) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          icon={<Clock className="h-4 w-4 text-sky-500" />}
+          label="Avg Weeks Before Stall"
+          value={`${data.avgWeeksBeforeStall ?? 0} Weeks`}
+          subtext="Average time spent before project stall"
+        />
+        <MetricCard
+          icon={<Activity className="h-4 w-4 text-pink-500" />}
+          label="Most Common Stall Stage"
+          value={data.mostCommonStage?.name || "None"}
+          subtext={`${data.mostCommonStage?.count || 0} Projects`}
+        />
+        <MetricCard
+          icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+          label="Top Stall Reason"
+          value={data.topFailureReason?.reason || "None"}
+          subtext={`${data.topFailureReason?.count || 0} Projects`}
+        />
       </div>
+
+      {/* MAIN VISUALIZATION */}
+      <Card className="w-full">
+        <SectionTitle icon={Activity} title="Project Stage Breakdown" subtitle="At what stage do projects stall?" />
+        <div className="mt-6 h-80 w-full">
+          <ResponsiveContainer>
+            <BarChart data={data.stages}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="value" fill="#ec4899" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* STALL DNA DIAGNOSTICS */}
+      <Card className="w-full">
+        <SectionTitle icon={ShieldAlert} title="Stall DNA Diagnostics" subtitle="How to prevent abandonment at each stage" />
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <DiagnosticItem
+            stage="Idea Stage (10-20% done)"
+            fix="Document core scope in 1 page before building UI. Focus on the core value prop."
+          />
+          <DiagnosticItem
+            stage="Prototype Stage (30-50% done)"
+            fix="Seek early community feedback. Open project for co-builders before code rot."
+          />
+          <DiagnosticItem
+            stage="Late Stage (80%+ done)"
+            fix="Simplify deployment pipeline. Usually blocked by UI polish or domain/hosting friction."
+          />
+        </div>
+      </Card>
     </div>
   );
 }
@@ -454,7 +452,7 @@ function RevivalTab({ data }: { data: GlobalInsightsData }) {
           icon={<Sparkles className="h-4 w-4 text-emerald-500" />}
           label="Platform Revival Rate"
           value={`${data.revivalRate}%`}
-          subtext="Drafts with active interest"
+          subtext="Drafts successfully revived"
         />
         <MetricCard
           icon={<Hand className="h-4 w-4 text-fuchsia-500" />}
@@ -465,40 +463,47 @@ function RevivalTab({ data }: { data: GlobalInsightsData }) {
         <MetricCard
           icon={<Rocket className="h-4 w-4 text-violet-500" />}
           label="Active Revival Drafts"
-          value={data.recentBurials.length.toString()}
+          value={data.activeRevivalDrafts.toString()}
           subtext="Ready for takeover"
         />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <MetricCard
+          icon={<span className="text-base">🔥</span>}
+          label="Revival Impact Score"
+          value={data.revivalImpactScore.toString()}
+          subtext="Measures the overall impact of community-driven project revivals across the platform."
+        />
+        <MetricCard
+          icon={<span className="text-base">⏱</span>}
+          label="Estimated Development Time Saved"
+          value={`${data.estimatedDevTimeSaved.toLocaleString()} Hours Saved`}
+          subtext="Estimated engineering effort saved by reviving projects instead of rebuilding them from scratch."
+        />
+      </div>
+
+      {/* Revived Projects by Domain */}
       <Card>
-        <SectionTitle icon={Hand} title="Community Revival Marketplace" subtitle="Drafts looking for active contributors" />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {data.recentBurials.map((draft) => (
-            <div key={draft.id} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm">{draft.projectName}</h4>
-                <Badge variant="outline" className="text-[10px]">{draft.domain}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">{draft.oneLiner}</p>
-              <div className="flex flex-wrap gap-1">
-                {draft.techStack.map((t) => (
-                  <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px]">
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-auto flex items-center justify-between pt-2">
-                <span className="text-xs text-emerald-500 font-medium">
-                  {draft.raisedHands} active requests
-                </span>
-                <Link to="/project/$slug" params={{ slug: slugify(draft.projectName) }}>
-                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1 rounded-lg">
-                    View & Join <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </div>
+        <SectionTitle icon={Layers} title="Revived Projects by Domain" subtitle="Distribution of successfully revived projects across different domains" />
+        <div className="mt-6">
+          {!data.revivedByDomain || data.revivedByDomain.length === 0 ? (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+              No revived projects available yet.
             </div>
-          ))}
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer>
+                <BarChart data={data.revivedByDomain}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="value" fill="#ec4899" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </Card>
     </div>
