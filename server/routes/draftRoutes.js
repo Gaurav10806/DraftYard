@@ -867,7 +867,687 @@ router.get('/drafts/search', async (req, res) => {
   }
 });
 
-// GET /api/draft/:id -> single draft by ID
+// ————————————————————————————————————————————————————————————
+// Stall DNA Server-Side Computation
+// ————————————————————————————————————————————————————————————
+
+/**
+ * Calculate Documentation Quality Score (0-100)
+ * Based on: description length, README availability, tags count
+ */
+function calcDocumentationQuality(draft) {
+  let score = 0;
+  
+  const descLength = draft.description?.length || 0;
+  const descScore = Math.min(40, (descLength / 500) * 40);
+  score += descScore;
+  
+  if (descLength > 200) {
+    score += 30;
+  } else if (descLength > 50) {
+    score += 15;
+  }
+  
+  const tagScore = Math.min(30, (draft.tags?.length || 0) * 6);
+  score += tagScore;
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Technical Foundation Score (0-100)
+ */
+function calcTechnicalFoundation(draft) {
+  let score = 0;
+  
+  const techCount = draft.techStack?.length || 0;
+  const diversityScore = Math.min(40, techCount * 5);
+  score += diversityScore;
+  
+  const modernTechs = ["react", "vue", "typescript", "node", "nextjs", "rust", "go", "python"];
+  const modernCount = (draft.techStack || []).filter((t) =>
+    modernTechs.some((m) => t.toLowerCase().includes(m))
+  ).length;
+  const modernScore = Math.min(30, modernCount * 4);
+  score += modernScore;
+  
+  const stallReason = (draft.failureReason || "").toLowerCase();
+  const hasArchIssues = ["technical debt", "architecture", "refactor"].some((k) => stallReason.includes(k));
+  if (!hasArchIssues) {
+    score += 30;
+  } else {
+    score += 10;
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Collaboration Readiness Score (0-100)
+ */
+function calcCollaborationReadiness(draft) {
+  let score = 0;
+  
+  const collaboratorCount = draft.collaborators?.length || 0;
+  const collabScore = Math.min(35, collaboratorCount * 7);
+  score += collabScore;
+  
+  if (draft.openForRevival || draft.revivalStatus === "open_for_revival") {
+    score += 30;
+  }
+  
+  const raisedHandsCount = draft.raisedHands?.length || 0;
+  const interestScore = Math.min(25, raisedHandsCount * 5);
+  score += interestScore;
+  
+  if (collaboratorCount > 0 || raisedHandsCount > 0) {
+    score += 10;
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Development Maturity Score (0-100)
+ */
+function calcDevelopmentMaturity(draft) {
+  let score = 0;
+  
+  const stageMap = {
+    "idea": 5,
+    "planning": 15,
+    "prototype": 25,
+    "50% done": 40,
+    "backend development": 45,
+    "ui/ux design": 40,
+    "almost complete": 50,
+    "shipped": 50,
+  };
+  
+  const stage = (draft.currentStage || "").toLowerCase();
+  const stageScore = stageMap[stage] || 20;
+  score += stageScore;
+  
+  const timeSpent = draft.timeSpent?.value || 0;
+  const timeUnit = draft.timeSpent?.unit || "weeks";
+  const monthsSpent = timeUnit === "months" ? timeSpent : timeSpent / 4;
+  const timeScore = Math.min(25, monthsSpent * 5);
+  score += timeScore;
+  
+  const estimatedHours = draft.estimatedHours || 0;
+  if (estimatedHours > 0) {
+    const hoursScore = Math.min(25, (estimatedHours / 200) * 25);
+    score += hoursScore;
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Maintainability Score (0-100)
+ */
+function calcMaintainability(draft) {
+  let score = 0;
+  
+  const techStack = draft.techStack || [];
+  const hasPackageManager = techStack.some((t) =>
+    ["npm", "yarn", "bun", "cargo", "pip", "maven"].some((pm) => t.toLowerCase().includes(pm))
+  );
+  const hasModernFramework = techStack.some((t) =>
+    ["react", "vue", "angular", "nextjs", "fastapi", "django"].some((fw) => t.toLowerCase().includes(fw))
+  );
+  
+  if (hasPackageManager && hasModernFramework) {
+    score += 35;
+  } else if (hasModernFramework) {
+    score += 20;
+  }
+  
+  const descLower = (draft.description || "").toLowerCase();
+  const orgIndicators = ["modular", "reusable", "clean", "organized", "structured", "components"];
+  const orgScore = orgIndicators.filter((ind) => descLower.includes(ind)).length * 5;
+  score += Math.min(35, orgScore);
+  
+  if (draft.tags && draft.tags.length > 0) {
+    score += 15;
+  }
+  if ((draft.description?.length || 0) > 150) {
+    score += 15;
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Analytics-Driven Project Strengths Generation
+ * Each strength must have measurable evidence from actual project data
+ * Returns top 3 strengths with real, non-generic explanations
+ */
+function generateProjectStrengths(draft) {
+  try {
+    const strengths = [];
+    const now = new Date();
+
+    // ————————————————————————————————————————————————————————————
+    // 1. TECH STACK STRENGTH
+    // Evidence: Specific technologies with detailed categorization
+    // ————————————————————————————————————————————————————————————
+    if (draft.techStack && draft.techStack.length > 0) {
+      const techStack = draft.techStack.map((t) => t.toLowerCase());
+      const totalTechs = techStack.length;
+
+      // Identify tech categories with exact tech names
+      const frontendTechs = draft.techStack.filter((t) => {
+        const lower = t.toLowerCase();
+        return ["react", "vue", "angular", "svelte", "nextjs", "next", "html", "css", "tailwind", "bootstrap"].some((ft) => lower.includes(ft));
+      });
+      const backendTechs = draft.techStack.filter((t) => {
+        const lower = t.toLowerCase();
+        return ["node", "express", "python", "fastapi", "django", "go", "rust", "java", "spring", "laravel"].some((bt) => lower.includes(bt));
+      });
+      const dbTechs = draft.techStack.filter((t) => {
+        const lower = t.toLowerCase();
+        return ["postgres", "mongodb", "mysql", "firebase", "redis", "graphql"].some((dt) => lower.includes(dt));
+      });
+      const modernTechs = draft.techStack.filter((t) => {
+        const lower = t.toLowerCase();
+        return ["typescript", "react", "nextjs", "rust", "go", "python", "tailwind"].some((mt) => lower.includes(mt));
+      });
+
+      // Only generate if there's meaningful evidence
+      if (frontendTechs.length > 0 || backendTechs.length > 0 || dbTechs.length > 0) {
+        let techDescription = [];
+        if (frontendTechs.length > 0) techDescription.push(`${frontendTechs.join(", ")} frontend`);
+        if (backendTechs.length > 0) techDescription.push(`${backendTechs.join(", ")} backend`);
+        if (dbTechs.length > 0) techDescription.push(`${dbTechs.join(", ")} data layer`);
+
+        const isFullStack = frontendTechs.length > 0 && backendTechs.length > 0;
+        const typeScriptPresent = draft.techStack.some((t) => t.toLowerCase().includes("typescript"));
+        const confidence = Math.min(95, 50 + modernTechs.length * 10 + (typeScriptPresent ? 10 : 0));
+
+        strengths.push({
+          title: `Production-Grade ${isFullStack ? "Full-Stack" : "Specialized"} Architecture`,
+          explanation: `Integrates ${techDescription.join(" + ")} technologies (${totalTechs} total)${typeScriptPresent ? " with type-safe TypeScript" : ""}, demonstrating production readiness.`,
+          score: Math.min(100, 40 + modernTechs.length * 8),
+          confidence: confidence,
+        });
+      }
+    }
+
+    // ————————————————————————————————————————————————————————————
+    // 2. DEVELOPMENT PROGRESS STRENGTH
+    // Evidence: Current stage + calculated project age/time in stage
+    // ————————————————————————————————————————————————————————————
+    if (draft.currentStage) {
+      const stageMap = {
+        "idea": { level: 1, label: "in early planning" },
+        "planning": { level: 2, label: "actively being planned" },
+        "prototype": { level: 3, label: "at prototype stage" },
+        "50% done": { level: 4, label: "50% complete" },
+        "backend development": { level: 5, label: "in backend development" },
+        "ui/ux design": { level: 5, label: "in UI/UX design phase" },
+        "almost complete": { level: 6, label: "nearly finished" },
+        "shipped": { level: 7, label: "shipped to production" },
+      };
+
+      const stage = (draft.currentStage || "").toLowerCase();
+      const stageInfo = stageMap[stage] || { level: 2, label: "in active development" };
+
+      // Calculate project lifecycle: time since creation
+      let createdDate = null;
+      try {
+        createdDate = new Date(draft.createdAt);
+        if (isNaN(createdDate.getTime())) createdDate = null;
+      } catch (e) {
+        createdDate = null;
+      }
+
+      // Calculate project age in days
+      let projectAgeDays = 0;
+      let projectAgeContext = "";
+      if (createdDate) {
+        projectAgeDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (projectAgeDays < 30) {
+          projectAgeContext = ` launched ${projectAgeDays} days ago`;
+        } else if (projectAgeDays < 365) {
+          const months = Math.floor(projectAgeDays / 30);
+          projectAgeContext = ` after ${months} months of development`;
+        } else {
+          const years = Math.floor(projectAgeDays / 365);
+          projectAgeContext = ` over ${years}+ year${years > 1 ? "s" : ""} of work`;
+        }
+      }
+
+      // Only show this if there's substantial progress (stage 3+)
+      if (stageInfo.level >= 3) {
+        strengths.push({
+          title: `Tangible Development Progress`,
+          explanation: `Project is ${stageInfo.label}${projectAgeContext}, demonstrating concrete advancement.`,
+          score: stageInfo.level * 14,
+          confidence: Math.min(90, 60 + stageInfo.level * 5),
+        });
+      }
+    }
+
+    // ————————————————————————————————————————————————————————————
+    // 3. COMMUNITY INTEREST STRENGTH
+    // Evidence: Raised hands (recent + total), active collaborators
+    // ————————————————————————————————————————————————————————————
+    const raisedHandsCount = draft.raisedHands?.length || 0;
+    const collaboratorCount = draft.collaborators?.length || 0;
+
+    if (raisedHandsCount > 0 || (draft.openForRevival && collaboratorCount > 0)) {
+      let interestSource = [];
+      let recentInterest = 0;
+
+      // Count recent raised hands (last 30 days) with safe date parsing
+      if (draft.raisedHands && Array.isArray(draft.raisedHands) && draft.raisedHands.length > 0) {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const recentHands = draft.raisedHands.filter((hand) => {
+          try {
+            const handDate = new Date(hand.createdAt || hand.timestamp || 0);
+            return !isNaN(handDate.getTime()) && handDate > thirtyDaysAgo;
+          } catch (e) {
+            return false;
+          }
+        });
+        recentInterest = recentHands.length;
+        
+        if (recentHands.length > 0) {
+          interestSource.push(`${recentHands.length} revival request${recentHands.length > 1 ? "s" : ""} in the last 30 days`);
+        } else if (raisedHandsCount > 0) {
+          interestSource.push(`${raisedHandsCount} total revival interest`);
+        }
+      }
+
+      if (draft.openForRevival && collaboratorCount > 0) {
+        interestSource.push(`${collaboratorCount} active contributor${collaboratorCount > 1 ? "s" : ""}`);
+      }
+
+      if (interestSource.length > 0 && (recentInterest > 0 || collaboratorCount > 0)) {
+        const confidence = Math.min(95, 50 + Math.max(recentInterest, collaboratorCount) * 8);
+
+        strengths.push({
+          title: `Strong Revival Interest & Demand`,
+          explanation: `${interestSource.join(", ")}, confirming genuine market demand for revival.`,
+          score: Math.min(100, 30 + Math.max(recentInterest, collaboratorCount) * 10),
+          confidence: confidence,
+        });
+      }
+    }
+
+    // ————————————————————————————————————————————————————————————
+    // 4. PROJECT SPECIFICATION & DOCUMENTATION STRENGTH
+    // Evidence: Description quality, tag organization, clarity
+    // ————————————————————————————————————————————————————————————
+    const descLength = draft.description?.length || 0;
+    const tagCount = draft.tags?.length || 0;
+
+    if (descLength > 300 || (descLength > 150 && tagCount > 3)) {
+      const clarityLevels = [];
+      if (descLength > 500) clarityLevels.push("detailed");
+      else if (descLength > 300) clarityLevels.push("comprehensive");
+      else clarityLevels.push("substantial");
+
+      if (tagCount > 5) clarityLevels.push("well-categorized");
+      else if (tagCount > 2) clarityLevels.push("tagged");
+
+      strengths.push({
+        title: `Well-Defined Project Specification`,
+        explanation: `${descLength}-character ${clarityLevels.join(", ")} description with ${tagCount} metadata tags creates clear project vision and reduces ambiguity for potential contributors.`,
+        score: Math.min(100, 50 + (descLength / 100) * 5 + tagCount * 5),
+        confidence: Math.min(90, 60 + (descLength / 100) + tagCount * 3),
+      });
+    }
+
+    // ————————————————————————————————————————————————————————————
+    // 5. MAINTENANCE & ACTIVITY STRENGTH
+    // Evidence: Update recency, project age, update consistency
+    // ————————————————————————————————————————————————————————————
+    if (draft.updatedAt || draft.createdAt) {
+      let lastUpdateDate = null;
+      let projectCreatedDate = null;
+
+      try {
+        lastUpdateDate = new Date(draft.updatedAt || draft.createdAt);
+        if (isNaN(lastUpdateDate.getTime())) lastUpdateDate = null;
+      } catch (e) {
+        lastUpdateDate = null;
+      }
+
+      try {
+        projectCreatedDate = new Date(draft.createdAt);
+        if (isNaN(projectCreatedDate.getTime())) projectCreatedDate = null;
+      } catch (e) {
+        projectCreatedDate = null;
+      }
+
+      if (lastUpdateDate && projectCreatedDate) {
+        const daysSinceUpdate = Math.floor((now.getTime() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
+        const projectAge = Math.floor((now.getTime() - projectCreatedDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Only show if recently active (updated within 60 days) and project age > 7 days
+        if (daysSinceUpdate < 60 && projectAge > 7) {
+          const activityLevel = 
+            daysSinceUpdate < 7 ? "actively maintained" : 
+            daysSinceUpdate < 14 ? "regularly updated" : 
+            daysSinceUpdate < 30 ? "consistently updated" : 
+            "recently updated";
+
+          const ageContext = projectAge < 90 ? "emerging project" : projectAge < 365 ? "established project" : "long-running initiative";
+
+          strengths.push({
+            title: `${ageContext.split(" ")[0].charAt(0).toUpperCase() + ageContext.split(" ")[0].slice(1)} & Actively Maintained`,
+            explanation: `${ageContext} with regular updates (last activity ${daysSinceUpdate} days ago), demonstrating sustained commitment.`,
+            score: Math.min(100, Math.max(50, 100 - daysSinceUpdate)),
+            confidence: Math.min(90, 60 + (Math.max(0, 60 - daysSinceUpdate) / 6)),
+          });
+        }
+      }
+    }
+
+    // ————————————————————————————————————————————————————————————
+    // FILTERING: Only keep strengths with measurable evidence
+    // ————————————————————————————————————————————————————————————
+    const validStrengths = strengths.filter((s) => s.score > 0 && s.explanation && s.explanation.length > 10);
+
+    // Sort by score descending and return top 3
+    const sorted = validStrengths.sort((a, b) => b.score - a.score);
+
+    return sorted.slice(0, 3);
+  } catch (error) {
+    console.warn("Error generating project strengths:", error);
+    return [];
+  }
+}
+
+/**
+ * Calculate Stall DNA (server-side)
+ */
+function computeStallDNA(draft) {
+  try {
+    if (!draft.techStack || !Array.isArray(draft.techStack) || draft.techStack.length === 0) {
+      return null;
+    }
+
+    const techStack = draft.techStack.map((t) => t.toLowerCase());
+    const totalTechs = techStack.length;
+
+    const normalize = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+    const frontendTechs = ["react", "next.js", "next", "vue", "angular", "svelte", "html", "css", "tailwind", "bootstrap"];
+    const frontendCount = techStack.filter((t) => frontendTechs.some((ft) => t.includes(ft))).length;
+    const frontendTechRatio = (frontendCount / totalTechs) * 100;
+
+    const stateLibs = ["redux", "zustand", "mobx", "context api", "context", "recoil", "jotai", "xstate"];
+    const stateCount = techStack.filter((t) => stateLibs.some((sl) => t.includes(sl))).length;
+    const stateLibRatio = (stateCount / totalTechs) * 100;
+
+    const contributorCount = draft.collaborators?.length || 0;
+    const raisedHandsCount = draft.raisedHands?.length || 0;
+    const hasActivity = contributorCount > 0 || raisedHandsCount > 0;
+
+    const descLength = draft.description?.length || 0;
+    const documentationScore = Math.min(100, (descLength / 500) * 100);
+
+    const lastUpdated = draft.updatedAt || draft.createdAt;
+    let inactivityDays = 365;
+    if (lastUpdated) {
+      try {
+        const lastUpdateDate = new Date(lastUpdated);
+        if (!isNaN(lastUpdateDate.getTime())) {
+          const now = new Date();
+          inactivityDays = (now.getTime() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24);
+        }
+      } catch (e) {
+        inactivityDays = 365;
+      }
+    }
+    const inactivityPenalty = Math.min(50, Math.max(0, (inactivityDays / 30) * 5));
+
+    const stageMap = {
+      "idea": 15,
+      "planning": 30,
+      "prototype": 40,
+      "50% done": 50,
+      "backend development": 60,
+      "ui/ux design": 50,
+      "almost complete": 85,
+      "shipped": 100,
+    };
+    const stage = (draft.currentStage || "").toLowerCase();
+    let completionPercentage = stageMap[stage] || 35;
+
+    const stallReasonLower = (draft.failureReason || "").toLowerCase();
+    const performanceIssues = ["performance", "slow", "optimization", "latency", "memory", "cpu", "render", "bundle", "api bottleneck"].some(
+      (kw) => stallReasonLower.includes(kw)
+    );
+    const frontendIssues = ["ui", "ux", "design", "frontend", "polish", "responsive", "css", "styling"].some((kw) => stallReasonLower.includes(kw));
+    const architectureIssues = ["architecture", "technical debt", "refactor", "structure", "complexity"].some((kw) => stallReasonLower.includes(kw));
+
+    const isOpenForRevival = draft.openForRevival || draft.revivalStatus === "open_for_revival";
+
+    let frontendScore = frontendTechRatio * 0.4;
+    if (frontendIssues) {
+      frontendScore += 0;
+    } else {
+      frontendScore += 15;
+    }
+    frontendScore += documentationScore * 0.3;
+    frontendScore = frontendScore - (frontendIssues ? 20 : 0);
+
+    let stateManagementScore = stateLibRatio * 0.4;
+    const architectureComplexity = Math.min(50, Math.max(0, (totalTechs - 2) * 5));
+    stateManagementScore += (100 - architectureComplexity) * 0.3;
+    stateManagementScore += Math.min(100, (contributorCount + raisedHandsCount) * 10) * 0.3;
+
+    let performanceScore = 100;
+    performanceScore -= performanceIssues ? 25 : 0;
+    performanceScore -= architectureIssues ? 15 : 0;
+    performanceScore -= inactivityPenalty;
+    performanceScore -= Math.max(0, (100 - completionPercentage) * 0.3);
+
+    let consistencyScore = 0;
+    consistencyScore += documentationScore * 0.25;
+    consistencyScore += (hasActivity ? 25 : 0);
+    consistencyScore += completionPercentage * 0.25;
+    consistencyScore += (100 - inactivityPenalty) * 0.25;
+
+    if (!isOpenForRevival) {
+      consistencyScore *= 0.85;
+    }
+
+    return {
+      frontend: normalize(frontendScore),
+      stateManagement: normalize(stateManagementScore),
+      performance: normalize(performanceScore),
+      consistency: normalize(consistencyScore),
+    };
+  } catch (error) {
+    console.warn("Error computing Stall DNA:", error);
+    return null;
+  }
+}
+
+// ————————————————————————————————————————————————————————————
+// Similar Projects Similarity Scoring (Server-Side)
+// ————————————————————————————————————————————————————————————
+
+function calcTechStackSimilarity(stack1, stack2) {
+  if (!stack1?.length || !stack2?.length) return 0;
+  
+  const set1 = new Set(stack1.map((t) => t.toLowerCase()));
+  const set2 = new Set(stack2.map((t) => t.toLowerCase()));
+  
+  const intersection = new Set([...set1].filter((x) => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+  
+  if (union.size === 0) return 0;
+  return (intersection.size / union.size) * 100;
+}
+
+function calcDomainSimilarity(domain1, domain2) {
+  if (!domain1 || !domain2) return 0;
+  
+  const d1 = domain1.toLowerCase();
+  const d2 = domain2.toLowerCase();
+  
+  if (d1 === d2) return 100;
+  
+  const relatedDomains = {
+    "web": ["frontend", "backend", "fullstack", "saas"],
+    "mobile": ["ios", "android", "cross-platform"],
+    "ml": ["ai", "data-science", "nlp", "computer-vision"],
+    "devtools": ["cli", "ide", "build-tool"],
+  };
+  
+  for (const [key, related] of Object.entries(relatedDomains)) {
+    if ((d1 === key && related.includes(d2)) || (d2 === key && related.includes(d1))) {
+      return 60;
+    }
+  }
+  
+  return 0;
+}
+
+function calcStageSimilarity(stage1, stage2) {
+  if (!stage1 || !stage2) return 30;
+  
+  const s1 = stage1.toLowerCase();
+  const s2 = stage2.toLowerCase();
+  
+  if (s1 === s2) return 100;
+  
+  const stageOrder = [
+    "idea",
+    "planning",
+    "prototype",
+    "50% done",
+    "backend development",
+    "ui/ux design",
+    "almost complete",
+    "shipped",
+  ];
+  
+  const idx1 = stageOrder.findIndex((s) => s1.includes(s));
+  const idx2 = stageOrder.findIndex((s) => s2.includes(s));
+  
+  if (idx1 === -1 || idx2 === -1) return 30;
+  
+  if (Math.abs(idx1 - idx2) === 1) return 70;
+  
+  return 30;
+}
+
+function calcFailureReasonSimilarity(reason1, reason2) {
+  if (!reason1 || !reason2) return 0;
+  
+  const r1 = reason1.toLowerCase();
+  const r2 = reason2.toLowerCase();
+  
+  const words1 = new Set(r1.split(/\s+/).filter((w) => w.length > 3));
+  const words2 = new Set(r2.split(/\s+/).filter((w) => w.length > 3));
+  
+  if (words1.size === 0 && words2.size === 0) return 0;
+  
+  const intersection = new Set([...words1].filter((x) => words2.has(x)));
+  const union = new Set([...words1, ...words2]);
+  
+  if (union.size === 0) return 0;
+  return (intersection.size / union.size) * 100;
+}
+
+function calcProjectSizeSimilarity(project1, project2) {
+  const getSize = (p) => {
+    const collaboratorScore = (p.collaborators?.length || 0) * 15;
+    const descScore = Math.min(40, ((p.description?.length || 0) / 500) * 40);
+    const techScore = Math.min(20, (p.techStack?.length || 0) * 2.5);
+    return collaboratorScore + descScore + techScore;
+  };
+  
+  const size1 = getSize(project1);
+  const size2 = getSize(project2);
+  
+  const maxSize = 120;
+  const normalizedSize1 = Math.min(100, (size1 / maxSize) * 100);
+  const normalizedSize2 = Math.min(100, (size2 / maxSize) * 100);
+  
+  const difference = Math.abs(normalizedSize1 - normalizedSize2);
+  return 100 - difference;
+}
+
+function calcProjectSimilarity(baseProject, candidateProject) {
+  const techScore = calcTechStackSimilarity(baseProject.techStack, candidateProject.techStack);
+  const domainScore = calcDomainSimilarity(baseProject.domain, candidateProject.domain);
+  const stageScore = calcStageSimilarity(baseProject.currentStage, candidateProject.currentStage);
+  const failureScore = calcFailureReasonSimilarity(baseProject.failureReason, candidateProject.failureReason);
+  const sizeScore = calcProjectSizeSimilarity(baseProject, candidateProject);
+  
+  const finalScore =
+    techScore * 0.35 +
+    domainScore * 0.25 +
+    stageScore * 0.2 +
+    failureScore * 0.1 +
+    sizeScore * 0.1;
+  
+  return Math.round(finalScore);
+}
+
+async function getSimilarProjects(draft) {
+  try {
+    const allDrafts = await Draft.find({}).lean();
+    const currentId = draft._id.toString();
+    
+    const filtered = allDrafts.filter((d) => {
+      if (!d) return false;
+      const draftId = d._id.toString();
+      return (
+        draftId !== currentId &&
+        d.projectName !== draft.projectName &&
+        d.techStack &&
+        Array.isArray(d.techStack) &&
+        d.techStack.length > 0
+      );
+    });
+    
+    const scoredProjects = filtered
+      .map((p) => {
+        try {
+          const similarityScore = calcProjectSimilarity(draft, p);
+          return { project: p, score: similarityScore };
+        } catch (e) {
+          console.warn("Error calculating similarity:", e);
+          return null;
+        }
+      })
+      .filter((item) => item !== null);
+    
+    scoredProjects.sort((a, b) => {
+      if (a.score !== b.score) {
+        return b.score - a.score;
+      }
+      const dateA = new Date(a.project.updatedAt || a.project.createdAt || 0).getTime();
+      const dateB = new Date(b.project.updatedAt || b.project.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+    
+    return scoredProjects
+      .slice(0, 5)
+      .filter((item) => item.score >= 40)
+      .map((item) => ({
+        id: item.project._id.toString(),
+        projectName: item.project.projectName,
+        domain: item.project.domain,
+        score: item.score,
+        techStack: item.project.techStack,
+      }));
+  } catch (error) {
+    console.warn("Error computing similar projects:", error);
+    return [];
+  }
+}
+
+// GET /api/draft/:id -> single draft by ID with stallDNA and similarProjects
 router.get('/draft/:id', async (req, res) => {
   try {
     const draft = await Draft.findById(req.params.id)
@@ -880,7 +1560,28 @@ router.get('/draft/:id', async (req, res) => {
         select: 'name username avatar'
       });
     if (!draft) return res.status(404).json({ error: 'Draft not found' });
-    res.json(draft);
+    
+    // Calculate stallDNA server-side
+    const stallDNA = computeStallDNA(draft);
+    
+    // Calculate similar projects server-side
+    const similarProjects = await getSimilarProjects(draft);
+    
+    // Generate project strengths (gold section)
+    const strengths = generateProjectStrengths(draft);
+    
+    // Return enriched response
+    res.json({
+      project: draft,
+      stallDNA,
+      similarProjects,
+      strengths: strengths.map(s => ({
+        title: s.title,
+        explanation: s.explanation,
+        score: s.score,
+        confidence: s.confidence,
+      })),
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

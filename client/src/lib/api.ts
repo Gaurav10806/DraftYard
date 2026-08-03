@@ -148,7 +148,30 @@ export async function fetchMyDrafts(): Promise<Draft[]> {
   return res.json();
 }
 
-export async function fetchDraftById(id: string): Promise<Draft> {
+export type ProjectOverview = {
+  project: Draft;
+  stallDNA: {
+    frontend: number;
+    stateManagement: number;
+    performance: number;
+    consistency: number;
+  } | null;
+  similarProjects: Array<{
+    id: string;
+    projectName: string;
+    domain?: string;
+    score: number;
+    techStack: string[];
+  }>;
+  strengths: Array<{
+    title: string;
+    explanation: string;
+    score: number;
+    confidence: number;
+  }>;
+};
+
+export async function fetchDraftById(id: string): Promise<ProjectOverview> {
   const res = await fetch(`${API_BASE}/draft/${id}`, {
     headers: { ...getAuthHeaders() },
   });

@@ -9,7 +9,7 @@ import {
   markProjectRevived,
 } from "@/lib/api";
 import { getInitials } from "@/lib/utils";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -96,7 +96,7 @@ export const Route = createFileRoute("/project/$slug")({
 }),
   loader: async ({ params }) => {
     try {
-      // Fetch all drafts (paginated) to find the one matching the slug
+      // Try to fetch from feed first to get the draft ID
       let allDrafts: Draft[] = [];
       let page = 1;
       let hasMore = true;
@@ -109,7 +109,27 @@ export const Route = createFileRoute("/project/$slug")({
       }
       
       const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug || d._id === params.slug || (d as any).id === params.slug);
-      if (draft) return { draft };
+      if (draft) {
+        // Now fetch the enriched data from the backend endpoint
+        try {
+          const draftId = (draft._id || (draft as any).id)?.toString();
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/draft/${draftId}`);
+          if (response.ok) {
+            const overview = await response.json();
+            // Attach the backend data to the draft
+            const enrichedDraft = overview.project as Draft & { __projectOverview: any };
+            enrichedDraft.__projectOverview = {
+              stallDNA: overview.stallDNA,
+              similarProjects: overview.similarProjects,
+              strengths: overview.strengths,
+            };
+            return { draft: enrichedDraft };
+          }
+        } catch (e) {
+          console.warn("Failed to fetch enriched project data:", e);
+        }
+        return { draft };
+      }
     } catch (e) {
       console.warn("Failed to load drafts from server, falling back to static:", e);
     }
@@ -200,12 +220,152 @@ const HEALTH_DATA = [
   { m: "Jul", v: 78 },
 ];
 
-const STALL_DNA = [
-  { label: "Frontend", value: 70, color: "#a78bfa" },
-  { label: "State Mgmt", value: 60, color: "#f472b6" },
-  { label: "Performance", value: 45, color: "#f59e0b" },
-  { label: "Consistency", value: 30, color: "#22d3ee" },
-];
+// ————————————————————————————————————————————————————————————
+// Stall DNA Computation
+// ————————————————————————————————————————————————————————————
+type StallDNAResult = {
+  frontend: number;
+  stateManagement: number;
+  performance: number;
+  consistency: number;
+} | null;
+
+function computeStallDNA(draft: Draft): StallDNAResult {
+  try {
+    // Check if we have sufficient data
+    if (!draft.techStack || !Array.isArray(draft.techStack) || draft.techStack.length === 0) {
+      return null;
+    }
+
+    const techStack = draft.techStack.map((t) => t.toLowerCase());
+    const totalTechs = techStack.length;
+
+    // ———————— HELPER: Normalize scores to 0-100 ————————
+    const normalize = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
+    // ———————— DATA EXTRACTION ————————
+    // Frontend & State Management tech ratios
+    const frontendTechs = ["react", "next.js", "next", "vue", "angular", "svelte", "html", "css", "tailwind", "bootstrap"];
+    const frontendCount = techStack.filter((t) => frontendTechs.some((ft) => t.includes(ft))).length;
+    const frontendTechRatio = (frontendCount / totalTechs) * 100;
+
+    const stateLibs = ["redux", "zustand", "mobx", "context api", "context", "recoil", "jotai", "xstate"];
+    const stateCount = techStack.filter((t) => stateLibs.some((sl) => t.includes(sl))).length;
+    const stateLibRatio = (stateCount / totalTechs) * 100;
+
+    // Contributor activity - Fixed: use correct field names
+    const contributorCount = draft.collaborators?.length || 0;
+    const raisedHandsCount = draft.raisedHands?.length || 0;
+    const hasActivity = contributorCount > 0 || raisedHandsCount > 0;
+
+    // Documentation score
+    const descLength = draft.description?.length || 0;
+    const hasDescription = descLength > 0;
+    const documentationScore = Math.min(100, (descLength / 500) * 100); // 500 chars = 100%
+
+    // Recency/Update frequency - Fixed: handle missing dates gracefully
+    const lastUpdated = draft.updatedAt || draft.createdAt;
+    let inactivityDays = 365; // Default to 1 year if no date
+    if (lastUpdated) {
+      try {
+        const lastUpdateDate = new Date(lastUpdated);
+        if (!isNaN(lastUpdateDate.getTime())) {
+          const now = new Date();
+          inactivityDays = (now.getTime() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24);
+        }
+      } catch (e) {
+        inactivityDays = 365; // Default on date parsing error
+      }
+    }
+    // Inactivity penalty: 5% per month inactive, max 50%
+    const inactivityPenalty = Math.min(50, Math.max(0, (inactivityDays / 30) * 5));
+
+    // Stage completion proxy
+    const stageMap: Record<string, number> = {
+      "idea": 15,
+      "planning": 30,
+      "prototype": 40,
+      "50% done": 50,
+      "backend development": 60,
+      "ui/ux design": 50,
+      "almost complete": 85,
+      "shipped": 100,
+    };
+    const stage = (draft.currentStage || "").toLowerCase();
+    let completionPercentage = stageMap[stage] || 35;
+
+    // Failure reason analysis - Fixed: handle missing failureReason
+    const stallReasonLower = (draft.failureReason || "").toLowerCase();
+    const performanceIssues = ["performance", "slow", "optimization", "latency", "memory", "cpu", "render", "bundle", "api bottleneck"].some(
+      (kw) => stallReasonLower.includes(kw)
+    );
+    const frontendIssues = ["ui", "ux", "design", "frontend", "polish", "responsive", "css", "styling"].some((kw) => stallReasonLower.includes(kw));
+    const architectureIssues = ["architecture", "technical debt", "refactor", "structure", "complexity"].some((kw) => stallReasonLower.includes(kw));
+
+    // Revival potential
+    const isOpenForRevival = draft.openForRevival || draft.revivalStatus === "open_for_revival";
+
+    // ———————— WEIGHTED SCORING ————————
+    // FRONTEND SCORE (40% tech ratio + 30% frontend issues penalty + 30% documentation)
+    let frontendScore = frontendTechRatio * 0.4; // 40% from tech ratio
+    if (frontendIssues) {
+      frontendScore += 0; // Penalty applied below
+    } else {
+      frontendScore += 15; // Bonus if no frontend issues
+    }
+    frontendScore += documentationScore * 0.3; // 30% from documentation (proxy for frontend task clarity)
+    frontendScore = frontendScore - (frontendIssues ? 20 : 0); // Penalty for frontend issues
+
+    // STATE MANAGEMENT SCORE (40% lib ratio + 30% architecture complexity + 30% collaboration)
+    let stateManagementScore = stateLibRatio * 0.4; // 40% from state lib ratio
+    // Architecture complexity: deduct if many unrelated techs (high complexity)
+    const architectureComplexity = Math.min(50, Math.max(0, (totalTechs - 2) * 5)); // Penalty for tech diversity
+    stateManagementScore += (100 - architectureComplexity) * 0.3; // 30% from architecture simplicity
+    stateManagementScore += Math.min(100, (contributorCount + raisedHandsCount) * 10) * 0.3; // 30% from collaboration (FIXED: use contributorCount)
+
+    // PERFORMANCE SCORE (100 - weighted penalties - inactivity - low completion)
+    let performanceScore = 100;
+    performanceScore -= performanceIssues ? 25 : 0; // Penalty for performance issues
+    performanceScore -= architectureIssues ? 15 : 0; // Penalty for arch issues
+    performanceScore -= inactivityPenalty; // Penalty for inactivity
+    performanceScore -= Math.max(0, (100 - completionPercentage) * 0.3); // Penalty for low completion
+
+    // CONSISTENCY SCORE (25% docs + 25% activity + 25% completion + 25% recency)
+    let consistencyScore = 0;
+    consistencyScore += documentationScore * 0.25; // 25% documentation
+    consistencyScore += (hasActivity ? 25 : 0); // 25% contributor activity presence
+    consistencyScore += completionPercentage * 0.25; // 25% task/stage completion
+    consistencyScore += (100 - inactivityPenalty) * 0.25; // 25% update frequency (inverse of inactivity)
+
+    // If not open for revival, apply a modest penalty to consistency
+    if (!isOpenForRevival) {
+      consistencyScore *= 0.85; // 15% consistency penalty for closed projects
+    }
+
+    // ———————— NORMALIZE AND RETURN ————————
+    return {
+      frontend: normalize(frontendScore),
+      stateManagement: normalize(stateManagementScore),
+      performance: normalize(performanceScore),
+      consistency: normalize(consistencyScore),
+    };
+  } catch (error) {
+    // Fault tolerance: log error but don't crash
+    console.warn("Error computing Stall DNA:", error);
+    return null;
+  }
+}
+
+// Stall DNA display data with colors
+function getStallDNADisplay(dna: StallDNAResult) {
+  if (!dna) return null;
+  return [
+    { label: "Frontend", value: dna.frontend, color: "#a78bfa" },
+    { label: "State Mgmt", value: dna.stateManagement, color: "#f472b6" },
+    { label: "Performance", value: dna.performance, color: "#f59e0b" },
+    { label: "Consistency", value: dna.consistency, color: "#22d3ee" },
+  ];
+}
 
 // ————————————————————————————————————————————————————————————
 // Page
@@ -957,61 +1117,482 @@ function ProjectTabs({ tab, onTab }: { tab: TabId; onTab: (t: TabId) => void }) 
 }
 
 // ————————————————————————————————————————————————————————————
+// Similar Projects Similarity Scoring
+// ————————————————————————————————————————————————————————————
+
+/**
+ * Calculate Jaccard similarity between two tech stacks
+ * Jaccard = (intersection / union) × 100
+ */
+function calcTechStackSimilarity(stack1: string[] = [], stack2: string[] = []): number {
+  if (!stack1.length || !stack2.length) return 0;
+  
+  const set1 = new Set(stack1.map((t) => t.toLowerCase()));
+  const set2 = new Set(stack2.map((t) => t.toLowerCase()));
+  
+  const intersection = new Set([...set1].filter((x) => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+  
+  if (union.size === 0) return 0;
+  return (intersection.size / union.size) * 100;
+}
+
+/**
+ * Calculate domain similarity
+ * Same domain = 100, related domains = 60, different = 0
+ */
+function calcDomainSimilarity(domain1: string = "", domain2: string = ""): number {
+  if (!domain1 || !domain2) return 0;
+  
+  const d1 = domain1.toLowerCase();
+  const d2 = domain2.toLowerCase();
+  
+  // Exact match
+  if (d1 === d2) return 100;
+  
+  // Related domains mapping
+  const relatedDomains: Record<string, string[]> = {
+    "web": ["frontend", "backend", "fullstack", "saas"],
+    "mobile": ["ios", "android", "cross-platform"],
+    "ml": ["ai", "data-science", "nlp", "computer-vision"],
+    "devtools": ["cli", "ide", "build-tool"],
+  };
+  
+  // Check if domains are related
+  for (const [key, related] of Object.entries(relatedDomains)) {
+    if ((d1 === key && related.includes(d2)) || (d2 === key && related.includes(d1))) {
+      return 60;
+    }
+  }
+  
+  return 0;
+}
+
+/**
+ * Calculate stage similarity
+ * Same stage = 100, adjacent = 70, otherwise = 30
+ */
+function calcStageSimilarity(stage1: string = "", stage2: string = ""): number {
+  if (!stage1 || !stage2) return 30;
+  
+  const s1 = stage1.toLowerCase();
+  const s2 = stage2.toLowerCase();
+  
+  // Exact match
+  if (s1 === s2) return 100;
+  
+  // Stage progression order
+  const stageOrder = [
+    "idea",
+    "planning",
+    "prototype",
+    "50% done",
+    "backend development",
+    "ui/ux design",
+    "almost complete",
+    "shipped",
+  ];
+  
+  const idx1 = stageOrder.findIndex((s) => s1.includes(s));
+  const idx2 = stageOrder.findIndex((s) => s2.includes(s));
+  
+  if (idx1 === -1 || idx2 === -1) return 30;
+  
+  // Adjacent stages
+  if (Math.abs(idx1 - idx2) === 1) return 70;
+  
+  return 30;
+}
+
+/**
+ * Calculate failure reason similarity
+ * Keyword overlap normalized to 0-100
+ */
+function calcFailureReasonSimilarity(reason1: string = "", reason2: string = ""): number {
+  if (!reason1 || !reason2) return 0;
+  
+  const r1 = reason1.toLowerCase();
+  const r2 = reason2.toLowerCase();
+  
+  // Extract words (length > 3 chars to avoid common words)
+  const words1 = new Set(r1.split(/\s+/).filter((w) => w.length > 3));
+  const words2 = new Set(r2.split(/\s+/).filter((w) => w.length > 3));
+  
+  if (words1.size === 0 && words2.size === 0) return 0;
+  
+  const intersection = new Set([...words1].filter((x) => words2.has(x)));
+  const union = new Set([...words1, ...words2]);
+  
+  if (union.size === 0) return 0;
+  return (intersection.size / union.size) * 100;
+}
+
+/**
+ * Calculate project size similarity
+ * Based on collaborators, description length, and tech stack complexity
+ */
+function calcProjectSizeSimilarity(project1: Draft, project2: Draft): number {
+  // Size metrics
+  const getSize = (p: Draft) => {
+    const collaboratorScore = (p.collaborators?.length || 0) * 15; // Max 60 for team size
+    const descScore = Math.min(40, ((p.description?.length || 0) / 500) * 40); // Max 40 for doc
+    const techScore = Math.min(20, (p.techStack?.length || 0) * 2.5); // Max 20 for tech variety
+    return collaboratorScore + descScore + techScore;
+  };
+  
+  const size1 = getSize(project1);
+  const size2 = getSize(project2);
+  
+  // Normalize to 0-100 based on difference
+  const maxSize = 120; // Max possible size score
+  const normalizedSize1 = Math.min(100, (size1 / maxSize) * 100);
+  const normalizedSize2 = Math.min(100, (size2 / maxSize) * 100);
+  
+  // Similarity: inverse of difference
+  const difference = Math.abs(normalizedSize1 - normalizedSize2);
+  return 100 - difference;
+}
+
+/**
+ * Calculate weighted similarity score between two projects
+ * Weights: 35% tech, 25% domain, 20% stage, 10% failure reason, 10% project size
+ */
+function calcProjectSimilarity(baseProject: Draft, candidateProject: Draft): number {
+  const techScore = calcTechStackSimilarity(baseProject.techStack, candidateProject.techStack);
+  const domainScore = calcDomainSimilarity(baseProject.domain, candidateProject.domain);
+  const stageScore = calcStageSimilarity(baseProject.currentStage, candidateProject.currentStage);
+  const failureScore = calcFailureReasonSimilarity(baseProject.failureReason, candidateProject.failureReason);
+  const sizeScore = calcProjectSizeSimilarity(baseProject, candidateProject);
+  
+  // Weighted combination
+  const finalScore =
+    techScore * 0.35 +
+    domainScore * 0.25 +
+    stageScore * 0.2 +
+    failureScore * 0.1 +
+    sizeScore * 0.1;
+  
+  return Math.round(finalScore);
+}
+
+// ————————————————————————————————————————————————————————————
 // OVERVIEW TAB
 // ————————————————————————————————————————————————————————————
 function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscussions: () => void }) {
-  // Fetch real similar projects matching domain
-  const { data: feedData } = useQuery({
-    queryKey: ["similar-projects", draft.domain, draft._id || draft.id],
-    queryFn: () => fetchFeed({ category: draft.domain, limit: 12 }),
-    staleTime: 60000,
-  });
+  // Use backend-provided data if available from ProjectOverview
+  const projectOverview = (draft as any).__projectOverview || null;
+  const backendStallDNA = projectOverview?.stallDNA || null;
+  const backendSimilarProjects = projectOverview?.similarProjects || [];
 
-  const similarProjects = useMemo(() => {
-    const list = feedData?.data || [];
-    const currentId = draft._id || draft.id;
-    return list
-      .filter((d) => (d._id || d.id) !== currentId && d.projectName !== draft.projectName)
-      .slice(0, 3)
-      .map((p, idx) => {
-        const tints = [
-          "from-violet-500 to-fuchsia-500",
-          "from-sky-500 to-cyan-500",
-          "from-emerald-500 to-teal-500",
-        ];
-        const matchPct = Math.min(98, 70 + (p.upvotes || 0) * 3 + (p.techStack?.length || 0) * 2);
-        return {
-          id: p._id || p.id,
-          name: p.projectName,
-          match: matchPct,
-          tint: tints[idx % tints.length],
-        };
+  // Stall DNA display data
+  const getStallDNADisplay = (dna: any) => {
+    if (!dna) return null;
+    return [
+      { label: "Frontend", value: dna.frontend, color: "#a78bfa" },
+      { label: "State Mgmt", value: dna.stateManagement, color: "#f472b6" },
+      { label: "Performance", value: dna.performance, color: "#f59e0b" },
+      { label: "Consistency", value: dna.consistency, color: "#22d3ee" },
+    ];
+  };
+
+  // Animate progress bars on mount
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => {
+    setAnimated(true);
+  }, []);
+
+  // Similar projects display format with gradient tints
+  const similarProjectsDisplay = useMemo(() => {
+    return backendSimilarProjects.slice(0, 3).map((p, idx) => {
+      const tints = [
+        "from-violet-500 to-fuchsia-500",
+        "from-sky-500 to-cyan-500",
+        "from-emerald-500 to-teal-500",
+      ];
+      return {
+        id: p.id,
+        projectName: p.projectName,
+        match: p.score,
+        tint: tints[idx % tints.length],
+      };
+    });
+  }, [backendSimilarProjects]);
+
+// ————————————————————————————————————————————————————————————
+// Project Strengths (Gold) Analytics
+// ————————————————————————————————————————————————————————————
+
+type ProjectStrength = {
+  title: string;
+  explanation: string;
+  confidence: number;
+};
+
+/**
+ * Calculate Documentation Quality Score (0-100)
+ * Based on: description length, README availability, tags count
+ */
+function calcDocumentationQuality(draft: Draft): number {
+  let score = 0;
+  
+  // Description length: 0-40 points
+  const descLength = draft.description?.length || 0;
+  const descScore = Math.min(40, (descLength / 500) * 40); // 500 chars = 100%
+  score += descScore;
+  
+  // README indicator (mapped from description): 0-30 points
+  if (descLength > 200) {
+    score += 30; // Substantial documentation
+  } else if (descLength > 50) {
+    score += 15; // Basic documentation
+  }
+  
+  // Tags/metadata: 0-30 points
+  const tagScore = Math.min(30, (draft.tags?.length || 0) * 6);
+  score += tagScore;
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Technical Foundation Score (0-100)
+ * Based on: tech stack diversity, modern technologies, architecture quality
+ */
+function calcTechnicalFoundation(draft: Draft): number {
+  let score = 0;
+  
+  // Tech stack diversity: 0-40 points
+  const techCount = draft.techStack?.length || 0;
+  const diversityScore = Math.min(40, techCount * 5); // 8+ technologies = 40 points
+  score += diversityScore;
+  
+  // Modern technologies bonus: 0-30 points
+  const modernTechs = ["react", "vue", "typescript", "node", "nextjs", "rust", "go", "python"];
+  const modernCount = (draft.techStack || []).filter((t) =>
+    modernTechs.some((m) => t.toLowerCase().includes(m))
+  ).length;
+  const modernScore = Math.min(30, modernCount * 4); // 8+ modern techs = 30 points
+  score += modernScore;
+  
+  // Architecture indicators: 0-30 points (from failure reason absence)
+  const stallReason = (draft.failureReason || "").toLowerCase();
+  const hasArchIssues = ["technical debt", "architecture", "refactor"].some((k) => stallReason.includes(k));
+  if (!hasArchIssues) {
+    score += 30; // No architecture problems
+  } else {
+    score += 10; // Has known issues
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Collaboration Readiness Score (0-100)
+ * Based on: contributors, openForRevival, raisedHands, activity
+ */
+function calcCollaborationReadiness(draft: Draft): number {
+  let score = 0;
+  
+  // Existing contributors: 0-35 points
+  const collaboratorCount = draft.collaborators?.length || 0;
+  const collabScore = Math.min(35, collaboratorCount * 7); // 5+ = 35 points
+  score += collabScore;
+  
+  // Open for revival status: 0-30 points
+  if (draft.openForRevival || draft.revivalStatus === "open_for_revival") {
+    score += 30;
+  }
+  
+  // Community interest (raised hands): 0-25 points
+  const raisedHandsCount = draft.raisedHands?.length || 0;
+  const interestScore = Math.min(25, raisedHandsCount * 5); // 5+ = 25 points
+  score += interestScore;
+  
+  // Activity indicators: 0-10 points
+  if (collaboratorCount > 0 || raisedHandsCount > 0) {
+    score += 10; // Has active community
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Development Maturity Score (0-100)
+ * Based on: current stage, completion %, milestones/tasks
+ */
+function calcDevelopmentMaturity(draft: Draft): number {
+  let score = 0;
+  
+  // Stage progression: 0-50 points
+  const stageMap: Record<string, number> = {
+    "idea": 5,
+    "planning": 15,
+    "prototype": 25,
+    "50% done": 40,
+    "backend development": 45,
+    "ui/ux design": 40,
+    "almost complete": 50,
+    "shipped": 50,
+  };
+  
+  const stage = (draft.currentStage || "").toLowerCase();
+  const stageScore = stageMap[stage] || 20;
+  score += stageScore;
+  
+  // Time investment: 0-25 points
+  const timeSpent = draft.timeSpent?.value || 0;
+  const timeUnit = draft.timeSpent?.unit || "weeks";
+  const monthsSpent = timeUnit === "months" ? timeSpent : timeSpent / 4;
+  const timeScore = Math.min(25, monthsSpent * 5); // 5+ months = 25 points
+  score += timeScore;
+  
+  // Estimated hours indicator: 0-25 points
+  const estimatedHours = draft.estimatedHours || 0;
+  if (estimatedHours > 0) {
+    const hoursScore = Math.min(25, (estimatedHours / 200) * 25); // 200 hours = 25 points
+    score += hoursScore;
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Calculate Maintainability Score (0-100)
+ * Based on: modular stack, project organization, consistency
+ */
+function calcMaintainability(draft: Draft): number {
+  let score = 0;
+  
+  // Modular stack assessment: 0-35 points
+  const techStack = draft.techStack || [];
+  const hasPackageManager = techStack.some((t) =>
+    ["npm", "yarn", "bun", "cargo", "pip", "maven"].some((pm) => t.toLowerCase().includes(pm))
+  );
+  const hasModernFramework = techStack.some((t) =>
+    ["react", "vue", "angular", "nextjs", "fastapi", "django"].some((fw) => t.toLowerCase().includes(fw))
+  );
+  
+  if (hasPackageManager && hasModernFramework) {
+    score += 35; // Modern, organized tech
+  } else if (hasModernFramework) {
+    score += 20;
+  }
+  
+  // Code organization: 0-35 points (from description indicators)
+  const descLower = (draft.description || "").toLowerCase();
+  const orgIndicators = ["modular", "reusable", "clean", "organized", "structured", "components"];
+  const orgScore = orgIndicators.filter((ind) => descLower.includes(ind)).length * 5;
+  score += Math.min(35, orgScore);
+  
+  // Consistency indicators: 0-30 points
+  if (draft.tags && draft.tags.length > 0) {
+    score += 15; // Has consistent tagging
+  }
+  if ((draft.description?.length || 0) > 150) {
+    score += 15; // Substantial documentation = consistent approach
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * Generate project strengths from analytics
+ * Returns only strengths with confidence >= 70, max 5 strengths
+ */
+function generateProjectStrengths(draft: Draft): ProjectStrength[] {
+  try {
+    const strengths: ProjectStrength[] = [];
+    
+    // Documentation Quality
+    const docQuality = calcDocumentationQuality(draft);
+    if (docQuality >= 70) {
+      strengths.push({
+        title: "Well-Documented Foundation",
+        explanation: `Comprehensive documentation with ${draft.tags?.length || 0} metadata tags.`,
+        confidence: docQuality,
       });
-  }, [feedData, draft]);
+    }
+    
+    // Technical Foundation
+    const techFoundation = calcTechnicalFoundation(draft);
+    if (techFoundation >= 70) {
+      const modernCount = (draft.techStack || []).filter((t) =>
+        ["react", "vue", "typescript", "node", "nextjs", "rust", "go", "python"].some((m) =>
+          t.toLowerCase().includes(m)
+        )
+      ).length;
+      strengths.push({
+        title: "Modern Tech Stack",
+        explanation: `Built with ${modernCount}+ modern technologies for scalability.`,
+        confidence: techFoundation,
+      });
+    }
+    
+    // Collaboration Readiness
+    const collabReadiness = calcCollaborationReadiness(draft);
+    if (collabReadiness >= 70) {
+      const context = draft.openForRevival
+        ? `Open for revival with ${draft.raisedHands?.length || 0} interested builders.`
+        : `Strong team of ${draft.collaborators?.length || 0}+ collaborators.`;
+      strengths.push({
+        title: "Community-Ready",
+        explanation: context,
+        confidence: collabReadiness,
+      });
+    }
+    
+    // Development Maturity
+    const maturity = calcDevelopmentMaturity(draft);
+    if (maturity >= 70) {
+      const stageLabel = draft.currentStage || "Advanced";
+      strengths.push({
+        title: "Mature Development Stage",
+        explanation: `Progressed to ${stageLabel} with significant time investment.`,
+        confidence: maturity,
+      });
+    }
+    
+    // Maintainability
+    const maintainability = calcMaintainability(draft);
+    if (maintainability >= 70) {
+      const techCount = draft.techStack?.length || 0;
+      strengths.push({
+        title: "Maintainable Architecture",
+        explanation: `${techCount} organized technologies with clear structure.`,
+        confidence: maintainability,
+      });
+    }
+    
+    // Sort by confidence descending and return top 5
+    return strengths.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+  } catch (error) {
+    console.warn("Error generating project strengths:", error);
+    return [];
+  }
+}
 
-  // Dynamic Gold highlights based on real draft attributes
+/**
+ * Convert strengths to simple string format for UI compatibility
+ */
+function formatGoldItems(strengths: ProjectStrength[]): string[] {
+  return strengths.map((s) => `${s.title}: ${s.explanation}`);
+}
+
+// ————————————————————————————————————————————————————————————
+// Gold section generation (for UI display)
+// ————————————————————————————————————————————————————————————
+  // Use backend strengths if available, otherwise empty array
+  const projectOverviewStrengths = projectOverview?.strengths || [];
+  
   const goldItems = useMemo(() => {
-    const items: string[] = [];
-    if (draft.techStack && draft.techStack.length > 0) {
-      items.push(`Built with ${draft.techStack.slice(0, 3).join(", ")}`);
-    }
-    if (draft.domain) {
-      items.push(`Tailored ${draft.domain.charAt(0).toUpperCase() + draft.domain.slice(1)} solution architecture`);
-    }
-    const raisedCount = draft.raisedHands?.length || 0;
-    if (raisedCount > 0) {
-      items.push(`${raisedCount} active revival request${raisedCount > 1 ? "s" : ""} from community builders`);
-    } else {
-      items.push("Ready for open-source community revival");
-    }
-    const upvotesCount = draft.upvotes || 0;
-    if (upvotesCount > 0) {
-      items.push(`Supported by ${upvotesCount} community upvote${upvotesCount > 1 ? "s" : ""}`);
-    } else {
-      items.push("Modular foundation with reusable code patterns");
-    }
-    return items;
-  }, [draft]);
+    // Format strengths for display
+    return projectOverviewStrengths.map((s) => ({
+      title: s.title,
+      explanation: s.explanation,
+      score: s.score,
+      confidence: s.confidence,
+    }));
+  }, [projectOverviewStrengths]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -1054,38 +1635,45 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
       </Card>
 
       {/* Stall DNA */}
-      <Card>
-        <CardTitle icon={<Brain className="h-4 w-4 text-fuchsia-500" />}>Stall DNA</CardTitle>
-        <div className="mt-3 space-y-2.5">
-          {STALL_DNA.map((s) => (
-            <div key={s.label}>
-              <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{s.label}</span>
-                <span className="font-semibold">{s.value}%</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${s.value}%`,
-                    background: `linear-gradient(90deg, ${s.color}, ${s.color}aa)`,
-                    boxShadow: `0 0 10px ${s.color}66`,
-                  }}
-                />
-              </div>
+      {(() => {
+        const stallDNA = backendStallDNA;
+        const displayData = getStallDNADisplay(stallDNA);
+        if (!displayData) return null;
+        return (
+          <Card>
+            <CardTitle icon={<Brain className="h-4 w-4 text-fuchsia-500" />}>Stall DNA</CardTitle>
+            <div className="mt-3 space-y-2.5">
+              {displayData.map((s) => (
+                <div key={s.label}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{s.label}</span>
+                    <span className="font-semibold">{s.value}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: animated ? `${s.value}%` : "0%",
+                        background: `linear-gradient(90deg, ${s.color}, ${s.color}aa)`,
+                        boxShadow: `0 0 10px ${s.color}66`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
+        );
+      })()}
 
       {/* Gold */}
       <Card>
         <CardTitle icon={<Sparkles className="h-4 w-4 text-amber-500" />}>Gold</CardTitle>
         <ul className="mt-3 space-y-2 text-sm">
-          {goldItems.map((r) => (
-            <li key={r} className="flex items-center gap-2">
+          {goldItems.map((strength) => (
+            <li key={strength.title} className="flex items-center gap-2">
               <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              <span className="text-muted-foreground">{r}</span>
+              <span className="text-muted-foreground">{strength.title}: {strength.explanation}</span>
             </li>
           ))}
         </ul>
@@ -1099,22 +1687,22 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
             Explore Feed →
           </Link>
         </div>
-        {similarProjects.length > 0 ? (
+        {similarProjectsDisplay.length > 0 ? (
           <ul className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
-            {similarProjects.map((p) => (
-              <li key={p.name}>
+            {similarProjectsDisplay.map((p) => (
+              <li key={p.id}>
                 <Link
                   to="/project/$slug"
-                  params={{ slug: slugify(p.name) }}
+                  params={{ slug: slugify(p.projectName) }}
                   className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${p.tint} text-xs font-bold text-white`}
                     >
-                      {p.name.slice(0, 1)}
+                      {p.projectName.slice(0, 1)}
                     </span>
-                    <span className="font-medium truncate text-xs">{p.name}</span>
+                    <span className="font-medium truncate text-xs">{p.projectName}</span>
                   </div>
                   <span className="text-[11px] font-semibold text-[var(--project-accent)] shrink-0">
                     {p.match}% Match
@@ -1125,7 +1713,7 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
           </ul>
         ) : (
           <div className="mt-3 rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
-            No other projects in the {draft.domain} domain yet.
+            No similar projects found.
           </div>
         )}
       </Card>
