@@ -28,8 +28,10 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-app.use("/api", draftRoutes);
-app.use("/api/auth", authRoutes);
+const searchRoutes = require('./routes/searchRoutes');
+app.use('/api', searchRoutes);
+app.use('/api', draftRoutes);
+app.use('/api/auth', authRoutes);
 app.use("/api", workspaceRoutes);
 app.use("/api", userRoutes);
 app.use("/api", reviewRoutes);

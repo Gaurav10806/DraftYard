@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -191,6 +191,8 @@ function StackIntelligencePage() {
   const [techs, setTechs] = useState<Tech[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const navigate = useNavigate();
 
   const loadData = () => {
     setLoading(true);
@@ -208,7 +210,27 @@ function StackIntelligencePage() {
 
   useEffect(() => {
     loadData();
+    const search = router.latestLocation?.search ?? {};
+    const techSlug = (search as Record<string, string>).tech;
+    if (techSlug) {
+      setSelected(techSlug);
+    }
   }, []);
+
+  // Update selected technology when the search param changes (e.g., after navigation)
+  useEffect(() => {
+    const search = router.latestLocation?.search ?? {};
+    const techParam = (search as Record<string, string>).tech;
+    if (techParam) {
+      const found = techs.find(
+        (t) => t.slug === techParam || t.name.toLowerCase() === techParam.toLowerCase()
+      );
+      const newSlug = found?.slug ?? techParam;
+      if (newSlug !== selected) {
+        setSelected(newSlug);
+      }
+    }
+  }, [router.latestLocation?.search, techs, selected]);
 
   const tech = useMemo(() => techs.find((t) => t.slug === selected) ?? null, [selected, techs]);
 
@@ -220,11 +242,22 @@ function StackIntelligencePage() {
     );
   }, [query, techs]);
 
-  const openTech = (slug: string) => {
-    setSelected(slug);
-    setQuery("");
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+    // Helper to navigate back to Technology Explorer (clears tech param)
+    const goToExplorer = () => {
+      setSelected(null);
+      setQuery("");
+      navigate({ to: "/stack-intelligence", replace: true });
+    };
+
+    const openTech = (slug: string) => {
+      const techObj = techs.find((t) => t.slug === slug);
+      const techName = techObj?.name ?? slug;
+      setSelected(slug);
+      setQuery("");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+      // Use the full technology name for the URL to preserve original casing
+      navigate({ to: "/stack-intelligence", search: { tech: techName }, replace: true });
+    };
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,7 +297,7 @@ function StackIntelligencePage() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
               >
-                <TechnologyDetail tech={tech} techs={techs} onBack={() => setSelected(null)} onOpen={openTech} />
+                <TechnologyDetail tech={tech} techs={techs} onBack={goToExplorer} onOpen={openTech} />
               </motion.div>
             ) : (
               <motion.div
@@ -349,6 +382,23 @@ function TechnologyExplorer({
         <kbd className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground">
           Enter
         </kbd>
+        {query.trim() && (
+          <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+            {filtered.slice(0, 5).map((t) => (
+              <button
+                key={t.slug}
+                type="button"
+                onMouseDown={() => onOpen(t.slug)}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/60"
+              >
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-[10px] font-bold text-primary">
+                  {t.name?.slice(0, 2) ?? t.slug.slice(0, 2)}
+                </span>
+                <span className="min-w-0 truncate">{t.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </form>
 
       {/* Trending Technologies */}

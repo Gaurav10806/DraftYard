@@ -58,43 +58,15 @@ def idea_match(request):
     
     # Check if empty database
     if not candidates:
+        # When no candidates are found, return an empty but valid response without placeholder UI values.
         return Response({
             "query": query_text,
             "matchCount": 0,
             "matches": [],
             "matchedDrafts": [],
             "similarityScore": "0.0",
-            "aiInsights": {
-                "summary": "No drafts found in the database to compare against.",
-                "commonFailures": [],
-                "successPatterns": [],
-                "recommendedStack": [],
-                "roadmap": [],
-                "risks": [],
-                "revivalSuggestions": [],
-                "overallAnalysis": "No drafts found in the database to compare against.",
-                "overallScore": 0,
-                "scoreDimensions": []
-            },
-            "communityStatistics": {
-                "totalDrafts": 0,
-                "retrievedMatches": 0,
-                "highestSimilarity": 0.0,
-                "averageSimilarity": 0.0,
-                "confidenceScore": "Low",
-                "confidenceLevel": "Low",
-                "confidenceExplanation": "Insufficient matching projects found in DraftYard database.",
-                "commonFailure": "None",
-                "commonTech": "None",
-                "avgProjectStage": "None",
-                "mostSuccessfulCategory": "None",
-                "avgCompletionRate": 0,
-                "stageDistribution": {},
-                "techFrequency": [],
-                "failureFrequency": [],
-                "completionDistribution": {},
-                "completionStatistics": {"averageProgress": 0, "progressRange": "0%", "totalCount": 0}
-            }
+            "aiInsights": {},
+            "communityStatistics": {}
         })
 
     # 2. Extract metadata query fields (for re-ranking)

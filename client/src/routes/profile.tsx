@@ -39,10 +39,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { updateUserProfile, fetchUserProfile, followUser, unfollowUser, fetchFollowers, fetchFollowing, fetchUserCollaborations, fetchUserSuggestions, addSkill, removeSkill, type UserProfile, type PublicUser } from "@/lib/api";
+import { updateUserProfile, fetchUserProfile, fetchPublicUserProfile, followUser, unfollowUser, fetchFollowers, fetchFollowing, fetchUserCollaborations, fetchUserSuggestions, addSkill, removeSkill, type UserProfile, type PublicUser } from "@/lib/api";
 import { useMyDrafts } from "@/hooks/use-drafts";
 import { useAuth } from "@/lib/auth-context";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -200,10 +201,14 @@ function ProfilePage() {
   const { user: authUser } = useAuth();
   const queryClient = useQueryClient();
   const { data: myDrafts, isLoading: draftsLoading } = useMyDrafts();
+  // Use router to read search params (userId)
+  const router = useRouter();
+  const search = router.latestLocation?.search ?? {};
+  const publicUserId = (search as Record<string, string>).userId as string | undefined;
   const { data: fetchedProfile, isLoading: profileLoading, refetch } = useQuery({
-    queryKey: ["user-profile"],
-    queryFn: fetchUserProfile,
-    enabled: !!authUser,
+    queryKey: publicUserId ? ["public-profile", publicUserId] : ["user-profile"],
+    queryFn: publicUserId ? () => fetchPublicUserProfile(publicUserId) : fetchUserProfile,
+    enabled: publicUserId ? true : !!authUser,
   });
 
   // Fetch followers and following
@@ -592,10 +597,12 @@ function ProfilePage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleEditClick}>
-                          <Pencil className="h-3.5 w-3.5" /> Edit Profile
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {!publicUserId && (
+                            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleEditClick}>
+                              <Pencil className="h-3.5 w-3.5" /> Edit Profile
+                            </Button>
+                          )}
                         <Button 
                           size="sm" 
                           className="gap-1.5"

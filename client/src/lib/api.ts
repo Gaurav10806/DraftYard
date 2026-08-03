@@ -268,6 +268,13 @@ export async function fetchNotifications(): Promise<AppNotification[]> {
   return res.json();
 }
 
+// New global search API
+export async function fetchGlobalSearch(query: string): Promise<{ drafts: Draft[]; users: any[]; technologies: any[] }> {
+  const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error('Failed to perform global search');
+  return res.json();
+}
+
 export async function markNotificationRead(id: string): Promise<AppNotification> {
   const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
     method: "PATCH",
@@ -1695,6 +1702,26 @@ export async function fetchAdminSystemStats(): Promise<AdminSystemStats> {
   }
   return res.json();
 }
+
+export type SearchResultUser = {
+  _id: string;
+  username: string;
+  name: string;
+  avatar?: string;
+  bio?: string;
+};
+
+export type SearchResultTechnology = {
+  _id: string;
+  name: string;
+  category: string;
+};
+
+export type GlobalSearchResult = {
+  drafts: SearchResultDraft[];
+  users: SearchResultUser[];
+  technologies: SearchResultTechnology[];
+};
 
 export type SearchResultDraft = {
   _id: string;

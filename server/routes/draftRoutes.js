@@ -854,6 +854,19 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/drafts/search -> simple search placeholder
+router.get('/drafts/search', async (req, res) => {
+  try {
+    const q = req.query.q?.toString() || '';
+    const drafts = await Draft.find({ projectName: { $regex: q, $options: 'i' } })
+      .limit(20)
+      .lean();
+    res.json(drafts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/draft/:id -> single draft by ID
 router.get('/draft/:id', async (req, res) => {
   try {

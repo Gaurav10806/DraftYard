@@ -58,7 +58,7 @@ import {
   markNotificationRead,
   respondToNotification,
   respondToWorkspaceInvite,
-  searchDrafts,
+  fetchGlobalSearch,
   fetchPublicSettings,
   fetchPublicUserProfile,
   type AppNotification,
@@ -235,28 +235,36 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // State for global search results
+  const [globalSearchResults, setGlobalSearchResults] = useState<{ drafts: any[]; users: any[]; technologies: any[] }>({ drafts: [], users: [], technologies: [] });
+
+  // Updated effect to use global search
   useEffect(() => {
-  if (!query.trim()) {
-    setSearchResults([]);
-    setIsSearching(false);
-    return;
-  }
-
-  setIsSearching(true);
-
-  const timer = setTimeout(async () => {
-    try {
-      const data = await searchDrafts(query);
-      setSearchResults(data);
-    } catch (_) {
-      setSearchResults([]);
-    } finally {
+    if (!query.trim()) {
+      setGlobalSearchResults({ drafts: [], users: [], technologies: [] });
       setIsSearching(false);
+      return;
     }
-  }, 150);
 
-  return () => clearTimeout(timer);
-}, [query]);
+    setIsSearching(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const data = await fetchGlobalSearch(query);
+        // Deduplicate by _id across categories (if any overlap)
+        const uniqueDrafts = Array.from(new Map(data.drafts.map((d: any) => [d._id, d])).values());
+        const uniqueUsers = Array.from(new Map(data.users.map((u: any) => [u._id, u])).values());
+        const uniqueTechs = Array.from(new Map(data.technologies.map((t: any) => [t._id, t])).values());
+        setGlobalSearchResults({ drafts: uniqueDrafts, users: uniqueUsers, technologies: uniqueTechs });
+      } catch (_) {
+        setGlobalSearchResults({ drafts: [], users: [], technologies: [] });
+      } finally {
+        setIsSearching(false);
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const goToDraft = (target: SearchResultDraft) => {
   navigate({
@@ -269,8 +277,8 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
 };
 
   const submitSearch = () => {
-    if (searchResults.length > 0) {
-      goToDraft(searchResults[0]);
+    if (globalSearchResults.drafts.length > 0) {
+      goToDraft(globalSearchResults.drafts[0]);
     } else if (query.trim()) {
       toast(`No drafts found for "${query.trim()}"`);
     }
@@ -340,32 +348,92 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
           {focused && query.trim() && (
             <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
               {isSearching ? (
-  <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
-    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-    Searching database...
-  </div>
-) : searchResults.length > 0 ? (
-  searchResults.map((d) => (
-                  <button
-                    key={d.projectName}
-                    onMouseDown={() => goToDraft(d)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/60"
-                  >
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-[10px] font-bold text-primary">
-                      {d.projectName.slice(0, 2)}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{d.projectName}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {d.oneLiner}
-                      </span>
-                    </span>
-                  </button>
-                ))
+                <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  Searching database...
+                </div>
+              ) : (globalSearchResults.drafts.length > 0 || globalSearchResults.users.length > 0 || globalSearchResults.technologies.length > 0) ? (
+                <div className="max-h-[400px] overflow-y-auto">
+                  {globalSearchResults.drafts.length > 0 && (
+                    <div className="py-2">
+                      <div className="px-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Drafts</div>
+                      {globalSearchResults.drafts.map((d) => (
+                        <button
+                          key={`draft-${d._id}`}
+                          onMouseDown={() => goToDraft(d)}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/60"
+                        >
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-[10px] font-bold text-primary">
+                            {d.projectName?.slice(0, 2) || d.title?.slice(0, 2) || ''}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{d.projectName || d.title}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {d.oneLiner || d.description}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {globalSearchResults.users.length > 0 && (
+                    <div className="py-2 border-t border-border">
+                      <div className="px-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Users</div>
+                      {globalSearchResults.users.map((u) => (
+                        <button
+                          key={`user-${u._id}`}
+                          onMouseDown={() => {
+                            setQuery("");
+                            setFocused(false);
+                            inputRef.current?.blur();
+                            // Use existing profile route; pass user ID via search param for public profile view
+                            navigate({ to: "/profile", search: { userId: u._id } });
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/60"
+                        >
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[10px] font-bold text-secondary-foreground overflow-hidden">
+                            {u.avatar ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" /> : (u.name?.slice(0, 2) || '')}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{u.name}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              @{u.username}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {globalSearchResults.technologies.length > 0 && (
+                    <div className="py-2 border-t border-border">
+                      <div className="px-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Technologies</div>
+                      {globalSearchResults.technologies.map((t) => (
+                        <button
+                          key={`tech-${t._id}`}
+                          onMouseDown={() => {
+                            setQuery("");
+                            setFocused(false);
+                            inputRef.current?.blur();
+                            // Use full technology name for navigation; preserve case
+                            navigate({ to: "/stack-intelligence", search: { tech: t.name } });
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/60"
+                        >
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded bg-accent text-[10px] font-bold text-accent-foreground">
+                            #
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{t.name}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="px-3 py-3 text-xs text-muted-foreground">
-  No drafts found matching "<span className="font-medium text-foreground">{query}</span>"
-</div>
+                  No results found matching "<span className="font-medium text-foreground">{query}</span>"
+                </div>
               )}
             </div>
           )}

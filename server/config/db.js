@@ -9,9 +9,8 @@ const connectDB = async () => {
   try {
     console.log("DNS Servers:", dns.getServers());
 
-    await mongoose.connect(process.env.MONGO_URI);
-
-console.log("Connected DB:", mongoose.connection.name);
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/draftyard';
+    await mongoose.connect(mongoUri);
 console.log("Connected Host:", mongoose.connection.host);
 
 console.log("✅ MongoDB Connected");
@@ -21,9 +20,9 @@ console.log("✅ MongoDB Connected");
       // runRevivalMigration();
 
   } catch (err) {
-    console.error("❌ MongoDB Connection Error:");
-    console.error(err);
-    process.exit(1);
+    console.warn("⚠️ MongoDB connection failed, continuing without DB. Error:");
+    console.warn(err);
+    // Do not exit; allow server to start in offline mode.
   }
 };
 
