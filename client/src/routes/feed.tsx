@@ -963,7 +963,7 @@ function TrendingCard({
         <div className="mt-auto flex items-center justify-between pt-1">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--feed-accent)]/10 px-2.5 py-1 text-[13px] font-bold text-[var(--feed-accent)] ring-1 ring-[var(--feed-accent)]/20">
             <TrendingUp className="h-3.5 w-3.5" />
-            {(draft.upvotes ?? draft.likes ?? 0).toLocaleString()}
+            {(draft.likes || 0).toLocaleString()}
           </span>
           {draft.raisedHands && draft.raisedHands.length > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] font-medium text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-300">

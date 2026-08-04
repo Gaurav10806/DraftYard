@@ -157,7 +157,7 @@ export const Route = createFileRoute("/project/$slug")({
 // ————————————————————————————————————————————————————————————
 // Types + demo data derivations
 // ————————————————————————————————————————————————————————————
-type TabId = "overview" | "discussions" | "contributors" | "activity";
+type TabId = "overview" | "discussions" | "collaboration";
 
 const TEAM = [
   { name: "Ansh Vekariya", role: "Project Owner", initials: "AV", tint: "from-violet-500 to-fuchsia-500" },
@@ -186,40 +186,6 @@ const AI_SUGGESTIONS = [
 ];
 
 const DISCUSSION_TAGS = ["Idea", "Problem", "Question", "General"] as const;
-
-const OPEN_POSITIONS = [
-  { role: "Frontend Developer", tech: "React, TypeScript, Tailwind CSS", match: 92, tone: "emerald" },
-  { role: "Backend Developer", tech: "Node.js, Express, MongoDB", match: 88, tone: "emerald" },
-  { role: "DevOps Engineer", tech: "Docker, CI/CD, Nginx", match: 75, tone: "amber" },
-  { role: "Mobile Developer", tech: "React Native, Expo", match: 70, tone: "amber" },
-];
-
-const OPPORTUNITIES = [
-  { title: "Fix Board Rendering Bug", body: "Fix re-render issues when tasks are updated.", diff: "Medium", hours: "4–6 hrs" },
-  { title: "Add Dark Mode", body: "Implement dark mode across the application.", diff: "Easy", hours: "3–5 hrs" },
-  { title: "Optimize API Calls", body: "Reduce unnecessary API calls in dashboard.", diff: "Medium", hours: "5–8 hrs" },
-  { title: "Improve Mobile View", body: "Improve responsiveness for mobile screens.", diff: "Easy", hours: "2–4 hrs" },
-];
-
-const TIMELINE = [
-  { icon: "flag", title: "Project created by Ansh Vekariya", date: "Jan 12, 2026", tone: "violet" },
-  { icon: "git", title: "Initial commit", body: "Setup project structure and added core features", date: "Jan 13, 2026", tone: "violet" },
-  { icon: "board", title: "Kanban board module added", body: "Implemented drag & drop and real-time updates", date: "Jan 20, 2026", tone: "violet" },
-  { icon: "chart", title: "Analytics dashboard added", body: "Added charts and basic analytics", date: "Feb 1, 2026", tone: "violet" },
-  { icon: "warn", title: "Stall detected by AI", body: "Inactivity for more than 30 days", date: "Jun 18, 2026", tone: "amber" },
-  { icon: "revive", title: "Project marked open for revival", body: "Now looking for contributors to bring it back", date: "Jul 10, 2026", tone: "emerald" },
-];
-
-const HEALTH_DATA = [
-  { m: "Jan", v: 40 },
-  { m: "Feb", v: 55 },
-  { m: "Mar", v: 62 },
-  { m: "Apr", v: 45 },
-  { m: "May", v: 35 },
-  { m: "Jun", v: 30 },
-  { m: "Jul", v: 78 },
-];
-
 // ————————————————————————————————————————————————————————————
 // Stall DNA Computation
 // ————————————————————————————————————————————————————————————
@@ -477,8 +443,7 @@ function ProjectPage() {
               <div className="h-6" />
               {tab === "overview" && <OverviewTab draft={draft} onViewDiscussions={() => setTab("discussions")} />}
               {tab === "discussions" && <DiscussionsTab />}
-              {tab === "contributors" && <ContributorsTab draft={draft} onApply={() => setJoinOpen(true)} />}
-              {tab === "activity" && <ActivityTab draft={draft} />}
+              {tab === "collaboration" && <CollaborationTab draft={draft} onApply={() => setJoinOpen(true)} />}
             </motion.main>
           </div>
         </SidebarInset>
@@ -618,9 +583,9 @@ function ProjectHero({
   };
 
   const raisedHandsCount = draft.raisedHands?.length || 0;
-  const upvotes = draft.upvotes || 0;
+  const communityLikes = draft.likes || 0;
   const bookmarks = draft.bookmarks || 0;
-  const revivalScore = Math.min(99, Math.max(35, 45 + upvotes * 2 + raisedHandsCount * 15 + bookmarks * 3));
+  const revivalScore = Math.min(99, Math.max(35, 45 + communityLikes * 2 + raisedHandsCount * 15 + bookmarks * 3));
 
   const handleContinueEditing = async () => {
     if (!draft._id) {
@@ -1085,8 +1050,7 @@ function ProjectTabs({ tab, onTab }: { tab: TabId; onTab: (t: TabId) => void }) 
   const items: { id: TabId; label: string; icon: typeof LayoutGrid }[] = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
     { id: "discussions", label: "Discussions", icon: MessageSquare },
-    { id: "contributors", label: "Contributors", icon: Users },
-    { id: "activity", label: "Activity", icon: ActivityIcon },
+    { id: "collaboration", label: "Collaboration", icon: Users },
   ];
   return (
     <div className="mt-6 flex items-center gap-1 border-b border-border/60">
@@ -2090,10 +2054,37 @@ function DiscussionRow({ d }: { d: (typeof DISCUSSIONS)[number] }) {
 }
 
 // ————————————————————————————————————————————————————————————
-// CONTRIBUTORS TAB
+// COLLABORATION TAB (Merged Contributors + Activity)
 // ————————————————————————————————————————————————————————————
-function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: string) => void }) {
+function CollaborationTab({ draft, onApply }: { draft: Draft; onApply: (role: string) => void }) {
   const ownerName = getOwnerName(draft.submittedBy);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+
+  // Fetch real activity logs from the API
+  useEffect(() => {
+    const fetchActivityLogs = async () => {
+      if (!draft._id) return;
+      setLoadingActivity(true);
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("draftyard_token") : null;
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        
+        const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+        const res = await fetch(`${apiBase}/team/${draft._id}`, { headers });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setActivityLogs(data.activity || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch activity logs:', error);
+      } finally {
+        setLoadingActivity(false);
+      }
+    };
+    fetchActivityLogs();
+  }, [draft._id]);
 
   const ownerInitials = ownerName
     .split(" ")
@@ -2102,6 +2093,7 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
     .join("")
     .toUpperCase() || "PO";
 
+  // CORE TEAM
   const dynamicTeam = [
     {
       name: ownerName,
@@ -2123,20 +2115,120 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
 
   const totalContributors = dynamicTeam.length;
   const totalRevivalRequests = (draft.raisedHands || []).length;
-  const totalUpvotes = draft.upvotes || 0;
+  const totalCommunityLikes = draft.likes || 0;
 
+  // CONTRIBUTION OVERVIEW - Chart data
   const chartData = useMemo(() => {
-    const seed = (draft.projectName.length * 3) + totalUpvotes;
+    const seed = (draft.projectName.length * 3) + totalCommunityLikes;
     return Array.from({ length: 12 }, (_, i) => {
       const base = totalContributors + Math.round((i * (totalRevivalRequests + 1)) / 3);
       const v = Math.max(1, base + ((i * seed) % 4));
       return { week: `W${i + 1}`, activity: v };
     });
-  }, [draft.projectName, totalContributors, totalRevivalRequests, totalUpvotes]);
+  }, [draft.projectName, totalContributors, totalRevivalRequests, totalCommunityLikes]);
+
+  // ACTIVITY TIMELINE - Real events from database
+  const dynamicTimeline = useMemo(() => {
+    const events: any[] = [];
+
+    // Add project creation event
+    if (draft.createdAt) {
+      const createdDate = new Date(draft.createdAt).toLocaleDateString("en-US", { 
+        month: "short", 
+        day: "numeric", 
+        year: "numeric" 
+      });
+      events.push({
+        icon: "flag",
+        title: `Project created by ${ownerName}`,
+        date: createdDate,
+        tone: "violet",
+      });
+    }
+
+    // Add activity log events from database
+    if (activityLogs && activityLogs.length > 0) {
+      activityLogs.slice(0, 4).forEach((log: any) => {
+        const logDate = log.createdAt 
+          ? new Date(log.createdAt).toLocaleDateString("en-US", { 
+              month: "short", 
+              day: "numeric" 
+            })
+          : "Recently";
+
+        events.push({
+          icon: "activity",
+          title: log.action || "Team activity",
+          body: `by ${log.who || 'Team member'}`,
+          date: logDate,
+          tone: "violet",
+        });
+      });
+    }
+
+    // Add stage change event if available
+    if (draft.currentStage) {
+      events.push({
+        icon: "board",
+        title: `Project stage: ${draft.currentStage}`,
+        date: "Current",
+        tone: "violet",
+      });
+    }
+
+    // Add stall/revival events based on status
+    if (draft.failureReason) {
+      events.push({
+        icon: "warn",
+        title: "Stall reason recorded",
+        body: draft.failureReason,
+        date: "Recently",
+        tone: "amber",
+      });
+    }
+
+    if (draft.openForRevival) {
+      events.push({
+        icon: "revive",
+        title: "Marked open for revival",
+        body: "Looking for contributors to join and build",
+        date: "Active",
+        tone: "emerald",
+      });
+    }
+
+    return events;
+  }, [draft, activityLogs, ownerName]);
+
+  // ACTIVITY INSIGHTS
+  const activityInsights = useMemo(() => {
+    const insights: string[] = [];
+    insights.push(`Project is currently in the "${draft.currentStage}" stage.`);
+    const revivalCount = draft.raisedHands?.length || 0;
+    if (revivalCount > 0) {
+      insights.push(`${revivalCount} active revival request${revivalCount > 1 ? "s" : ""} submitted by community developers.`);
+    } else {
+      insights.push("Open for community revival and developer contributions.");
+    }
+    const upvotes = draft.likes || 0;
+    const views = draft.views || 0;
+    if (upvotes > 0 || views > 0) {
+      insights.push(`Supported by ${upvotes} community like${upvotes !== 1 ? "s" : ""} and ${views} view${views !== 1 ? "s" : ""}.`);
+    } else {
+      insights.push("High potential modular codebase ready for extension.");
+    }
+    const teamSize = (draft.collaborators?.length || 0) + 1;
+    insights.push(`${teamSize} active member${teamSize > 1 ? "s" : ""} in ${draft.domain || "tech"} project team.`);
+    if (activityLogs.length > 0) {
+      insights.push(`${activityLogs.length} recent team activity log${activityLogs.length > 1 ? "s" : ""} recorded.`);
+    }
+    return insights;
+  }, [draft, activityLogs]);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
-      {/* Core team */}
+    <div className="grid gap-4 lg:grid-cols-2">
+      {/* TOP ROW */}
+      {/* Core Team */}
       <Card>
         <CardTitle icon={<Users className="h-4 w-4 text-violet-500" />}>Core Team</CardTitle>
         <ul className="mt-3 space-y-3">
@@ -2159,138 +2251,7 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
         </ul>
       </Card>
 
-      {/* AI Compatibility */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle icon={<Sparkles className="h-4 w-4 text-violet-500" />}>
-            AI Compatibility
-          </CardTitle>
-          <Badge className="rounded-full bg-violet-500/15 text-[10px] text-violet-600 ring-1 ring-violet-500/30 dark:text-violet-300">
-            BETA
-          </Badge>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          We analyzed your profile and skills.
-        </p>
-        <div className="mt-4 flex items-center gap-5">
-          <CompatibilityRing value={91} />
-          <div className="min-w-0 flex-1 space-y-3 text-sm">
-            <div>
-              <div className="mb-1.5 font-semibold text-[13px]">Why you're a great fit</div>
-              <ul className="space-y-1.5 text-[12.5px] text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Strong in React & TypeScript
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Experience with Node.js & APIs
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> Interest in productivity tools
-                </li>
-              </ul>
-            </div>
-            <div>
-              <div className="mb-1.5 font-semibold text-[13px]">Skills you can grow</div>
-              <ul className="space-y-1.5 text-[12.5px] text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> Real-time systems (Socket.io)
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> MongoDB Aggregations
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <button className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-[var(--project-accent)]">
-          Update your skills in your profile for better matches →
-        </button>
-      </Card>
-
-      {/* Open positions */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>Open Positions</CardTitle>
-          <button className="text-xs font-medium text-[var(--project-accent)]">
-            View all ({OPEN_POSITIONS.length})
-          </button>
-        </div>
-        <ul className="mt-3 space-y-3">
-          {OPEN_POSITIONS.map((p) => (
-            <li key={p.role} className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">{p.role}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">{p.tech}</div>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    p.tone === "emerald"
-                      ? "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-300"
-                      : "bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/30 dark:text-amber-300"
-                  }`}
-                >
-                  {p.match}% Match
-                </span>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => onApply(p.role)}
-                className="mt-2 h-7 w-full rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[11px] text-white"
-              >
-                Apply
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* Contribution opportunities */}
-      <Card className="lg:col-span-2">
-        <div className="flex items-center justify-between">
-          <CardTitle icon={<Lightbulb className="h-4 w-4 text-amber-500" />}>
-            Contribution Opportunities
-          </CardTitle>
-          <button className="text-xs font-medium text-[var(--project-accent)]">
-            View all opportunities →
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground">Claim tasks and start contributing</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {OPPORTUNITIES.map((o) => (
-            <div
-              key={o.title}
-              className="flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-3"
-            >
-              <h4 className="text-sm font-semibold">{o.title}</h4>
-              <p className="text-[11px] leading-[1.5] text-muted-foreground">{o.body}</p>
-              <div className="mt-auto flex items-center gap-1.5 text-[10px]">
-                <span
-                  className={`rounded-full px-1.5 py-0.5 font-semibold ring-1 ${
-                    o.diff === "Easy"
-                      ? "bg-emerald-500/15 text-emerald-600 ring-emerald-500/30 dark:text-emerald-300"
-                      : "bg-amber-500/15 text-amber-600 ring-amber-500/30 dark:text-amber-300"
-                  }`}
-                >
-                  {o.diff}
-                </span>
-                <span className="inline-flex items-center gap-1 text-muted-foreground">
-                  <Clock className="h-3 w-3" /> {o.hours}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => onApply(`Contribution: ${o.title}`)}
-                className="h-7 w-full rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[11px] text-white"
-              >
-                Claim
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Contribution overview */}
+      {/* Contribution Overview */}
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Contribution Overview</CardTitle>
@@ -2314,7 +2275,84 @@ function ContributorsTab({ draft, onApply }: { draft: Draft; onApply: (role: str
           </ResponsiveContainer>
         </div>
         <div className="mt-1 text-right text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
-          {totalRevivalRequests > 0 ? `${totalRevivalRequests} active revival request${totalRevivalRequests > 1 ? "s" : ""}` : `${totalUpvotes} community upvotes`}
+          {totalRevivalRequests > 0 ? `${totalRevivalRequests} active revival request${totalRevivalRequests > 1 ? "s" : ""}` : `${totalCommunityLikes} community like${totalCommunityLikes !== 1 ? "s" : ""}`}
+        </div>
+      </Card>
+
+      {/* BOTTOM ROW */}
+      {/* Activity Timeline */}
+      <Card>
+        <CardTitle icon={<ActivityIcon className="h-4 w-4 text-violet-500" />}>
+          Activity Timeline
+        </CardTitle>
+        <div className="relative mt-4 pl-6">
+          <span className="absolute inset-y-1 left-2 w-px bg-gradient-to-b from-violet-500/60 via-fuchsia-500/40 to-emerald-500/60" />
+          <ul className="space-y-5">
+            {dynamicTimeline.length > 0 ? (
+              dynamicTimeline.map((t) => (
+                <li key={t.title} className="relative">
+                  <span
+                    className={`absolute -left-[18px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full ring-4 ring-background ${
+                      t.tone === "amber"
+                        ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]"
+                        : t.tone === "emerald"
+                        ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]"
+                        : "bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.6)]"
+                    }`}
+                  />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h4
+                        className={`text-sm font-semibold ${
+                          t.tone === "amber"
+                            ? "text-amber-600 dark:text-amber-300"
+                            : t.tone === "emerald"
+                            ? "text-emerald-600 dark:text-emerald-300"
+                            : ""
+                        }`}
+                      >
+                        {t.title}
+                      </h4>
+                      {t.body && <p className="text-xs text-muted-foreground">{t.body}</p>}
+                    </div>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{t.date}</span>
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="text-xs text-muted-foreground">No activity recorded yet.</li>
+            )}
+          </ul>
+        </div>
+      </Card>
+
+      {/* Activity Insights */}
+      <Card>
+        <CardTitle icon={<Brain className="h-4 w-4 text-fuchsia-500" />}>Activity Insights</CardTitle>
+        <ul className="mt-3 space-y-3 text-base leading-7 text-muted-foreground">
+          {activityInsights.map((s) => {
+            // Make dynamic values bold
+            const formattedText = s
+              .replace(/the "([^"]+)" stage/g, 'the "<strong>$1</strong>" stage')
+              .replace(/(\d+) active revival request/g, '<strong>$1</strong> active revival request')
+              .replace(/(\d+) community like/g, '<strong>$1</strong> community like')
+              .replace(/(\d+) view/g, '<strong>$1</strong> view')
+              .replace(/(\d+) recent team activity/g, '<strong>$1</strong> recent team activity')
+              .replace(/(\d+) active member/g, '<strong>$1</strong> active member');
+            
+            return (
+              <li key={s} className="flex items-start gap-3">
+                <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--project-accent)]" />
+                <span dangerouslySetInnerHTML={{ __html: formattedText }} className="[&_strong]:font-semibold [&_strong]:text-foreground" />
+              </li>
+            );
+          })}
+        </ul>
+        <div className="pointer-events-none absolute -bottom-6 -right-6 grid h-24 w-24 place-items-center">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500/40 to-fuchsia-500/40 blur-2xl" />
+          <div className="relative grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_30px_rgba(139,92,246,0.55)]">
+            <Brain className="h-6 w-6" />
+          </div>
         </div>
       </Card>
     </div>
@@ -2367,218 +2405,6 @@ function CompatibilityRing({ value }: { value: number }) {
   );
 }
 
-// ————————————————————————————————————————————————————————————
-// ACTIVITY TAB
-// ————————————————————————————————————————————————————————————
-function ActivityTab({ draft }: { draft: Draft }) {
-  const ownerName = getOwnerName(draft.submittedBy);
-
-  const createdDate = (draft as any).createdAt
-    ? new Date((draft as any).createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : "Recently";
-
-  const dynamicTimeline = [
-    { icon: "flag", title: `Project created by ${ownerName}`, date: createdDate, tone: "violet" },
-    { icon: "git", title: "Initial commit & repository setup", body: `Setup ${draft.domain} project structure`, date: createdDate, tone: "violet" },
-    { icon: "board", title: `${draft.projectName} progress tracked`, body: `Current stage: ${draft.currentStage}`, date: "Recently", tone: "violet" },
-    { icon: "warn", title: "Stall reason recorded", body: draft.failureReason || "Project looking for revival", date: "Recently", tone: "amber" },
-    { icon: "revive", title: "Marked open for revival", body: "Looking for contributors to join and build", date: "Active", tone: "emerald" },
-  ];
-
-  // Dynamic Project Health chart data based on real draft metrics
-  const healthData = useMemo(() => {
-    const stageScores: Record<string, number> = {
-      "Idea": 35,
-      "Idea only": 35,
-      "Planning": 45,
-      "Prototype": 60,
-      "Building": 75,
-      "50% done": 75,
-      "Testing": 88,
-      "Almost complete": 88,
-      "Shipped": 98,
-    };
-    const baseScore = stageScores[draft.currentStage] || 50;
-    const upvotesBonus = Math.min(15, (draft.upvotes || 0) * 2);
-    const revivalBonus = Math.min(10, (draft.raisedHands?.length || 0) * 3);
-    const currentHealth = Math.min(99, baseScore + upvotesBonus + revivalBonus);
-
-    const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-    return months.map((m, idx) => {
-      const prog = (idx + 1) / months.length;
-      const v = Math.round(30 + prog * (currentHealth - 30));
-      return { m, v };
-    });
-  }, [draft]);
-
-  // Dynamic Milestones based on currentStage and collaborators
-  const milestones = useMemo(() => {
-    const stage = draft.currentStage || "Idea";
-    let stageProgress = 30;
-    if (stage.includes("Prototype")) stageProgress = 60;
-    else if (stage.includes("Building") || stage.includes("50%")) stageProgress = 75;
-    else if (stage.includes("Testing") || stage.includes("Almost")) stageProgress = 90;
-    else if (stage.includes("Shipped")) stageProgress = 100;
-
-    const teamProgress = Math.min(100, ((draft.collaborators?.length || 0) + 1) * 25 + (draft.raisedHands?.length || 0) * 15);
-
-    return [
-      { l: "Core Architecture Setup", v: 100 },
-      { l: `Stage Completion (${stage})`, v: stageProgress },
-      { l: "Community Revival & Team Onboarding", v: teamProgress },
-      { l: "Production Readiness", v: Math.round((stageProgress + teamProgress) / 2) },
-    ];
-  }, [draft]);
-
-  // Dynamic Activity Insights based on actual draft state
-  const activityInsights = useMemo(() => {
-    const insights: string[] = [];
-    insights.push(`Project is currently in the "${draft.currentStage}" stage.`);
-    const revivalCount = draft.raisedHands?.length || 0;
-    if (revivalCount > 0) {
-      insights.push(`${revivalCount} active revival request${revivalCount > 1 ? "s" : ""} submitted by community developers.`);
-    } else {
-      insights.push("Open for community revival and developer contributions.");
-    }
-    const upvotes = draft.upvotes || 0;
-    const views = draft.views || 0;
-    if (upvotes > 0 || views > 0) {
-      insights.push(`Supported by ${upvotes} community upvote${upvotes !== 1 ? "s" : ""} and ${views} view${views !== 1 ? "s" : ""}.`);
-    } else {
-      insights.push("High potential modular codebase ready for extension.");
-    }
-    const teamSize = (draft.collaborators?.length || 0) + 1;
-    insights.push(`${teamSize} active member${teamSize > 1 ? "s" : ""} in ${draft.domain || "tech"} project team.`);
-    return insights;
-  }, [draft]);
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      {/* Timeline */}
-      <Card>
-        <CardTitle icon={<ActivityIcon className="h-4 w-4 text-violet-500" />}>
-          Activity Timeline
-        </CardTitle>
-        <div className="relative mt-4 pl-6">
-          <span className="absolute inset-y-1 left-2 w-px bg-gradient-to-b from-violet-500/60 via-fuchsia-500/40 to-emerald-500/60" />
-          <ul className="space-y-5">
-            {dynamicTimeline.map((t) => (
-              <li key={t.title} className="relative">
-                <span
-                  className={`absolute -left-[18px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full ring-4 ring-background ${
-                    t.tone === "amber"
-                      ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]"
-                      : t.tone === "emerald"
-                      ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]"
-                      : "bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.6)]"
-                  }`}
-                />
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h4
-                      className={`text-sm font-semibold ${
-                        t.tone === "amber"
-                          ? "text-amber-600 dark:text-amber-300"
-                          : t.tone === "emerald"
-                          ? "text-emerald-600 dark:text-emerald-300"
-                          : ""
-                      }`}
-                    >
-                      {t.title}
-                    </h4>
-                    {t.body && <p className="text-xs text-muted-foreground">{t.body}</p>}
-                  </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">{t.date}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </Card>
-
-      {/* Right column */}
-      <div className="space-y-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <CardTitle>Project Health</CardTitle>
-            <span className="text-[10px] text-muted-foreground font-medium">Real-time Score</span>
-          </div>
-          <div className="mt-3 h-40 w-full">
-            <ResponsiveContainer>
-              <LineChart data={healthData} margin={{ top: 6, right: 6, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="health-grad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#8b5cf6" />
-                    <stop offset="100%" stopColor="#22d3ee" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="m" tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke="url(#health-grad)"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#a78bfa" }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <CardTitle>Milestones</CardTitle>
-          </div>
-          <div className="mt-3 space-y-3">
-            {milestones.map((m) => (
-              <div key={m.l}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{m.l}</span>
-                  <span className="font-semibold">{m.v}%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                    style={{ width: `${m.v}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <CardTitle icon={<Brain className="h-4 w-4 text-fuchsia-500" />}>Activity Insights</CardTitle>
-          <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
-            {activityInsights.map((s) => (
-              <li key={s} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--project-accent)]" />
-                <span>{s}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="pointer-events-none absolute -bottom-6 -right-6 grid h-24 w-24 place-items-center">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500/40 to-fuchsia-500/40 blur-2xl" />
-            <div className="relative grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_0_30px_rgba(139,92,246,0.55)]">
-              <Brain className="h-6 w-6" />
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-}
 
 // ————————————————————————————————————————————————————————————
 // Shared primitives

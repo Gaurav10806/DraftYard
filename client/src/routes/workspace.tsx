@@ -4014,7 +4014,7 @@ function OverviewTab({
   const doneTasks = tasks.filter((t) => t.status === "Done").length;
   const realContributors = teamData?.members?.length || (draft?.collaborators?.length ? draft.collaborators.length + 1 : 1);
   const realRevivalRequests = draft?.raisedHands?.length || 0;
-  const realUpvotes = draft?.upvotes || 0;
+  const realCommunityLikes = draft?.likes || 0;
   const realViews = draft?.views || 0;
 
   // Unified activity generator
@@ -4200,7 +4200,7 @@ function OverviewTab({
               { label: "Tasks", value: `${totalTasks}`, sub: `${doneTasks} done` },
               { label: "Contributors", value: `${realContributors}`, sub: realContributors > 1 ? "team members" : "owner" },
               { label: "Revivals", value: `${realRevivalRequests}`, sub: realRevivalRequests > 0 ? "active requests" : "0 requests" },
-              { label: "Upvotes", value: `${realUpvotes}`, sub: `${realViews} views` },
+              { label: "Likes", value: `${realCommunityLikes}`, sub: `${realViews} views` },
             ].map((m) => (
               <div key={m.label} className="min-w-0">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-tight truncate">
