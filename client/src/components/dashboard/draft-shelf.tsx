@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ChevronLeft, ChevronRight, Plus, Star, AlertCircle, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, AlertCircle, Zap } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -32,11 +32,24 @@ export function DraftShelf() {
     : [];
 
   // Show the user's own drafts when logged in, or public feed drafts when guest
-  const items = (
+  let items = (
     isAuthenticated
       ? (myDrafts || [])
       : (serverDrafts || [])
-  ).slice(0, 12);
+  );
+
+  // Sort so bookmarked drafts appear first
+  if (items.length > 0) {
+    items = [...items].sort((a, b) => {
+      // Bookmarked drafts first
+      if (a.bookmarked === true && b.bookmarked !== true) return -1;
+      if (a.bookmarked !== true && b.bookmarked === true) return 1;
+      // Then by existing order (creation date or current order)
+      return 0;
+    });
+  }
+
+  items = items.slice(0, 12);
 
   const isLoading = myLoading || (isAuthenticated ? false : serverLoading);
 
@@ -115,7 +128,6 @@ export function DraftShelf() {
           >
             {items.map((d, i) => {
               const progress = stageToProgress(d.currentStage);
-              const pinned = i === 1;
               const isOpenForRevival = d.openForRevival || (d.raisedHands && d.raisedHands.length > 0);
               const author = typeof d.submittedBy === "object" ? d.submittedBy?.name || "Anonymous" : "Anonymous";
 
@@ -129,10 +141,6 @@ export function DraftShelf() {
                     {d.isOwner === false || d._sharedRole ? (
                       <Badge variant="outline" className="rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400 capitalize">
                         {d._sharedRole || "Contributor"}
-                      </Badge>
-                    ) : pinned ? (
-                      <Badge className="rounded-full bg-tint-peach text-foreground hover:bg-tint-peach">
-                        <Star className="mr-1 h-3 w-3" /> Pinned
                       </Badge>
                     ) : i === 0 ? (
                       <Badge variant="secondary" className="rounded-full">
@@ -155,11 +163,6 @@ export function DraftShelf() {
                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenuItem onClick={() => openDraft(d._id || d.projectName, d.projectName)}>
                           Open
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toast(`${d.projectName} marked open for revival`)}
-                        >
-                          Mark for revival
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
@@ -211,15 +214,6 @@ export function DraftShelf() {
                       className="flex-1 rounded-lg bg-gradient-to-r from-primary to-primary/85 px-2 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"
                     >
                       Open
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toast(`${d.projectName} marked open for revival`);
-                      }}
-                      className="flex-1 rounded-lg border border-border bg-background/95 px-2 py-1.5 text-[11px] font-semibold backdrop-blur transition hover:border-primary/50"
-                    >
-                      Revive
                     </button>
                   </div>
                 </div>

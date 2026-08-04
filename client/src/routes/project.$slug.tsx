@@ -8,6 +8,7 @@ import {
   getRevivalEligibility,
   markProjectRevived,
 } from "@/lib/api";
+import { useBookmarkDraftMutation } from "@/hooks/use-drafts";
 import { getInitials } from "@/lib/utils";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -113,7 +114,14 @@ export const Route = createFileRoute("/project/$slug")({
         // Now fetch the enriched data from the backend endpoint
         try {
           const draftId = (draft._id || (draft as any).id)?.toString();
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/draft/${draftId}`);
+          
+          // Get auth token from localStorage if available
+          const token = typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null;
+          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+          
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/draft/${draftId}`, {
+            headers
+          });
           if (response.ok) {
             const overview = await response.json();
             // Attach the backend data to the draft
@@ -341,8 +349,16 @@ function ProjectPage() {
   const draft = loaderData.draft;
   if (!draft) return null;
   const [tab, setTab] = useState<TabId>("overview");
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(draft.bookmarked === true);
+  const bookmarkMutation = useBookmarkDraftMutation();
   const { user } = useAuth();
+
+  // Update bookmarked state when mutation succeeds
+  useEffect(() => {
+    if (bookmarkMutation.isSuccess && bookmarkMutation.data) {
+      setBookmarked(bookmarkMutation.data.bookmarked === true);
+    }
+  }, [bookmarkMutation.isSuccess, bookmarkMutation.data]);
 
   // Ownership: logged-in user matches submittedBy._id, OR ownerToken matches
   const isOwner =
@@ -422,7 +438,11 @@ function ProjectPage() {
               <ProjectHero
                 draft={draft}
                 bookmarked={bookmarked}
-                onBookmark={() => setBookmarked((b) => !b)}
+                onBookmark={() => {
+                  if (draft._id) {
+                    bookmarkMutation.mutate(draft._id);
+                  }
+                }}
                 onRequestJoin={() => setJoinOpen(true)}
                 onShare={() => {
                   const url = window.location.href;

@@ -2,8 +2,55 @@ const express = require('express');
 const router = express.Router();
 const Workspace = require('../models/Workspace');
 const Draft = require('../models/draft');
+const Task = require('../models/Task');
 const TeamMember = require('../models/TeamMember');
 const { requireAuth } = require('../middleware/authMiddleware');
+
+/**
+ * Sync workspace setup tasks to Task collection.
+ * Creates Task documents for each setup task if they don't already exist.
+ * Does NOT create duplicates.
+ */
+async function syncSetupTasksToTaskCollection(draftId, workspaceTasks) {
+  if (!workspaceTasks || workspaceTasks.length === 0) return;
+
+  try {
+    for (const setupTask of workspaceTasks) {
+      if (!setupTask.title || !setupTask.title.trim()) continue;
+
+      // Check if a task already exists for this setup task
+      // We use title + draftId as a unique identifier for setup tasks
+      const existingTask = await Task.findOne({
+        draftId,
+        title: setupTask.title.trim(),
+        // Optionally could track setup tasks with a flag, but title matching is simple
+      });
+
+      // Only create if it doesn't exist
+      if (!existingTask) {
+        const newTask = new Task({
+          draftId,
+          title: setupTask.title.trim(),
+          description: '', // Setup tasks don't have descriptions initially
+          status: setupTask.status || 'Todo',
+          priority: setupTask.priority || 'Medium',
+          assignee: setupTask.assignee || '',
+          labels: [],
+          checklist: [],
+          comments: [],
+          dependencies: '',
+          linkedPR: '',
+          attachments: [],
+        });
+        await newTask.save();
+      }
+    }
+  } catch (err) {
+    console.error('Error syncing setup tasks to Task collection:', err);
+    // Don't throw - workspace can exist even if task sync fails
+    // Log error but allow workspace creation to succeed
+  }
+}
 
 // Optional auth — attaches req.user if a valid token is present, never blocks
 const optionalAuth = async (req, res, next) => {
@@ -108,6 +155,12 @@ router.post('/workspace', optionalAuth, async (req, res) => {
     });
 
     await workspace.save();
+
+    // Sync setup tasks to Task collection (create tasks in Task model)
+    if (tasks && tasks.length > 0) {
+      await syncSetupTasksToTaskCollection(draftId, tasks);
+    }
+
     res.status(201).json(workspace);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -182,6 +235,12 @@ router.patch('/workspace/:draftId', optionalAuth, async (req, res) => {
     if (attachments !== undefined) workspace.attachments = attachments;
 
     await workspace.save();
+
+    // Sync updated tasks to Task collection
+    if (tasks !== undefined && tasks.length > 0) {
+      await syncSetupTasksToTaskCollection(draftId, tasks);
+    }
+
     res.json(workspace);
   } catch (err) {
     res.status(400).json({ error: err.message });

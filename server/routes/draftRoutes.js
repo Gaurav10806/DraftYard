@@ -830,6 +830,10 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
       ...d,
       isOwner: true,
       userRole: 'Owner',
+      bookmarked: d.bookmarkedBy && d.bookmarkedBy.some(bid => {
+        const bidStr = typeof bid === 'object' ? bid.toString() : bid;
+        return bidStr === userIdStr;
+      })
     }));
 
     const formattedShared = sharedDraftsDocs.map(d => {
@@ -844,6 +848,10 @@ router.get('/drafts/mine', requireAuth, async (req, res) => {
         userRole: role,
         _sharedRole: role,
         _ownerName: ownerName,
+        bookmarked: d.bookmarkedBy && d.bookmarkedBy.some(bid => {
+          const bidStr = typeof bid === 'object' ? bid.toString() : bid;
+          return bidStr === userIdStr;
+        })
       };
     });
 
@@ -1548,7 +1556,7 @@ async function getSimilarProjects(draft) {
 }
 
 // GET /api/draft/:id -> single draft by ID with stallDNA and similarProjects
-router.get('/draft/:id', async (req, res) => {
+router.get('/draft/:id', optionalAuth, async (req, res) => {
   try {
     const draft = await Draft.findById(req.params.id)
       .populate({
@@ -1570,9 +1578,20 @@ router.get('/draft/:id', async (req, res) => {
     // Generate project strengths (gold section)
     const strengths = generateProjectStrengths(draft);
     
+    // Add bookmarked status if user is authenticated
+    const bookmarked = req.user && draft.bookmarkedBy
+      ? draft.bookmarkedBy.some(bid => {
+          const bidStr = typeof bid === 'object' ? bid.toString() : bid;
+          return bidStr === (req.user._id ? req.user._id.toString() : '');
+        })
+      : false;
+    
     // Return enriched response
     res.json({
-      project: draft,
+      project: {
+        ...draft.toObject ? draft.toObject() : draft,
+        bookmarked
+      },
       stallDNA,
       similarProjects,
       strengths: strengths.map(s => ({
@@ -1798,7 +1817,20 @@ router.patch('/draft/:id/bookmark', requireAuth, async (req, res) => {
       .populate({ path: 'submittedBy', select: 'name username avatar' })
       .populate({ path: 'collaborators', select: 'name username avatar' });
     
-    res.json(updatedDraft);
+    // Add bookmarked status
+    const userIdStr = userId ? userId.toString() : '';
+    const bookmarked = updatedDraft && updatedDraft.bookmarkedBy
+      ? updatedDraft.bookmarkedBy.some(bid => {
+          const bidStr = typeof bid === 'object' ? bid.toString() : bid;
+          return bidStr === userIdStr;
+        })
+      : false;
+    
+    const draftObj = updatedDraft ? (updatedDraft.toObject ? updatedDraft.toObject() : updatedDraft) : null;
+    res.json({
+      ...draftObj,
+      bookmarked
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

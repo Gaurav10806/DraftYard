@@ -98,6 +98,7 @@ export function useBookmarkDraftMutation() {
   return useMutation({
     mutationFn: bookmarkDraft,
     onSuccess: (updatedDraft) => {
+      // Update feed cache
       queryClient.setQueryData(["feed"], (oldData: any) => {
         if (!oldData?.pages) return oldData;
 
@@ -112,7 +113,27 @@ export function useBookmarkDraftMutation() {
         };
       });
 
+      // Update my-drafts cache - preserve original structure and only update bookmarked field
+      queryClient.setQueryData(["my-drafts"], (oldData: any) => {
+        if (!Array.isArray(oldData)) return oldData;
+        
+        return oldData.map((d: any) => {
+          if (d._id === updatedDraft._id) {
+            // Preserve the original draft structure (isOwner, userRole, _sharedRole, etc)
+            // and only update the bookmarked and bookmark count fields
+            return {
+              ...d,
+              bookmarked: updatedDraft.bookmarked,
+              bookmarks: updatedDraft.bookmarks,
+              bookmarkedBy: updatedDraft.bookmarkedBy
+            };
+          }
+          return d;
+        });
+      });
+
       queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
     },
     onError: (error) => {
       console.error("Failed to bookmark draft:", error);

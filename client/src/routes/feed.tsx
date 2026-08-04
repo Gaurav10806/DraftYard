@@ -63,7 +63,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
-import { useDrafts } from "@/hooks/use-drafts";
+import { useDrafts, useBookmarkDraftMutation } from "@/hooks/use-drafts";
 import { likeDraft, recordView, raiseHand } from "@/lib/api";
 import { JoinRequestModal } from "@/components/JoinRequestModal";
 import { TopBar } from "@/components/dashboard/top-bar";
@@ -289,16 +289,13 @@ function FeedPage() {
     return bDate - aDate;
   }).slice(0, 8), [enriched]);
 
-  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const bookmarkMutation = useBookmarkDraftMutation();
   const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
   const [raiseTarget, setRaiseTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const toggleBookmark = (id: string) =>
-    setBookmarks((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const handleBookmark = (id: string) => {
+    bookmarkMutation.mutate(id);
+  };
   const toggleUpvote = (id: string) =>
     setUpvoted((prev) => {
       const next = new Set(prev);
@@ -359,8 +356,7 @@ function FeedPage() {
                   <>
                     <TrendingCarousel
                       drafts={trending}
-                      bookmarks={bookmarks}
-                      onBookmark={toggleBookmark}
+                      onBookmark={handleBookmark}
                       isLoading={isLoading}
                     />
                     <div className="h-6" />
@@ -385,9 +381,8 @@ function FeedPage() {
                 <div className="h-6" />
                 <FeedGrid
                   items={visible}
-                  bookmarks={bookmarks}
                   upvoted={upvoted}
-                  onBookmark={toggleBookmark}
+                  onBookmark={handleBookmark}
                   onUpvote={toggleUpvote}
                   onRaise={(target) => setRaiseTarget(target)}
                   isLoading={isLoading}
@@ -770,12 +765,10 @@ function HeroHeader({ draftsCount, isLoading, totalInteractions, avgRevival }: {
 
 function TrendingCarousel({
   drafts,
-  bookmarks,
   onBookmark,
   isLoading,
 }: {
   drafts: EnrichedDraft[];
-  bookmarks: Set<string>;
   onBookmark: (id: string) => void;
   isLoading: boolean;
 }) {
@@ -823,7 +816,7 @@ function TrendingCarousel({
               draft={d}
               tint={AVATAR_TINTS[i % AVATAR_TINTS.length]}
               tintIndex={i % AVATAR_TINTS.length}
-              bookmarked={bookmarks.has(d.id)}
+              bookmarked={d.bookmarked === true}
               onBookmark={() => onBookmark(d.id)}
             />
           ))}
@@ -1200,7 +1193,6 @@ function SingleSelectDropdown({
 
 function FeedGrid({
   items,
-  bookmarks,
   upvoted,
   onBookmark,
   onUpvote,
@@ -1208,7 +1200,6 @@ function FeedGrid({
   isLoading,
 }: {
   items: EnrichedDraft[];
-  bookmarks: Set<string>;
   upvoted: Set<string>;
   onBookmark: (id: string) => void;
   onUpvote: (id: string) => void;
@@ -1247,7 +1238,7 @@ function FeedGrid({
           key={d.id}
           draft={d}
           tint={AVATAR_TINTS[hashStr(d.projectName) % AVATAR_TINTS.length]}
-          bookmarked={bookmarks.has(d.id)}
+          bookmarked={d.bookmarked === true}
           upvoted={upvoted.has(d.id)}
           onBookmark={() => onBookmark(d.id)}
           onUpvote={() => onUpvote(d.id)}
