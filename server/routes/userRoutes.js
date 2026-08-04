@@ -16,9 +16,17 @@ router.get('/user/profile', requireAuth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Fetch user's public projects (drafts created by this user)
+    const publicProjects = await Draft.find({
+      submittedBy: req.user._id
+    }).sort({ createdAt: -1 });
+
     // Expose 'name' as 'fullName' so the client stays consistent
     const obj = user.toJSON();
     obj.fullName = obj.name;
+    // Add public projects to the response for consistency
+    obj.publicProjects = publicProjects || [];
     res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -38,8 +46,18 @@ router.get('/user/profile/:id', requireAuth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Fetch user's public projects (drafts created by this user)
+    const publicProjects = await Draft.find({
+      submittedBy: id
+    }).sort({ createdAt: -1 });
+
     const obj = user.toJSON();
     obj.fullName = obj.name || obj.username || 'Developer';
+    // Add public projects to the response
+    obj.publicProjects = publicProjects || [];
+    // Calculate projects count from the public projects array for consistency
+    obj.projectsCount = (publicProjects || []).length;
     res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });

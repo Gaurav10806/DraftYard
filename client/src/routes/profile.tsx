@@ -205,37 +205,41 @@ function ProfilePage() {
   const router = useRouter();
   const search = router.latestLocation?.search ?? {};
   const publicUserId = (search as Record<string, string>).userId as string | undefined;
+  
+  // Determine if we're in owner or public mode
+  const isOwnerProfile = !publicUserId;
+  
   const { data: fetchedProfile, isLoading: profileLoading, refetch } = useQuery({
     queryKey: publicUserId ? ["public-profile", publicUserId] : ["user-profile"],
     queryFn: publicUserId ? () => fetchPublicUserProfile(publicUserId) : fetchUserProfile,
     enabled: publicUserId ? true : !!authUser,
   });
 
-  // Fetch followers and following
+  // Fetch followers and following (only for owner or logged in user)
   const { data: followersData = [] } = useQuery({
     queryKey: ["followers"],
     queryFn: fetchFollowers,
-    enabled: !!authUser,
+    enabled: isOwnerProfile && !!authUser,
   });
 
   const { data: followingData = [] } = useQuery({
     queryKey: ["following"],
     queryFn: fetchFollowing,
-    enabled: !!authUser,
+    enabled: isOwnerProfile && !!authUser,
   });
 
-  // Fetch user collaborations
+  // Fetch user collaborations (only for owner)
   const { data: collaborationsData = [] } = useQuery({
     queryKey: ["collaborations"],
     queryFn: fetchUserCollaborations,
-    enabled: !!authUser,
+    enabled: isOwnerProfile && !!authUser,
   });
 
-  // Fetch user suggestions (DraftYard users not yet followed)
+  // Fetch user suggestions (only for owner)
   const { data: suggestionsData = [] } = useQuery({
     queryKey: ["user-suggestions"],
     queryFn: fetchUserSuggestions,
-    enabled: !!authUser,
+    enabled: isOwnerProfile && !!authUser,
   });
 
   const [modal, setModal] = useState<null | "followers" | "following">(null);
@@ -346,17 +350,27 @@ function ProfilePage() {
     followingData.some(following => following._id === follower._id)
   );
 
-  // Calculate user stats from their drafts
-  const userStats = {
-    projects: myDrafts?.length || 0,
-    completed: myDrafts?.filter(d => d.currentStage === "Launched but abandoned" || d.currentStage === "Almost complete").length || 0,
-    revived: myDrafts?.filter(d => d.raisedHands && d.raisedHands.length > 0).length || 0,
-    collabs: collaborationsData.length,
-    followers: followersData.length,
-    following: followingData.length,
-  };
+  // Calculate user stats from their drafts (or viewed user's public data)
+  // When viewing another user's profile, we only use fetchedProfile data
+  const userStats = isOwnerProfile
+    ? {
+        projects: myDrafts?.length || 0,
+        completed: myDrafts?.filter(d => d.currentStage === "Launched but abandoned" || d.currentStage === "Almost complete").length || 0,
+        revived: myDrafts?.filter(d => d.raisedHands && d.raisedHands.length > 0).length || 0,
+        collabs: collaborationsData.length,
+        followers: followersData.length,
+        following: followingData.length,
+      }
+    : {
+        projects: fetchedProfile?.publicProjects?.length || 0,
+        completed: fetchedProfile?.publicProjects?.filter((d: any) => d.currentStage === "Launched but abandoned" || d.currentStage === "Almost complete").length || 0,
+        revived: fetchedProfile?.publicProjects?.filter((d: any) => d.raisedHands && d.raisedHands.length > 0).length || 0,
+        collabs: fetchedProfile?.collaborations?.length || 0,
+        followers: fetchedProfile?.followers?.length || 0,
+        following: fetchedProfile?.following?.length || 0,
+      };
 
-  // Build real activity from user's drafts and collaborations
+  // Build real activity from user's drafts and collaborations (only for owner)
   type ActivityItem = {
     icon: typeof FilePlus;
     label: string;
@@ -365,61 +379,67 @@ function ProfilePage() {
     tint: string;
   };
 
-  const realActivity: ActivityItem[] = [];
+  const realActivity: ActivityItem[] = isOwnerProfile ? (() => {
+    const activity: ActivityItem[] = [];
 
-  // Drafts created by the user
-  (myDrafts || []).slice(0, 3).forEach(draft => {
-    realActivity.push({
-      icon: FilePlus,
-      label: "Created a new draft",
-      target: draft.projectName,
-      time: getTimeSince(draft.lastWorkedOn || (draft as any).createdAt),
-      tint: "violet",
-    });
-  });
-
-  // Collaborations joined
-  collaborationsData.slice(0, 2).forEach(draft => {
-    realActivity.push({
-      icon: GitBranch,
-      label: "Started collaboration on",
-      target: draft.projectName,
-      time: getTimeSince((draft as any).updatedAt || (draft as any).createdAt),
-      tint: "emerald",
-    });
-  });
-
-  // Revived drafts (drafts with raisedHands)
-  (myDrafts || [])
-    .filter(d => d.raisedHands && d.raisedHands.length > 0)
-    .slice(0, 1)
-    .forEach(draft => {
-      realActivity.push({
-        icon: RefreshCw,
-        label: "Revived a project",
+    // Drafts created by the user
+    (myDrafts || []).slice(0, 3).forEach(draft => {
+      activity.push({
+        icon: FilePlus,
+        label: "Created a new draft",
         target: draft.projectName,
         time: getTimeSince(draft.lastWorkedOn || (draft as any).createdAt),
-        tint: "sky",
+        tint: "violet",
       });
     });
+
+    // Collaborations joined
+    collaborationsData.slice(0, 2).forEach(draft => {
+      activity.push({
+        icon: GitBranch,
+        label: "Started collaboration on",
+        target: draft.projectName,
+        time: getTimeSince((draft as any).updatedAt || (draft as any).createdAt),
+        tint: "emerald",
+      });
+    });
+
+    // Revived drafts (drafts with raisedHands)
+    (myDrafts || [])
+      .filter(d => d.raisedHands && d.raisedHands.length > 0)
+      .slice(0, 1)
+      .forEach(draft => {
+        activity.push({
+          icon: RefreshCw,
+          label: "Revived a project",
+          target: draft.projectName,
+          time: getTimeSince(draft.lastWorkedOn || (draft as any).createdAt),
+          tint: "sky",
+        });
+      });
+
+    return activity;
+  })() : [];
 
   // Sort by recency (most recent first) and limit to 4
   const activityList = realActivity.slice(0, 4);
 
-  // Get user's projects from their drafts
-  const userProjects = (myDrafts || []).slice(0, 3).map(draft => ({
-    name: draft.projectName,
-    description: draft.oneLiner,
-    status: (draft.currentStage === "Launched but abandoned" || draft.currentStage === "Almost complete" 
-      ? "Completed" 
-      : draft.currentStage === "Idea only" 
-      ? "On Hold" 
-      : "Building") as ProjectStatus,
-    stack: draft.techStack.slice(0, 3),
-    updated: `Updated ${getTimeSince(draft.lastWorkedOn ? new Date(draft.lastWorkedOn) : null)}`,
-    icon: draft.projectName.slice(0, 2).toUpperCase(),
-    tint: getTintForProject(draft.domain),
-  }));
+  // Get user's projects from their drafts or from fetchedProfile when viewing another user
+  const userProjects = (isOwnerProfile ? myDrafts : (fetchedProfile?.publicProjects as any) || [])
+    .slice(0, 3)
+    .map(draft => ({
+      name: draft.projectName,
+      description: draft.oneLiner,
+      status: (draft.currentStage === "Launched but abandoned" || draft.currentStage === "Almost complete" 
+        ? "Completed" 
+        : draft.currentStage === "Idea only" 
+        ? "On Hold" 
+        : "Building") as ProjectStatus,
+      stack: draft.techStack.slice(0, 3),
+      updated: `Updated ${getTimeSince(draft.lastWorkedOn ? new Date(draft.lastWorkedOn) : null)}`,
+      icon: draft.projectName.slice(0, 2).toUpperCase(),
+      tint: getTintForProject(draft.domain),
+    }));
 
   const displayName = profileData.fullName || authUser?.email?.split("@")[0] || "User";
   const displayUsername = profileData.username || authUser?.email?.split("@")[0] || "user";
@@ -661,9 +681,11 @@ function ProfilePage() {
                 <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="font-display text-base font-semibold">Public Projects</h3>
-                    <Link to="/workspace" search={{ draftId: undefined }} className="text-xs font-medium text-primary hover:underline">
-                      View all
-                    </Link>
+                    {isOwnerProfile && (
+                      <Link to="/workspace" search={{ draftId: undefined }} className="text-xs font-medium text-primary hover:underline">
+                        View all
+                      </Link>
+                    )}
                   </div>
                   <div className="flex flex-col gap-3">
                     {profileLoading ? (
@@ -671,9 +693,11 @@ function ProfilePage() {
                     ) : userProjects.length === 0 ? (
                       <div className="p-8 text-center">
                         <p className="text-sm text-muted-foreground">No projects yet</p>
-                        <Link to="/new-draft">
-                          <Button size="sm" className="mt-3">Create Your First Draft</Button>
-                        </Link>
+                        {isOwnerProfile && (
+                          <Link to="/new-draft">
+                            <Button size="sm" className="mt-3">Create Your First Draft</Button>
+                          </Link>
+                        )}
                       </div>
                     ) : (
                       userProjects.map((p) => (
@@ -707,11 +731,13 @@ function ProfilePage() {
                       ))
                     )}
                   </div>
-                  <div className="mt-3">
-                    <Link to="/workspace" search={{ draftId: undefined }} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                      View all projects <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </div>
+                  {isOwnerProfile && (
+                    <div className="mt-3">
+                      <Link to="/workspace" search={{ draftId: undefined }} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                        View all projects <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  )}
                 </section>
 
                 {/* Skills + Network stacked */}
@@ -719,7 +745,7 @@ function ProfilePage() {
                   <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4 flex items-center justify-between">
                       <h3 className="font-display text-base font-semibold">Skills</h3>
-                      {!showSkillInput && (
+                      {isOwnerProfile && !showSkillInput && (
                         <button
                           onClick={() => setShowSkillInput(true)}
                           className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -734,22 +760,24 @@ function ProfilePage() {
                       {(fetchedProfile?.skills ?? []).map((s) => (
                         <span
                           key={s}
-                          className="group flex items-center gap-1 rounded-lg border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary"
+                          className={`group flex items-center gap-1 rounded-lg border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors ${isOwnerProfile ? "hover:border-primary/40 hover:text-primary" : ""}`}
                         >
                           {s}
-                          <button
-                            onClick={() => removeSkillMutation.mutate(s)}
-                            disabled={removeSkillMutation.isPending}
-                            className="ml-0.5 hidden rounded group-hover:inline-flex text-muted-foreground hover:text-destructive"
-                            title="Remove"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                          {isOwnerProfile && (
+                            <button
+                              onClick={() => removeSkillMutation.mutate(s)}
+                              disabled={removeSkillMutation.isPending}
+                              className="ml-0.5 hidden rounded group-hover:inline-flex text-muted-foreground hover:text-destructive"
+                              title="Remove"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
                         </span>
                       ))}
 
-                      {/* Pending chips (not yet saved) */}
-                      {pendingSkills.map((s) => (
+                      {/* Pending chips (not yet saved) - only in owner mode */}
+                      {isOwnerProfile && pendingSkills.map((s) => (
                         <span
                           key={s}
                           className="flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
@@ -765,18 +793,20 @@ function ProfilePage() {
                     {/* Empty state */}
                     {(fetchedProfile?.skills?.length ?? 0) === 0 && pendingSkills.length === 0 && !showSkillInput && (
                       <div className="flex flex-col items-center justify-center py-6 text-center">
-                        <p className="text-sm text-muted-foreground">No skills added yet.</p>
-                        <button
-                          onClick={() => setShowSkillInput(true)}
-                          className="mt-2 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                        >
-                          <Plus className="h-3.5 w-3.5" /> Add your first skill
-                        </button>
+                        <p className="text-sm text-muted-foreground">{isOwnerProfile ? "No skills added yet." : "No skills added"}</p>
+                        {isOwnerProfile && (
+                          <button
+                            onClick={() => setShowSkillInput(true)}
+                            className="mt-2 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Add your first skill
+                          </button>
+                        )}
                       </div>
                     )}
 
-                    {/* Input area */}
-                    {showSkillInput && (
+                    {/* Input area - only in owner mode */}
+                    {isOwnerProfile && showSkillInput && (
                       <div className="mt-3 rounded-xl border border-border/60 bg-background/50 p-3">
                         <p className="mb-2 text-[11px] text-muted-foreground">
                           Type a skill and press <kbd className="rounded border border-border px-1 text-[10px]">Enter</kbd> or <kbd className="rounded border border-border px-1 text-[10px]">,</kbd> to add it as a chip, then save all at once.
@@ -826,6 +856,7 @@ function ProfilePage() {
                     )}
                   </section>
 
+                  {isOwnerProfile && (
                   <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4 flex items-center justify-between">
                       <h3 className="font-display text-base font-semibold">Network</h3>
@@ -949,10 +980,12 @@ function ProfilePage() {
                       </div>
                     )}
                   </section>
+                  )}
                 </div>
               </div>
 
-              {/* -------- RECENT ACTIVITY -------- */}
+              {/* -------- RECENT ACTIVITY (owner only) -------- */}
+              {isOwnerProfile && (
               <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                 <h3 className="mb-5 font-display text-base font-semibold">Recent Activity</h3>
                 {activityList.length === 0 ? (
@@ -978,12 +1011,14 @@ function ProfilePage() {
                   </ol>
                 )}
               </section>
+              )}
             </div>
           </main>
         </SidebarInset>
       </div>
 
-      {/* -------- FOLLOWERS / FOLLOWING MODAL -------- */}
+      {/* -------- FOLLOWERS / FOLLOWING MODAL (owner only) -------- */}
+      {isOwnerProfile && (
       <Dialog open={!!modal} onOpenChange={(o) => !o && setModal(null)}>
         <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b border-border p-4">
@@ -1071,8 +1106,10 @@ function ProfilePage() {
           </button>
         </DialogContent>
       </Dialog>
+      )}
 
-      {/* -------- PROFILE EDIT MODAL -------- */}
+      {/* -------- PROFILE EDIT MODAL (owner only) -------- */}
+      {isOwnerProfile && (
       <Dialog open={profileModal} onOpenChange={setProfileModal}>
         <DialogContent className="max-w-md border-border/60 bg-card/95 backdrop-blur-xl sm:rounded-2xl">
           <DialogHeader>
@@ -1174,6 +1211,7 @@ function ProfilePage() {
           </div>
         </DialogContent>
       </Dialog>
+      )}
     </SidebarProvider>
   );
 }
