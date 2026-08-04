@@ -115,12 +115,15 @@ function ChallengeCountdownBadge({ targetDateStr }: { targetDateStr: string }) {
   );
 }
 
-export function WeeklyChallenge() {
+export function WeeklyChallenge({ isModalOpen: externalOpen, setIsModalOpen: externalSetOpen }: { isModalOpen?: boolean; setIsModalOpen?: (open: boolean) => void } = {}) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   // State for View All Challenges modal dialog
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [internalModalOpen, setInternalModalOpen] = useState(false);
+  const isModalOpen = externalOpen !== undefined ? externalOpen : internalModalOpen;
+  const setIsModalOpen = externalSetOpen || setInternalModalOpen;
+  
   const [modalStatusFilter, setModalStatusFilter] = useState<string>("all");
   const [modalSortBy, setModalSortBy] = useState<string>("endingSoon");
   const [modalSearchQuery, setModalSearchQuery] = useState<string>("");
@@ -202,7 +205,7 @@ export function WeeklyChallenge() {
   // Loading Skeleton State for Dashboard Widget
   if (isActiveLoading) {
     return (
-      <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm animate-pulse">
+      <div className="flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm animate-pulse">
         <div className="flex items-center justify-between">
           <div className="h-3 w-28 rounded bg-muted/70" />
           <div className="h-6 w-20 rounded-full bg-muted/70" />
@@ -233,7 +236,7 @@ export function WeeklyChallenge() {
   // Error State for Dashboard Widget
   if (isActiveError || !challenge) {
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-border/60 bg-card p-6 text-center shadow-sm">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-border/60 bg-card p-6 text-center shadow-sm">
         <AlertCircle className="h-10 w-10 text-amber-500/80 mb-2" />
         <h3 className="font-display text-base font-semibold">Could not load challenge</h3>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -256,10 +259,10 @@ export function WeeklyChallenge() {
 
   return (
     <>
-      <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
+      <div className="flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
         {/* ── Header ── */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.20em] text-primary/80">
             Weekly Challenge
           </span>
 
@@ -268,36 +271,36 @@ export function WeeklyChallenge() {
             <motion.div
               animate={{ scale: [1, 1.04, 1] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-500 dark:text-amber-400 shrink-0"
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold text-amber-500 dark:text-amber-400 shrink-0"
             >
-              <Clock className="h-3 w-3" />
+              <Clock className="h-3.5 w-3.5" />
               {timer.days > 0 ? `${timer.days}D ` : ""}
-              {timer.hours}H {timer.minutes}M Left
+              {timer.hours}H {timer.minutes}M
             </motion.div>
           ) : (
-            <div className="inline-flex items-center gap-1 rounded-full border border-muted bg-muted/50 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shrink-0">
+            <div className="inline-flex items-center gap-1 rounded-full border border-muted bg-muted/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shrink-0">
               Expired
             </div>
           )}
         </div>
 
         {/* ── Trophy icon + status / participant count ── */}
-        <div className="mt-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <motion.div
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/15"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-500/15"
               animate={{ scale: [1, 1.07, 1] }}
               transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
             >
               <Trophy className="h-5 w-5 text-amber-500" />
             </motion.div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                This Week's Challenge
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80 leading-none">
+                Challenge
               </p>
               {challenge.badge && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-500">
-                  <Sparkles className="h-2.5 w-2.5" /> {challenge.badge}
+                <span className="inline-flex items-center gap-1 text-[9px] font-medium text-amber-500 mt-1">
+                  <Sparkles className="h-2 w-2" /> {challenge.badge}
                 </span>
               )}
             </div>
@@ -306,29 +309,29 @@ export function WeeklyChallenge() {
           {/* Participant Count Badge */}
           <div
             title="Active Participants"
-            className="inline-flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 text-[11px] font-medium text-secondary-foreground"
+            className="inline-flex items-center gap-1.5 rounded-md bg-secondary/70 px-2 py-1 text-[10px] font-semibold text-secondary-foreground shrink-0"
           >
-            <Users className="h-3 w-3 text-muted-foreground" />
-            <span>{challenge.participantCount || 0}</span>
+            <Users className="h-3 w-3 text-muted-foreground/70" />
+            <span className="leading-none">{challenge.participantCount || 0}</span>
           </div>
         </div>
 
         {/* ── Title + description ── */}
-        <div className="mt-3">
-          <h3 className="font-display text-[20px] font-semibold leading-snug tracking-tight">
+        <div className="mt-4">
+          <h3 className="font-display text-base font-semibold leading-snug tracking-tight">
             {challenge.title}
           </h3>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">
             {challenge.description}
           </p>
         </div>
 
         {/* ── Progress Bar (If Joined) ── */}
         {isJoined && userParticipation && (
-          <div className="mt-4 rounded-xl border border-border/50 bg-muted/30 p-3">
+          <div className="mt-4 rounded-lg border border-border/50 bg-muted/40 p-3">
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-foreground">Your Progress</span>
-              <span className="text-primary font-semibold">
+              <span className="text-foreground/80 text-[11px]">Progress</span>
+              <span className="text-primary font-semibold text-[11px]">
                 {userParticipation.progress?.percentage || 0}%
               </span>
             </div>
@@ -344,54 +347,31 @@ export function WeeklyChallenge() {
                 }`}
               />
             </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
+            <p className="mt-1.5 text-[10px] text-muted-foreground/80 leading-snug">
               {userParticipation.progress?.details ||
                 challenge.completionCriteria?.description ||
-                "Submit a project to complete the challenge"}
+                "Submit a project to complete"}
             </p>
-          </div>
-        )}
-
-        {/* ── Rewards ── */}
-        {challenge.rewards && challenge.rewards.length > 0 && (
-          <div className="mt-4">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Rewards
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {challenge.rewards.map((reward, i) => {
-                const IconComp = getRewardIcon(reward.icon);
-                return (
-                  <div
-                    key={i}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground"
-                  >
-                    <IconComp className="h-3.5 w-3.5 text-amber-500" />
-                    {reward.label}
-                  </div>
-                );
-              })}
-            </div>
           </div>
         )}
 
         {/* ── CTA Buttons ── */}
-        <div className="mt-auto pt-5 space-y-3">
+        <div className="mt-4 space-y-2.5">
           {isCompleted ? (
-            <div className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> 🏆 Challenge Completed!
+            <div className="flex h-9 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Challenge Completed!
             </div>
           ) : isJoined ? (
-            <div className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-              <LayoutGrid className="h-4 w-4" /> Joined — good luck!
+            <div className="flex h-9 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <LayoutGrid className="h-3.5 w-3.5" /> Joined
             </div>
           ) : (
             <Button
               onClick={() => handleJoin()}
               disabled={joinMutation.isPending || timer.isExpired}
-              className="h-10 w-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 font-semibold text-white shadow-[0_8px_24px_-8px_rgba(245,158,11,0.5)] transition-all duration-[180ms] hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(245,158,11,0.6)] disabled:opacity-50"
+              className="h-9 w-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 font-semibold text-white text-xs shadow-[0_8px_24px_-8px_rgba(245,158,11,0.5)] transition-all duration-[180ms] hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(245,158,11,0.6)] disabled:opacity-50"
             >
-              {joinMutation.isPending ? "Joining..." : "Participate Now"}
+              {joinMutation.isPending ? "Joining..." : "Join Challenge"}
             </Button>
           )}
 
@@ -399,9 +379,9 @@ export function WeeklyChallenge() {
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex w-full items-center justify-center gap-1 text-sm font-medium text-primary transition-opacity hover:opacity-70 cursor-pointer"
+            className="inline-flex w-full items-center justify-center gap-1 text-xs font-semibold text-primary transition-opacity hover:opacity-70 cursor-pointer"
           >
-            View All Challenges <ArrowRight className="h-3.5 w-3.5" />
+            View all <ArrowRight className="h-3 w-3" />
           </button>
         </div>
       </div>

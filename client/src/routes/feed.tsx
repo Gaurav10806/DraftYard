@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { slugify } from "./project.$slug";
 import { motion, AnimatePresence } from "framer-motion";
 import { getInitials } from "@/lib/utils";
@@ -170,6 +170,8 @@ function enrichDrafts(drafts: Draft[]): EnrichedDraft[] {
 
 function FeedPage() {
   const searchParams = Route.useSearch();
+  const location = useLocation();
+  const compassState = location.state as { compassFilter?: string } | undefined;
 
   const [searchQuery, setSearchQuery] = useState(searchParams.search || "");
   const [selectedTechStack, setSelectedTechStack] = useState<string[]>([]);
@@ -177,7 +179,11 @@ function FeedPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "mostviewed" | "mostliked" | "recentlyupdated">("newest");
+  
+  // Initialize tab from compass state or URL params
   const [tab, setTab] = useState<"all" | "open" | "recent" | "revived">(
+    compassState?.compassFilter === 'open' ? 'open' :
+    compassState?.compassFilter === 'featured' ? 'all' :
     searchParams.tab || "all"
   );
 

@@ -2893,7 +2893,7 @@
 //       </>
 //     );
 //   }
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, useLocation } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -3068,21 +3068,31 @@ type Priority = "High" | "Medium" | "Low";
 
 function WorkspacePage() {
   const { draftId } = Route.useSearch();
+  const location = useLocation();
+  const compassState = location.state as { draftId?: string; compassTab?: string } | undefined;
   const loaderData = Route.useLoaderData() as any;
   const { workspace, draft } = loaderData;
 
+  // Use draftId from search params (which should be set by Compass navigation)
+  // If workspace data is loaded, show detail page
   if (draftId && workspace) {
-    return <WorkspaceDetailPage workspace={workspace} draft={draft} />;
+    return <WorkspaceDetailPage workspace={workspace} draft={draft} initialTab={compassState?.compassTab} />;
+  }
+  
+  // If draftId exists but workspace isn't loaded yet, wait or show detail page with draft data
+  if (draftId && draft) {
+    return <WorkspaceDetailPage workspace={workspace || { draftId: draft._id } as any} draft={draft} initialTab={compassState?.compassTab} />;
   }
 
-  return <WorkspaceHomePage />;
+  // No draftId: show home page with filter if needed
+  return <WorkspaceHomePage initialFilter={compassState?.compassTab === 'shared' ? 'shared' : 'all'} />;
 }
 
-function WorkspaceHomePage() {
+function WorkspaceHomePage({ initialFilter = 'all' }: { initialFilter?: 'all' | 'owned' | 'shared' }) {
   const { data: myDrafts = [], isLoading } = useMyDrafts();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [roleFilter, setRoleFilter] = useState<"all" | "owned" | "shared">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "owned" | "shared">(initialFilter);
 
   const ownedDrafts = myDrafts.filter((d: any) => d.isOwner || (!d._sharedRole && d.userRole !== "Contributor" && d.userRole !== "Viewer"));
   const sharedDrafts = myDrafts.filter((d: any) => !d.isOwner && (d._sharedRole || d.userRole === "Contributor" || d.userRole === "Viewer"));
@@ -3232,11 +3242,18 @@ function WorkspaceHomePage() {
 }
 
 
-function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; draft: Draft | null }) {
+function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: WorkspaceData; draft: Draft | null; initialTab?: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"overview" | "tasks" | "team">("overview");
+  
+  // Determine initial tab from prop, only on first mount
+  const [tab, setTab] = useState<"overview" | "tasks" | "team">(() => {
+    if (initialTab === 'tasks') return 'tasks';
+    if (initialTab === 'team') return 'team';
+    return 'overview';
+  });
+  
   const [available, setAvailable] = useState(true);
   const [stage, setStage] = useState<Stage>((draft?.currentStage as Stage) || "Building");
   const [pendingStage, setPendingStage] = useState<Stage | null>(null);
@@ -3275,11 +3292,12 @@ function WorkspaceDetailPage({ workspace, draft }: { workspace: WorkspaceData; d
     }
   }, [draft?.currentStage]);
 
+  // Only restrict viewers after team data loads - don't override initial tab from Compass
   useEffect(() => {
-    if (isViewer && (tab === "tasks" || tab === "team")) {
+    if (teamData && isViewer && (tab === "tasks" || tab === "team")) {
       setTab("overview");
     }
-  }, [isViewer, tab]);
+  }, [teamData, isViewer, tab]);
 
   const refreshTeam = () => {
     if (!draft?._id) return;

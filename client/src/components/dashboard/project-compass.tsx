@@ -2,15 +2,15 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Info } from "lucide-react";
 
-const POLES = ["Explore", "Learn", "Build", "Collaborate", "Publish"] as const;
+const POLES = ["Explore", "Collaborate", "Build", "Learn", "Level Up"] as const;
 type Pole = (typeof POLES)[number];
 
 const POLE_HINT: Record<Pole, string> = {
-  Explore: "Research new directions",
-  Learn: "Grow skills & understanding",
-  Build: "Deep focus on shipping",
-  Collaborate: "Work with your team",
-  Publish: "Ready to ship & share",
+  Explore: "Discover new opportunities",
+  Collaborate: "Connect and build together",
+  Build: "Focus on building",
+  Learn: "Grow your skills",
+  "Level Up": "Challenge yourself and grow",
 };
 
 const CX = 160;
@@ -65,22 +65,25 @@ export function ProjectCompass({
   const needle = angleFor(focus);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
+    <div className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
+      {/* Header section */}
       <div className="text-center">
-        <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary">
+        <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.20em] text-primary/80">
           Project Compass <Info className="h-3 w-3 text-muted-foreground" />
         </div>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-          Rotate to set your project focus
+        <p className="mt-0 text-xs leading-relaxed text-muted-foreground">
+          Rotate to set your focus
         </p>
       </div>
 
-      <div className="relative mx-auto mt-3 aspect-square w-full max-w-[320px]">
-        <div className="pointer-events-none absolute inset-6 rounded-full compass-ring opacity-35 blur-2xl" />
+      {/* Compass container - increased size */}
+      <div className="relative mx-auto mt-2 flex-1 flex items-center justify-center w-full">
+        {/* Glow background - further reduced size, more subtle */}
+        <div className="pointer-events-none absolute inset-0 rounded-full compass-ring opacity-25 blur-2xl scale-[0.65]" />
 
         <motion.svg
           viewBox="0 0 320 320"
-          className="relative h-full w-full overflow-visible"
+          className="relative h-[85%] w-[85%] max-h-96 overflow-visible"
           initial={{ opacity: 0, rotate: -8, scale: 0.96 }}
           animate={{ opacity: 1, rotate: 0, scale: 1 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -316,10 +319,11 @@ export function ProjectCompass({
         </motion.svg>
       </div>
 
-      <div className="mt-auto flex justify-center pt-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm shadow-sm">
-          <Target className="h-3.5 w-3.5 text-primary" />
-          <span>Current Focus:</span>
+      {/* Focus pill - positioned with proper spacing */}
+      <div className="mt-2 flex justify-center pb-1">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-[10px] shadow-sm">
+          <Target className="h-2.5 w-2.5 text-primary" />
+          <span className="text-muted-foreground">Focus:</span>
           <AnimatePresence mode="wait">
             <motion.span
               key={focus}

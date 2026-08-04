@@ -2076,39 +2076,30 @@ router.get('/compass-feed/:mode', async (req, res) => {
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     if (mode === 'Collaborate') {
-      const openCollabs = await Draft.countDocuments({ raisedHands: { $exists: true, $ne: [] } });
-      const newContributors = await require('../models/User').countDocuments({ createdAt: { $gte: weekAgo } });
-      const topCollabDrafts = await Draft.find({ raisedHands: { $exists: true, $ne: [] } })
-        .sort({ createdAt: -1 })
-        .limit(1)
-        .select('projectName');
+      const myCollabs = await Draft.countDocuments({ 'collaborators.0': { $exists: true } });
+      const communityCount = await Draft.countDocuments();
+      const topContributors = await require('../models/User').find().sort({ 'stats.draftsPublished': -1 }).limit(1).select('username');
 
       return res.json({
         items: [
-          { key: 'openCollabs', title: 'Open Collaborations', sub: `${openCollabs} projects seeking help`, route: '/feed' },
-          { key: 'newContributors', title: 'New Contributors', sub: `${newContributors} joined this week`, route: '/feed' },
-          { key: 'teamFormations', title: 'Top Revival Projects', sub: topCollabDrafts[0]?.projectName ? `"${topCollabDrafts[0].projectName}"` : 'Browse revival projects', route: '/feed' },
+          { key: 'myCollabs', title: 'My Collaborations', sub: 'Your active partnerships and ongoing\ncollaborative projects at a glance.', route: '/feed' },
+          { key: 'community', title: 'Community Projects', sub: 'Find builders and projects to connect with\nand collaborate on exciting ideas.', route: '/feed' },
+          { key: 'contributors', title: 'Top Contributors', sub: 'Learn from and connect with the most active\nand influential builders in the community.', route: '/feed' },
         ],
-        cta: { label: 'Open Revival Board', route: '/feed' }
+        cta: { label: 'Explore Collaborations', route: '/feed' }
       });
     }
 
     if (mode === 'Explore') {
-      const totalDrafts = await Draft.countDocuments();
-      const allStacks = await Draft.aggregate([
-        { $unwind: '$techStack' },
-        { $group: { _id: '$techStack', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 3 }
-      ]);
-      const topStacks = allStacks.map(s => s._id).join(', ') || 'React, Node.js';
-      const recentCount = await Draft.countDocuments({ createdAt: { $gte: weekAgo } });
+      const trendingCount = await Draft.countDocuments({ createdAt: { $gte: weekAgo } });
+      const openForRevival = await Draft.countDocuments({ raisedHands: { $exists: true, $ne: [] } });
+      const featuredCount = await Draft.countDocuments({ featured: true });
 
       return res.json({
         items: [
-          { key: 'trending', title: 'Trending Drafts', sub: `${recentCount} new drafts this week`, route: '/feed' },
-          { key: 'featured', title: 'Featured Ideas', sub: `${totalDrafts} total community drafts`, route: '/feed' },
-          { key: 'stacks', title: 'Rising Tech Stacks', sub: topStacks ? topStacks + ' trending' : 'React, Node.js trending', route: '/feed' },
+          { key: 'trending', title: 'Trending Drafts', sub: 'Discover popular projects gaining momentum\nthis week from active builders.', route: '/feed' },
+          { key: 'revival', title: 'Open for Revival', sub: 'Projects seeking collaborators and fresh\nperspectives to get back on track.', route: '/feed' },
+          { key: 'featured', title: 'Featured Ideas', sub: 'Handpicked highlights from the community\nrecommended by top builders.', route: '/feed' },
         ],
         cta: { label: 'Explore More', route: '/feed' }
       });
@@ -2118,13 +2109,12 @@ router.get('/compass-feed/:mode', async (req, res) => {
       const totalDrafts = await Draft.countDocuments();
       const stalledCount = await Draft.countDocuments({ currentStage: { $in: ['Idea only', 'Prototype'] } });
       const stallPct = totalDrafts > 0 ? Math.round((stalledCount / totalDrafts) * 100) : 0;
-      const recentDrafts = await Draft.countDocuments({ createdAt: { $gte: weekAgo } });
 
       return res.json({
         items: [
-          { key: 'weekly', title: 'Weekly Highlights', sub: `${recentDrafts} drafts added this week`, route: '/insights' },
-          { key: 'insights', title: 'Community Insights', sub: `${totalDrafts} projects analyzed`, route: '/insights' },
-          { key: 'mistakes', title: 'Common Mistakes', sub: `${stallPct}% of projects stall early`, route: '/insights-lab' },
+          { key: 'aiReview', title: 'AI Idea Review', sub: 'Get intelligent feedback and insights on your\ndrafts powered by advanced AI analysis.', route: '/insights' },
+          { key: 'insights', title: 'Your Insights', sub: 'See personalized analytics on your growth,\npatterns, and development progress.', route: '/insights' },
+          { key: 'stackIntel', title: 'Stack Intelligence', sub: 'Deep dive into technology trends and insights\nabout the tools and languages you use.', route: '/insights-lab' },
         ],
         cta: { label: 'Open Insights', route: '/insights' }
       });
@@ -2132,31 +2122,31 @@ router.get('/compass-feed/:mode', async (req, res) => {
 
     if (mode === 'Build') {
       const activeThisWeek = await Draft.countDocuments({ updatedAt: { $gte: weekAgo } });
-      const milestones = await Draft.countDocuments({ currentStage: 'Almost complete' });
+      const userDrafts = await Draft.countDocuments();
       const totalDrafts = await Draft.countDocuments();
 
       return res.json({
         items: [
-          { key: 'activity', title: 'Live Build Activity', sub: `${activeThisWeek} drafts updated this week`, route: '/feed' },
-          { key: 'resumed', title: 'In Progress', sub: `${totalDrafts} total projects in community`, route: '/feed' },
-          { key: 'milestones', title: 'Milestones Hit', sub: `${milestones} drafts almost complete`, route: '/feed' },
+          { key: 'continue', title: 'Continue Workspace', sub: 'Resume your active draft exactly where you\nleft off without losing any progress.', route: '/feed' },
+          { key: 'tasks', title: 'Manage Tasks', sub: 'Track priorities, deadlines, and organize your\nwork into manageable milestones.', route: '/feed' },
+          { key: 'newDraft', title: 'New Draft', sub: 'Start a fresh project and break your vision\ninto smaller, achievable pieces.', route: '/feed' },
         ],
-        cta: { label: 'View Activity', route: '/feed' }
+        cta: { label: 'Start Building', route: '/feed' }
       });
     }
 
-    if (mode === 'Publish') {
-      const launched = await Draft.countDocuments({ currentStage: 'Launched but abandoned' });
-      const withRaisedHands = await Draft.countDocuments({ 'raisedHands.0': { $exists: true } });
+    if (mode === 'Level Up') {
+      const weeklyChallenge = await Draft.countDocuments({ updatedAt: { $gte: weekAgo } });
+      const userCount = await require('../models/User').countDocuments();
       const topDraft = await Draft.findOne({ upvotes: { $gt: 0 } }).sort({ upvotes: -1 }).select('projectName upvotes');
 
       return res.json({
         items: [
-          { key: 'launches', title: 'Recent Launches', sub: `${launched} projects launched`, route: '/feed' },
-          { key: 'revivals', title: 'Revival Stories', sub: `${withRaisedHands} projects with revival interest`, route: '/feed' },
-          { key: 'top', title: 'Top Performers', sub: topDraft ? `"${topDraft.projectName}" — ${topDraft.upvotes} upvotes` : 'See top drafts', route: '/feed' },
+          { key: 'aiAssistant', title: 'AI Assistant', sub: 'Get AI suggestions, fix blockers, review\narchitecture, and receive coding guidance.', route: '/feed' },
+          { key: 'challenge', title: 'Weekly Challenge', sub: 'Complete community challenges, earn badges,\nimprove your skills, and stay consistent.', route: '/feed' },
+          { key: 'progress', title: 'Developer Progress', sub: 'Track your learning streak, project milestones,\nproductivity, and overall growth.', route: '/feed' },
         ],
-        cta: { label: 'View Showcase', route: '/feed' }
+        cta: { label: 'Level Up', route: '/feed' }
       });
     }
 

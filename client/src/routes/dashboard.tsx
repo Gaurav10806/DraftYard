@@ -31,7 +31,7 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-const POLES = ["Explore", "Learn", "Build", "Collaborate", "Publish"] as const;
+const POLES = ["Explore", "Collaborate", "Build", "Learn", "Level Up"] as const;
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
@@ -42,6 +42,7 @@ function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [compassFocus, setCompassFocus] = useState<CompassMode>("Build");
+  const [isWeeklyChallengeOpen, setIsWeeklyChallengeOpen] = useState(false);
 
   useEffect(() => {
     if (user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com") {
@@ -55,6 +56,15 @@ function Dashboard() {
     if (stored && (POLES as readonly string[]).includes(stored)) {
       setCompassFocus(stored);
     }
+  }, []);
+
+  // Listen for Weekly Challenge modal open event from Compass
+  useEffect(() => {
+    const handleOpenChallenge = () => {
+      setIsWeeklyChallengeOpen(true);
+    };
+    window.addEventListener('openWeeklyChallenge', handleOpenChallenge);
+    return () => window.removeEventListener('openWeeklyChallenge', handleOpenChallenge);
   }, []);
 
   return (
@@ -71,7 +81,7 @@ function Dashboard() {
               <TopBar />
             </motion.div>
             <motion.main
-              className="flex-1 space-y-6 p-4 sm:p-6"
+              className="flex-1 space-y-5 p-6 sm:p-8 overflow-y-auto"
               initial="hidden"
               animate="show"
               variants={{
@@ -79,34 +89,39 @@ function Dashboard() {
                 show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
               }}
             >
-              <div className="grid gap-6 lg:grid-cols-3">
+              {/* First Row: Top Cards - Equal Heights */}
+              <div className="grid gap-6 lg:grid-cols-3 auto-rows-fr">
                 <motion.div
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex flex-col"
                 >
                   <ActiveDraftCard />
                 </motion.div>
                 <motion.div
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex flex-col"
                 >
                   <ProjectCompass focus={compassFocus} onFocusChange={setCompassFocus} />
                 </motion.div>
                 <motion.div
                   variants={fadeUp}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex flex-col"
                 >
                   <CompassFeed mode={compassFocus} />
                 </motion.div>
               </div>
 
+              {/* Second Row: Draft Shelf + Weekly Challenge */}
               <motion.div
-                className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]"
+                className="grid gap-6 lg:grid-cols-[1fr_360px]"
                 variants={fadeUp}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               >
                 <DraftShelf />
-                <WeeklyChallenge />
+                <WeeklyChallenge isModalOpen={isWeeklyChallengeOpen} setIsModalOpen={setIsWeeklyChallengeOpen} />
               </motion.div>
             </motion.main>
           </SidebarInset>
