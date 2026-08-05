@@ -1,5 +1,4 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Hexagon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
@@ -14,19 +13,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/use-theme";
 
 export function SiteHeader() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const faviconSrc = theme === "dark" ? "/favicon_dark.png" : "/favicon.png";
 
-  const initials = getInitials(user?.name, user?.email);  
+  const initials = getInitials(user?.name, user?.email);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Hexagon className="h-5 w-5" strokeWidth={2.2} />
-          </span>
+          <img
+  src={theme === "dark"
+    ? `/favicon_dark.png?v=${theme}`
+    : `/favicon.png?v=${theme}`} 
+            alt="DraftYard" 
+            className="h-9 w-9 shrink-0 rounded-lg"
+          />
           <span className="font-display text-lg font-semibold tracking-tight">DraftYard</span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">

@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/use-theme";
 import {
   Boxes,
   Rss,
@@ -10,7 +10,6 @@ import {
   Bot,
   UserCircle,
   Settings,
-  Hexagon,
   LayoutDashboard,
   Plus,
   ShieldAlert,
@@ -29,6 +28,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 
 const primaryUserItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -58,8 +58,11 @@ export function AppSidebar() {
     select: (r) => r.location.pathname,
   });
   const { user } = useAuth();
+  const { theme } = useTheme();
+  
 
   const isAdmin = user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com";
+  const faviconSrc = theme === "dark" ? "/favicon_dark.png" : "/favicon.png";
 
   // Build menu based on user role
   const primary = isAdmin ? primaryAdminItems : primaryUserItems;
@@ -67,12 +70,15 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2 px-2 py-2">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Hexagon className="h-4 w-4" strokeWidth={2.2} />
-          </span>
+        <Link to="/" className="flex items-center gap-2 px-5 py-2">
+          <img
+            key={theme}
+            src={theme === "dark" ? "/favicon_dark.png" : "/favicon.png"}
+            alt="DraftYard" 
+            className="h-8 w-8 shrink-0 rounded-lg"
+          />
           {!collapsed && (
-            <span className="font-display text-base font-semibold">
+            <span className="font-display text-xl font-semibold tracking-tight">
               DraftYard
             </span>
           )}

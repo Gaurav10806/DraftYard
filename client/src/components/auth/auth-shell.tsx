@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Hexagon } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTheme } from "@/lib/use-theme";
 
 export function AuthShell({
   title,
@@ -13,13 +13,20 @@ export function AuthShell({
   children: ReactNode;
   footer: ReactNode;
 }) {
+  const { theme } = useTheme();
+  const faviconSrc = theme === "dark" ? "/favicon_dark.png" : "/favicon.png";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Hexagon className="h-5 w-5" strokeWidth={2.2} />
-          </span>
+          <img
+  src={theme === "dark"
+    ? `/favicon_dark.png?v=${theme}`
+    : `/favicon.png?v=${theme}`}
+            alt="DraftYard" 
+            className="h-9 w-9 shrink-0 rounded-lg"
+          />
           <span className="font-display text-lg font-semibold tracking-tight">DraftYard</span>
         </Link>
 
