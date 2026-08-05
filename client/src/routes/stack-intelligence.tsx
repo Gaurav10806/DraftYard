@@ -697,9 +697,9 @@ function TechnologyDetail({
             <div className="h-64">
               <ResponsiveContainer>
                 <LineChart data={tech.survival} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
-                  <CartesianGrid stroke="var(--stack-grid)" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="stage" stroke="var(--stack-axis)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--stack-axis)" fontSize={11} tickLine={false} axisLine={false} unit="%" />
+                  <CartesianGrid stroke="rgba(148,163,184,0.15)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="stage" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={false} unit="%" />
                   <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
                   <Line type="monotone" dataKey="pct" stroke="#7c5cff" strokeWidth={2.5} dot={{ r: 4, fill: "#7c5cff" }} activeDot={{ r: 6 }} />
                 </LineChart>

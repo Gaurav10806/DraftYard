@@ -16,7 +16,13 @@ const POLE_HINT: Record<Pole, string> = {
 const CX = 160;
 const CY = 160;
 const RING_R = 108;
-const LABEL_R = 138;
+const LABEL_RADIUS: Record<Pole, number> = {
+  Explore: 138,
+  Collaborate: 138,
+  Build: 148,      // move outward
+  Learn: 148,      // move outward
+  "Level Up": 138,
+};
 
 // Evenly spaced around the circle, starting at top (-90°)
 const angleFor = (p: Pole) => (POLES.indexOf(p) / POLES.length) * 360;
@@ -93,7 +99,11 @@ export function ProjectCompass({
               <path
                 key={p}
                 id={`compass-arc-${p}`}
-                d={labelArcPath(angleFor(p), spanFor(p))}
+                d={labelArcPath(
+  angleFor(p),
+  spanFor(p),
+  LABEL_RADIUS[p]
+)}
                 fill="none"
               />
             ))}
@@ -285,7 +295,11 @@ export function ProjectCompass({
 
                 {/* Invisible hit path along the arc */}
                 <path
-                  d={labelArcPath(a, spanFor(p))}
+                  d={labelArcPath(
+  angleFor(p),
+  spanFor(p),
+  LABEL_RADIUS[p]
+)}
                   fill="none"
                   stroke="transparent"
                   strokeWidth={26}
@@ -293,12 +307,12 @@ export function ProjectCompass({
 
                 <text
                   className="font-display select-none"
-                  fontSize={active ? 13.5 : 12.5}
-                  fontWeight={700}
+                  fontSize={active ? 15.5 : 14.5}
                   letterSpacing="0.14em"
                   fill={active ? "var(--primary)" : "var(--foreground)"}
                   opacity={active ? 1 : 0.72}
                   style={{
+                    fontWeight: 800,
                     filter: active
                       ? "drop-shadow(0 0 6px color-mix(in oklab, var(--primary) 55%, transparent))"
                       : undefined,

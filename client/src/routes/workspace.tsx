@@ -2895,7 +2895,7 @@
 //   }
 import { createFileRoute, useNavigate, Link, useLocation } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ChevronRight, Plus, Calendar, Zap } from "lucide-react";
 import {
@@ -2994,6 +2994,8 @@ import {
   fetchDraftById,
   sendAiChatMessage,
   leaveWorkspace,
+  type ChatMessageItem,
+  type AiChatMessage,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut, Settings, UserCircle } from "lucide-react";
@@ -3344,6 +3346,7 @@ function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: Work
     draft,
     tasks,
     teamData,
+    workspaceData: workspace,
     activityLog: teamData?.activity ?? [],
   };
   return (
@@ -3764,7 +3767,6 @@ function StageTracker({ current, onSelect }: { current: Stage; onSelect: (s: Sta
     <div>
       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         <span>Stage Tracker</span>
-        <span className="tracking-normal text-muted-foreground/80 normal-case">Click to update</span>
       </div>
       <div className="mt-3 flex items-center">
         {STAGES.map((s, i) => {
@@ -5156,23 +5158,6 @@ function TaskDetail({ task, onUpdate }: { task: TaskData; onUpdate: () => void }
     ? new Date(task.dueDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
     : "No due date";
 
-  let aiSuggestionText = "Everything looks clear! Keep up the good work.";
-  let hasOverdue = task.dueDate ? new Date(task.dueDate) < new Date() && task.status !== "Done" : false;
-  let isUnassigned = !task.assignee;
-  let isHighPriorityBlocker = task.priority === "High" && task.status !== "Done";
-
-  if (hasOverdue) {
-    aiSuggestionText = `This task is overdue (${formattedDueDate}). Prioritize finishing it or update the due date to avoid staging delay.`;
-  } else if (isHighPriorityBlocker) {
-    aiSuggestionText = "This is a High Priority blocker. Assign all necessary resources here first before moving to other items.";
-  } else if (isUnassigned) {
-    aiSuggestionText = "This task has no assignee. Assign a team member to ensure someone takes ownership of this implementation.";
-  } else if (checklistLength > 0 && progressPercent < 50) {
-    aiSuggestionText = `Only ${doneCount}/${checklistLength} checklist items completed. Break this down and address the first uncompleted item.`;
-  } else if (task.status === "In Progress" && (!task.comments || task.comments.length === 0)) {
-    aiSuggestionText = "No comments or updates posted yet. Add a quick status update comment to align the team.";
-  }
-
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -5422,18 +5407,6 @@ function TaskDetail({ task, onUpdate }: { task: TaskData; onUpdate: () => void }
               <span className="text-sm">{task.dependencies}</span>
             </MetaRow>
           )}
-
-          <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3 w-3" /> AI Suggestion
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              {aiSuggestionText}
-            </p>
-            <Button variant="ghost" size="sm" className="mt-2 h-7 rounded-full px-2 text-xs">
-              Ask AI <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          </div>
         </aside>
       </div>
     </div>
@@ -5930,6 +5903,159 @@ function FloatingAI({
   projectName: string;
   aiContext?: any;
 }) {
+  // Store conversation per workspace to persist while staying in same workspace
+  const workspaceSessionKey = `ai-assistant-workspace-${projectName}`;
+  
+  const [messages, setMessages] = useState<ChatMessageItem[]>(() => {
+    // Initialize with previous messages for this workspace if they exist
+    try {
+      const stored = sessionStorage.getItem(workspaceSessionKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto scroll to bottom
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  // Initialize with welcome message on first open
+  useEffect(() => {
+    if (open && !initialized && messages.length === 0) {
+      setInitialized(true);
+      initializeChat();
+    }
+  }, [open, initialized, messages.length]);
+
+  // Persist messages to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(workspaceSessionKey, JSON.stringify(messages));
+  }, [messages, workspaceSessionKey]);
+
+  function initializeChat() {
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const draft = aiContext?.draft;
+    const tasks = aiContext?.tasks || [];
+    const teamData = aiContext?.teamData;
+
+    // Build contextual welcome message
+    const stallReason = draft?.failureReason || "unknown reasons";
+    const tasksText =
+      tasks.length > 0
+        ? `${tasks.filter((t: any) => t.status === "Todo").length} open tasks`
+        : "no tracked tasks";
+    const teamText = teamData?.members?.length ? `${teamData.members.length} team members` : "working solo";
+    const techStack = draft?.techStack ? draft.techStack.slice(0, 3).join(", ") : "various tech";
+
+    const welcomeMsg: ChatMessageItem = {
+      id: `welcome-${Date.now()}`,
+      role: "ai",
+      time: timeStr,
+      content: `Hi Dev! I'm here to help revive **${projectName}**. 
+      
+I see it's stalled on *${stallReason}*, with ${tasksText}, ${teamText}, and using ${techStack}. 
+
+Let me help you get back on track. What would you like to focus on?`,
+      followUps: [],
+    };
+
+    setMessages([welcomeMsg]);
+  }
+
+  async function handleSend(prompt?: string) {
+    const queryText = (prompt || input).trim();
+    if (!queryText || loading) return;
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const userMsg: ChatMessageItem = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      time: timeStr,
+      content: queryText,
+    };
+
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    if (!prompt) setInput("");
+    setLoading(true);
+
+    // Build project context
+    const draft = aiContext?.draft;
+    const tasks = aiContext?.tasks || [];
+    const teamData = aiContext?.teamData;
+    const workspaceData = aiContext?.workspaceData;
+
+    const projContext = `Project: ${projectName}
+Description: ${draft?.oneLiner || "No description"}
+Domain: ${draft?.domain || "Web"}
+Tech Stack: ${draft?.techStack ? draft.techStack.join(", ") : "Not specified"}
+Current Stage: ${draft?.currentStage || "In Development"}
+Stalled Reason: ${draft?.failureReason || "Not specified"}
+Team Size: ${teamData?.members?.length || "Solo"}
+Open Tasks: ${tasks.filter((t: any) => t.status === "Todo").length}
+Blockers: ${workspaceData?.currentBlockers || "None specified"}
+Completed Features: ${workspaceData?.featuresCompleted || "Not detailed"}
+Time Spent: ${draft?.timeSpent ? `${draft.timeSpent.value} ${draft.timeSpent.unit}` : "N/A"}`;
+
+    try {
+      // Convert chat history to AI API format
+      const historyPayload: AiChatMessage[] = updatedMessages
+        .filter((m) => m.role !== "ai" || m.id.startsWith("welcome"))
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+      const responseText = await sendAiChatMessage({
+        message: queryText,
+        context: projContext,
+        history: historyPayload,
+      });
+
+      const aiMsg: ChatMessageItem = {
+        id: `a-${Date.now()}`,
+        role: "ai",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        content: responseText,
+        followUps: [
+          "Explain in more detail",
+          "What are common pitfalls?",
+          "How do I implement this?",
+        ],
+      };
+
+      setMessages([...updatedMessages, aiMsg]);
+    } catch (err: any) {
+      console.error("AI Error:", err);
+      toast.error(err.message || "Failed to reach AI service");
+      const errorMsg: ChatMessageItem = {
+        id: `err-${Date.now()}`,
+        role: "ai",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        content: `Sorry, I ran into an issue (${err.message || "Network error"}). Please ensure the ML backend is running.`,
+      };
+      setMessages([...updatedMessages, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Quick action prompts
+  const quickActions = [
+    { label: "Summarize Project", prompt: `Summarize the current status and progress of ${projectName}. What's working and what needs attention?` },
+    { label: "Generate Recovery Plan", prompt: `Create a step-by-step recovery plan for ${projectName} that's stalled. What should we do first?` },
+    { label: "Suggest Next Tasks", prompt: `What are the top 3 priority tasks to unblock ${projectName}? Be specific and actionable.` },
+    { label: "Review Architecture", prompt: `Review the current tech stack and architecture of ${projectName}. Any recommendations?` },
+    { label: "Explain Why It Stalled", prompt: `Deeply analyze why ${projectName} stalled. What patterns do you see? How do we prevent this?` },
+  ];
+
   return (
     <>
       <motion.button
@@ -5945,54 +6071,145 @@ function FloatingAI({
 
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-          <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
-                <Bot className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold leading-tight">AI Assistant</p>
-                <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
-              </div>
+          <div className="flex items-center gap-2 border-b border-border/60 px-5 py-4">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Bot className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold leading-tight">AI Assistant</p>
+              <p className="text-[11px] text-muted-foreground">Context: {projectName}</p>
             </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors duration-[180ms] hover:bg-muted hover:text-foreground"
+          </div>
+
+          {/* Chat messages area */}
+          <div
+            ref={scrollRef}
+            className="flex-1 space-y-4 overflow-y-auto px-5 py-5"
+          >
+            {messages.length === 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2.5">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                    <Bot className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2 text-sm leading-relaxed">
+                    Loading context...
+                  </div>
+                </div>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isUser = msg.role === "user";
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="space-y-2"
+                  >
+                    <div className={`flex items-start gap-2.5 ${isUser ? "justify-end" : ""}`}>
+                      {!isUser && (
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                          <Bot className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                      <div
+                        className={`max-w-xs rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                          isUser
+                            ? "rounded-br-sm bg-primary text-primary-foreground"
+                            : "rounded-tl-sm bg-muted/60 text-foreground/90"
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+
+                    {/* Follow-up suggestions for AI messages */}
+                    {!isUser && msg.followUps && msg.followUps.length > 0 && (
+                      <div className="ml-9 flex flex-wrap gap-1.5 pt-1">
+                        {msg.followUps.map((f) => (
+                          <button
+                            key={f}
+                            onClick={() => handleSend(f)}
+                            disabled={loading}
+                            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary/50 hover:bg-primary/5 disabled:opacity-50"
+                          >
+                            <Sparkles className="h-3 w-3 text-primary" />
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })
+            )}
+
+            {/* Loading indicator */}
+            {loading && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-2.5"
+              >
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                  <Bot className="h-3.5 w-3.5" />
+                </span>
+                <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2">
+                  <div className="flex gap-1">
+                    <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
+                    <div className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:0.2s]" />
+                    <div className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Quick actions (show on first open) */}
+          {messages.length === 1 && !loading && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border-t border-border/60 px-5 py-4 space-y-2"
             >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            <div className="flex items-start gap-2.5">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
-                <Bot className="h-3.5 w-3.5" />
-              </span>
-              <div className="rounded-2xl rounded-tl-sm bg-muted/60 px-3 py-2 text-sm leading-relaxed">
-                Hi Dev — {projectName} is stalled on <span className="font-medium">Scope Creep</span>.
-                Want me to draft a locked MVP scope?
+              <p className="text-xs font-medium text-muted-foreground mb-2">Quick Actions</p>
+              <div className="space-y-1.5">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => handleSend(action.prompt)}
+                    disabled={loading}
+                    className="w-full text-left rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium transition-colors hover:border-primary/60 hover:bg-primary/5 disabled:opacity-50"
+                  >
+                    {action.label}
+                  </button>
+                ))}
               </div>
-            </div>
+            </motion.div>
+          )}
 
-            <div className="flex flex-wrap gap-1.5">
-              {["Draft MVP scope", "Summarize open tasks", "Suggest next PR"].map((s) => (
-                <button
-                  key={s}
-                  className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium transition-colors duration-[180ms] hover:border-primary/60 hover:bg-primary/5"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
+          {/* Input area */}
           <div className="border-t border-border/60 p-3">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30">
+            <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-3 pr-1 py-1 focus-within:ring-2 focus-within:ring-primary/30 transition-all duration-200">
               <input
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 placeholder="Ask about this project…"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !loading) {
+                    handleSend();
+                  }
+                }}
+                disabled={loading}
               />
-              <button className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-[180ms] hover:-translate-y-0.5">
+              <button
+                onClick={() => handleSend()}
+                disabled={loading || !input.trim()}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-all duration-180 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0"
+              >
                 <Send className="h-3.5 w-3.5" />
               </button>
             </div>

@@ -1018,7 +1018,7 @@ function FilterBar({
   ];
 
   const TECH_OPTIONS = ["React", "Node.js", "Next.js", "Python", "Flutter", "TypeScript", "PostgreSQL", "MongoDB"];
-  const STAGE_OPTIONS = ["Idea only", "Prototype", "50% done", "Almost complete", "Launched but abandoned"];
+  const STAGE_OPTIONS = ["Idea", "Planning", "Prototype", "Development", "Testing", "Deployment", "Released"];
   const CATEGORY_OPTIONS = ["web", "mobile", "ml", "game", "hardware", "other"];
   const SORT_OPTIONS = [
     { id: "newest" as const, label: "Newest" },
@@ -1482,6 +1482,7 @@ function FeedCard({
 // ————————————————————————————————————————————————————————————————
 
 function InsightsCard({ draftsCount, totalInteractions, avgRevival }: { draftsCount: number; totalInteractions: number; avgRevival: number }) {
+  const navigate = useNavigate();
   const rows = [
     { label: "Projects Available", value: draftsCount.toString(), trend: "Live" },
     { label: "Community Interactions", value: totalInteractions.toString(), trend: "Active" },
@@ -1507,7 +1508,11 @@ function InsightsCard({ draftsCount, totalInteractions, avgRevival }: { draftsCo
           </div>
         ))}
       </div>
-      <Button className="mt-4 w-full rounded-xl" variant="secondary">
+      <Button 
+        className="mt-4 w-full rounded-xl" 
+        variant="secondary"
+        onClick={() => navigate({ to: "/insights" })}
+      >
         View Full Insights
       </Button>
     </div>
@@ -1531,9 +1536,6 @@ function StallPatternsCard({ patterns }: { patterns: Array<{ label: string; valu
           </li>
         ))}
       </ul>
-      <Button className="mt-5 w-full rounded-xl">
-        Explore Stall DNA Lab
-      </Button>
     </div>
   );
 }

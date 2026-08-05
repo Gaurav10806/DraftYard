@@ -479,9 +479,9 @@ router.get('/feed', optionalAuth, async (req, res) => {
       ];
     }
 
-    // Category filter
+    // Category filter (using domain field)
     if (category) {
-      matchStage.category = category;
+      matchStage.domain = category;
     }
 
     // Tech Stack filter - can be comma-separated or single value
@@ -490,10 +490,21 @@ router.get('/feed', optionalAuth, async (req, res) => {
       matchStage.techStack = { $in: stacks };
     }
 
-    // Stage filter - can be comma-separated or single value
+    // Stage filter - map frontend stage values to database values
     if (stage) {
+      const stageMap = {
+        "Idea": "Idea only",
+        "Planning": "Idea only",
+        "Prototype": "Prototype",
+        "Development": "50% done",
+        "Testing": "Almost complete",
+        "Deployment": "Almost complete",
+        "Released": "Launched but abandoned",
+      };
+      
       const stages = Array.isArray(stage) ? stage : [stage];
-      matchStage.currentStage = { $in: stages };
+      const mappedStages = stages.map(s => stageMap[s] || s);
+      matchStage.currentStage = { $in: mappedStages };
     }
 
     // Status filter

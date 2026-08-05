@@ -196,6 +196,8 @@ const LAST_WORKED_ON_OPTIONS = [
 ];
 
 function NewDraftPage() {
+  const navigate = useNavigate();
+  
   return (
     <ProtectedRoute>
       <SidebarProvider>
@@ -206,7 +208,12 @@ function NewDraftPage() {
             <main className="flex-1 space-y-6 p-4 sm:p-6">
               {/* Breadcrumb */}
               <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>DraftYard</span>
+                <button 
+                  onClick={() => navigate({ to: '/dashboard' })}
+                  className="hover:text-foreground transition-colors"
+                >
+                  DraftYard
+                </button>
                 <ChevronRight className="h-3 w-3" />
                 <span className="text-foreground">New Draft</span>
               </nav>
