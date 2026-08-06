@@ -92,7 +92,8 @@ def idea_match(request):
         candidates, 
         top_n=MAX_MATCHES, 
         origin_draft_id=origin_draft_id, 
-        exclude_self=exclude_self
+        exclude_self=exclude_self,
+        query_text=query_text
     )
 
     # 4. Compute community stats
@@ -100,14 +101,10 @@ def idea_match(request):
 
     # 5. Format matches for response
     matches = []
-    q_words = set(query_text.lower().split())
     for item in ranked:
         d = item["draft"]
         score = item["hybridScore"]
-        d_text = (d.get("oneLiner") or "") + " " + (d.get("description") or "")
-        d_words = set(d_text.lower().split())
-        shared = d_words & q_words
-        keywords = list(shared)[:MAX_KEYWORDS_SHOWN]
+        keywords = item["sharedKeywords"][:MAX_KEYWORDS_SHOWN]
         
         matches.append({
             "id": str(d.get("_id")),

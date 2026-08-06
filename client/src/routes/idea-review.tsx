@@ -236,6 +236,8 @@ function IdeaReviewShell() {
       let matchError: string | null = null;
       let communityStatistics: any = null;
       let aiInsights: any = null;
+      let aiAnalysis: AiIdeaAnalysis | null = null;
+      let aiAnalysisError: string | null = null;
       try {
         const result = await matchIdea({
           projectName: form.name,
@@ -253,17 +255,37 @@ function IdeaReviewShell() {
         matchError = err instanceof Error ? err.message : "Couldn't reach the matching service.";
       }
 
-      // Generate fallback analysis if needed or use RAG generator insights
+      try {
+        aiAnalysis = await fetchAiIdeaAnalysis({
+          projectName: form.name,
+          pitch: form.pitch,
+          context: form.context,
+        });
+      } catch (err) {
+        console.error("AI idea analysis failed:", err);
+        aiAnalysisError = err instanceof Error ? err.message : "Couldn't reach the AI analysis service.";
+      }
+
+      // Generate fallback analysis if needed or use live AI results.
       const seed =
         (form.name + form.pitch + form.context).split("").reduce((a, c) => a + c.charCodeAt(0), 0) || 42;
       const fallbackScore = 68 + (seed % 27);
       
-      const score = aiInsights?.overallScore ?? fallbackScore;
+      const score = aiAnalysis?.score ?? aiInsights?.overallScore ?? fallbackScore;
       const verdict: Verdict =
-        score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider";
+        aiAnalysis?.verdict ??
+        (score >= 80 ? "Worth Building" : score >= 70 ? "Needs Refinement" : "Reconsider");
 
-      // Map structured dimensions from RAG generator backend
-      const risks = aiInsights?.scoreDimensions 
+      // Map structured dimensions from the live AI analysis or the RAG generator fallback.
+      const risks = aiAnalysis?.score
+        ? {
+            feasibility: aiAnalysis.feasibility,
+            competition: aiAnalysis.competition,
+            complexity: aiAnalysis.complexity,
+            scalability: aiAnalysis.scalability,
+            market: aiAnalysis.market,
+          }
+        : aiInsights?.scoreDimensions
         ? {
             feasibility: {
               label: aiInsights.scoreDimensions.find((d: any) => d.dimension === "Execution Feasibility")?.score >= 70 ? "High" : "Medium",
@@ -314,6 +336,7 @@ function IdeaReviewShell() {
         score,
         verdict,
         summary:
+          aiAnalysis?.summary ??
           aiInsights?.summary ??
           (matches.length > 0
             ? "Strong potential based on community data and AI analysis. Focus on a lean MVP first."
@@ -321,33 +344,38 @@ function IdeaReviewShell() {
         similarProjects: matches,
         communityStatistics,
         overallAnalysis: aiInsights?.overallAnalysis ?? "",
-        scoreDimensions: aiInsights?.scoreDimensions ?? [],
+        scoreDimensions: aiAnalysis?.recommendations ? [] : aiInsights?.scoreDimensions ?? [],
         recommendedStack: {
-          frontend: aiInsights?.recommendedStack?.[0] ?? "React",
-          backend: aiInsights?.recommendedStack?.[1] ?? "Node.js",
-          database: aiInsights?.recommendedStack?.[2] ?? "MongoDB",
-          ai: aiInsights?.recommendedStack?.[3] ?? "Gemini API",
-          hosting: aiInsights?.recommendedStack?.[4] ?? "AWS Vercel"
+          frontend: aiAnalysis?.techStack?.frontend ?? aiInsights?.recommendedStack?.[0] ?? "React",
+          backend: aiAnalysis?.techStack?.backend ?? aiInsights?.recommendedStack?.[1] ?? "Node.js",
+          database: aiAnalysis?.techStack?.database ?? aiInsights?.recommendedStack?.[2] ?? "MongoDB",
+          ai: aiAnalysis?.techStack?.ai ?? aiInsights?.recommendedStack?.[3] ?? "Gemini API",
+          hosting: aiAnalysis?.techStack?.hosting ?? aiInsights?.recommendedStack?.[4] ?? "AWS Vercel"
         },
         risks,
-        suggestions: aiInsights?.revivalSuggestions ?? aiInsights?.commonFailures ?? [
-          "Start with a lean MVP: AI planner + progress tracking",
-          "Focus on student retention with daily value delivery",
-          "Limit AI usage and optimize for low cost",
-          "Validate with 20–30 users before expanding features",
-        ],
-        roadmap: (aiInsights?.roadmap || []).map((step: string, idx: number) => ({
-          week: `Week ${idx + 1}`,
-          label: step
-        })).slice(0, 6) ?? buildFallbackRoadmap(`${form.pitch} ${form.context}`),
+        suggestions:
+          aiAnalysis?.recommendations ??
+          aiInsights?.revivalSuggestions ??
+          aiInsights?.commonFailures ?? [
+            "Start with a lean MVP: AI planner + progress tracking",
+            "Focus on student retention with daily value delivery",
+            "Limit AI usage and optimize for low cost",
+            "Validate with 20–30 users before expanding features",
+          ],
+        roadmap:
+          (aiAnalysis?.roadmap || aiInsights?.roadmap || []).map((step: any, idx: number) => ({
+            week: step.week || `Week ${idx + 1}`,
+            label: step.label || step,
+          })).slice(0, 6) ?? buildFallbackRoadmap(`${form.pitch} ${form.context}`),
         finalNote:
+          aiAnalysis?.finalNote ??
           aiInsights?.finalNote ??
           (matches.length > 0
             ? "This idea has strong potential based on real-world data and AI insights."
             : "This idea shows promise based on AI market analysis. Validate with real users early."),
-        aiAnalysisUsed: true,
-        aiAnalysisError: matchError,
-        matchError
+        aiAnalysisUsed: Boolean(aiAnalysis),
+        aiAnalysisError: aiAnalysisError || matchError,
+        matchError,
       });
 
       setReports([updatedReview, ...reports]);

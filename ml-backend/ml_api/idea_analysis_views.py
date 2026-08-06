@@ -42,7 +42,7 @@ Respond with ONLY a single valid JSON object (no markdown fences, no commentary 
   "complexity": {{"label": <"High"|"Medium"|"Low">, "note": <one short sentence>}},
   "scalability": {{"label": <"High"|"Medium"|"Low">, "note": <one short sentence>}},
   "market": {{"headline": <very short market-size or opportunity phrase>, "note": <one short sentence>}},
-  "recommendations": [<3-5 short, concrete, actionable strings>],
+  "recommendations": [<3-5 short, concrete, actionable instruction strings that directly reference the pitch and context>],
   "techStack": {{"frontend": <string>, "backend": <string>, "database": <string>, "ai": <string>, "hosting": <string>}},
   "roadmap": [{{"week": <e.g. "Week 1">, "label": <short milestone>}}, ... 5-7 items covering research through launch],
   "finalNote": <1-2 sentence closing recommendation>

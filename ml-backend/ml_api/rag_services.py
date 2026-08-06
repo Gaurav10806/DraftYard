@@ -12,6 +12,24 @@ from .embedding_store import get_model
 GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
+# Small, deliberately short stopword list — just enough to stop "the", "a",
+# "for" etc. from counting as a "shared word" match. Everything else is
+# treated as a meaningful keyword.
+STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "if", "then", "so", "of", "in",
+    "on", "at", "to", "for", "with", "is", "are", "was", "were", "be",
+    "been", "being", "this", "that", "it", "its", "as", "by", "from",
+    "we", "our", "i", "you", "your", "app", "project", "idea", "using",
+    "use", "based", "will", "can", "into", "about", "has", "have", "had"
+}
+
+
+def extract_keywords(text: str) -> set:
+    """Lowercase, strip punctuation, drop stopwords/short tokens."""
+    words = re.findall(r"[a-z0-9][a-z0-9\-\+]*", (text or "").lower())
+    return {w for w in words if len(w) > 2 and w not in STOPWORDS}
+
+
 def calculate_content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -117,6 +135,13 @@ class RetrievalService:
 
 
 class ReRankingService:
+    # A draft only counts as a real "match" if it shares at least one
+    # meaningful keyword with the query, OR its embedding similarity is
+    # high enough to be a genuine conceptual match even with different
+    # wording. Pure embedding noise (no shared words, low similarity)
+    # gets dropped instead of being padded into the results.
+    SEMANTIC_ONLY_THRESHOLD = 0.55
+
     @staticmethod
     def get_match_label(score: float) -> str:
         pct = score * 100
@@ -128,7 +153,7 @@ class ReRankingService:
         return "Weak Match"
 
     @staticmethod
-    def re_rank(query_metadata: dict, candidates: list, top_n: int = 10, origin_draft_id: str = None, exclude_self: bool = False) -> list:
+    def re_rank(query_metadata: dict, candidates: list, top_n: int = 10, origin_draft_id: str = None, exclude_self: bool = False, query_text: str = "") -> list:
         """
         Ranks drafts using a weighted score:
         - Semantic Similarity: 60%
@@ -137,17 +162,27 @@ class ReRankingService:
         - Category Match: 5%
         - Project Stage Match: 5%
         - Draft Quality / Activity: 5%
+
+        A draft is only kept if it actually shares words with the query
+        (see SEMANTIC_ONLY_THRESHOLD for the no-shared-word fallback).
         """
         q_techs = [t.lower().strip() for t in (query_metadata.get("techStack") or [])]
         q_tags = [t.lower().strip() for t in (query_metadata.get("tags") or [])]
         q_category = (query_metadata.get("category") or "").lower().strip()
         q_stage = (query_metadata.get("currentStage") or "").lower().strip()
+        q_keywords = extract_keywords(query_text)
         
         ranked_list = []
         for draft, semantic_score in candidates:
             did = str(draft["_id"])
             is_current = (origin_draft_id is not None) and (did == str(origin_draft_id))
-            
+
+            # 0. Keyword/word overlap against the draft's full text (name,
+            # one-liner, description, tech stack, tags, failure reason)
+            d_keywords = extract_keywords(get_searchable_text(draft))
+            shared_keywords = q_keywords & d_keywords
+            has_keyword_match = bool(shared_keywords)
+
             # 1. Tech match
             d_techs = [t.lower().strip() for t in (draft.get("techStack") or [])]
             tech_match = 0.0
@@ -223,6 +258,8 @@ class ReRankingService:
                 "weightedHybridScore": round(final_score, 4),
                 "isCurrentProject": is_current,
                 "matchLabel": ReRankingService.get_match_label(final_score),
+                "hasKeywordMatch": has_keyword_match,
+                "sharedKeywords": sorted(shared_keywords),
                 "scoreBreakdown": {
                     "semantic": round(semantic_score * 0.60, 4),
                     "tech": round(tech_match * 0.15, 4),
@@ -244,7 +281,17 @@ class ReRankingService:
             })
             
         ranked_list.sort(key=lambda x: x["hybridScore"], reverse=True)
-        return ranked_list[:top_n]
+
+        # Keep a draft only if it shares an actual word with the query,
+        # or (no shared words, but) the embeddings agree strongly enough
+        # that it's a real conceptual match despite different phrasing.
+        filtered_list = [
+            item for item in ranked_list
+            if item["hasKeywordMatch"]
+            or item["rawSimilarityBreakdown"]["semantic"] >= ReRankingService.SEMANTIC_ONLY_THRESHOLD
+        ]
+
+        return filtered_list[:top_n]
 
 
 class AnalyticsService:
