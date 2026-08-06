@@ -74,7 +74,14 @@ router.patch('/user/profile', requireAuth, async (req, res) => {
     if (fullName !== undefined) updateFields.name = fullName;
     if (username !== undefined) updateFields.username = username;
     if (bio !== undefined) updateFields.bio = bio;
-    if (github !== undefined) updateFields.github = github;
+    if (github !== undefined) {
+      if (typeof github === 'object' && github !== null) {
+        updateFields.github = github;
+      } else if (typeof github === 'string') {
+        // Legacy string input from old edit profile form
+        updateFields['github.profileUrl'] = github.startsWith('http') ? github : `https://${github}`;
+      }
+    }
     if (linkedin !== undefined) updateFields.linkedin = linkedin;
     if (portfolio !== undefined) updateFields.portfolio = portfolio;
     if (avatar !== undefined) updateFields.avatar = avatar;

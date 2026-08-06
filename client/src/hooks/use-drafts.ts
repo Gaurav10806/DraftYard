@@ -9,6 +9,7 @@ import {
   fetchMyDrafts,
   fetchFilteredFeed,
   fetchTrendingFeed,
+  fetchGlobalFeedStats,
   likeDraft,
   bookmarkDraft,
   type Draft,
@@ -39,6 +40,14 @@ export function useTrendingFeed() {
   return useQuery({
     queryKey: ["trending-feed"],
     queryFn: fetchTrendingFeed,
+  });
+}
+
+export function useGlobalFeedStats() {
+  return useQuery({
+    queryKey: ["global-feed-stats"],
+    queryFn: () => fetchGlobalFeedStats(),
+    staleTime: 30_000,
   });
 }
 

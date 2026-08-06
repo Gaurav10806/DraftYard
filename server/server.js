@@ -29,9 +29,12 @@ app.use("/api", (req, res, next) => {
 });
 
 const searchRoutes = require('./routes/searchRoutes');
+const githubRoutes = require('./routes/githubRoutes');
 app.use('/api', searchRoutes);
 app.use('/api', draftRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/auth', githubRoutes);
+app.use('/github', githubRoutes);
 app.use("/api", workspaceRoutes);
 app.use("/api", userRoutes);
 app.use("/api", reviewRoutes);

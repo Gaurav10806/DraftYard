@@ -439,20 +439,21 @@ function ProfilePage() {
   const activityList = realActivity.slice(0, 4);
 
   // Get user's projects from their drafts or from fetchedProfile when viewing another user
-  const userProjects = (isOwnerProfile ? myDrafts : (fetchedProfile?.publicProjects as any) || [])
+  const userProjects = (isOwnerProfile ? (myDrafts || []) : (fetchedProfile?.publicProjects as any) || [])
+    .filter(Boolean)
     .slice(0, 3)
     .map((draft: any) => ({
-      name: draft.projectName,
-      description: draft.oneLiner,
-      status: (draft.currentStage === "Launched but abandoned" || draft.currentStage === "Almost complete" 
+      name: draft?.projectName || "Untitled Project",
+      description: draft?.oneLiner || "",
+      status: (draft?.currentStage === "Launched but abandoned" || draft?.currentStage === "Almost complete" 
         ? "Completed" 
-        : draft.currentStage === "Idea only" 
+        : draft?.currentStage === "Idea only" 
         ? "On Hold" 
         : "Building") as ProjectStatus,
-      stack: draft.techStack.slice(0, 3),
-      updated: `Updated ${getTimeSince(draft.lastWorkedOn ? new Date(draft.lastWorkedOn) : null)}`,
-      icon: draft.projectName.slice(0, 2).toUpperCase(),
-      tint: getTintForProject(draft.domain),
+      stack: Array.isArray(draft?.techStack) ? draft.techStack.slice(0, 3) : [],
+      updated: `Updated ${getTimeSince(draft?.lastWorkedOn ? new Date(draft.lastWorkedOn) : null)}`,
+      icon: (draft?.projectName || "PR").slice(0, 2).toUpperCase(),
+      tint: getTintForProject(draft?.domain || "web"),
     }));
 
   const displayName = profileData.fullName || authUser?.email?.split("@")[0] || "User";
@@ -613,11 +614,24 @@ function ProfilePage() {
                           <span className="inline-flex items-center gap-1.5">
                             <MapPin className="h-4 w-4" /> {USER.location}
                           </span>
-                          {profileData.github && (
-                            <a href={`https://${profileData.github}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
-                              <Github className="h-4 w-4" /> {profileData.github}
-                            </a>
-                          )}
+                          {profileData.github && (() => {
+                            const ghObj = typeof profileData.github === "object" ? profileData.github : null;
+                            const ghUrl = ghObj
+                              ? ghObj.profileUrl || (ghObj.username ? `https://github.com/${ghObj.username}` : null)
+                              : `https://${profileData.github}`;
+                            const ghDisplay = ghObj ? `@${ghObj.username || 'GitHub'}` : profileData.github;
+
+                            return ghUrl ? (
+                              <a
+                                href={ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 hover:text-foreground"
+                              >
+                                <Github className="h-4 w-4" /> {ghDisplay}
+                              </a>
+                            ) : null;
+                          })()}
                           {profileData.linkedin && (
                             <a href={`https://${profileData.linkedin}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
                               <Linkedin className="h-4 w-4" /> {profileData.linkedin}
@@ -1174,10 +1188,14 @@ function ProfilePage() {
 
             {/* GitHub */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">GitHub URL</label>
+              <label className="text-sm font-medium">GitHub URL / Username</label>
               <Input
-                placeholder="github.com/username"
-                value={profileData.github || ""}
+                placeholder="github.com/username or @username"
+                value={
+                  typeof profileData.github === "object" && profileData.github
+                    ? profileData.github.profileUrl || (profileData.github.username ? `@${profileData.github.username}` : "")
+                    : profileData.github || ""
+                }
                 onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
                 className="rounded-lg border border-border/60 bg-background/50"
               />

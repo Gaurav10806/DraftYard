@@ -66,6 +66,8 @@ import {
   type SearchResultDraft,
 } from "@/lib/api";
 
+import { GithubHeaderCard } from "@/components/dashboard/github-header-card";
+
 function formatTimeAgo(ts?: string) {
   if (!ts) return "Just now";
   const ms = new Date(ts).getTime();
@@ -327,6 +329,9 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
           </div>
         )}
       </div>
+
+      <GithubHeaderCard />
+
       <div className="flex items-center gap-3">
         <div className="group relative w-72 transition-[width] duration-[220ms] ease-out focus-within:w-96 focus-within:max-w-full">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />

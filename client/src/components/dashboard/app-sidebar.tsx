@@ -69,7 +69,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2 px-5 py-2">
+        <Link to="/dashboard" className="flex items-center gap-2 px-5 py-2">
           <img
             key={theme}
             src={theme === "dark" ? "/favicon_dark.png" : "/favicon.png"}

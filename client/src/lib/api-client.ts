@@ -13,6 +13,15 @@ export type ApiUser = {
   
   emailVerified?: boolean;
   lastLogin?: string;
+  github?: {
+    connected?: boolean;
+    githubId?: string;
+    username?: string;
+    displayName?: string;
+    avatarUrl?: string;
+    profileUrl?: string;
+    connectedAt?: string | Date;
+  };
   createdAt: string;
   updatedAt?: string;
 };
@@ -73,6 +82,59 @@ export const authApi = {
   getGoogleAuthUrl: () => request<{ url: string }>("/api/auth/google/url"),
 
   me: () => request<{ user: ApiUser }>("/api/auth/me"),
+};
+
+export const githubApi = {
+  getAuthUrl: () => request<{ url: string }>("/auth/github"),
+  getStatus: () =>
+    request<{
+      connected: boolean;
+      githubId?: string;
+      username?: string;
+      displayName?: string;
+      avatarUrl?: string;
+      profileUrl?: string;
+      connectedAt?: string;
+    }>("/auth/github/status"),
+  disconnect: () =>
+    request<{
+      success: boolean;
+      message: string;
+      github: {
+        connected: boolean;
+      };
+    }>("/auth/github/disconnect", {
+      method: "POST",
+    }),
+  getRepos: () =>
+    request<
+      Array<{
+        id: number | string;
+        name: string;
+        description: string;
+        html_url: string;
+        language: string;
+        languages_url: string;
+        topics: string[];
+        private: boolean;
+        default_branch: string;
+        updated_at: string;
+        owner: string;
+        stargazers_count: number;
+      }>
+    >("/github/repos"),
+  importRepo: (repoId: number | string) =>
+    request<{
+      success: boolean;
+      draft: any;
+      workspace: any;
+      error?: string;
+      alreadyImported?: boolean;
+      draftId?: string;
+    }>("/github/import", {
+      method: "POST",
+      body: JSON.stringify({ repoId }),
+    }),
 };
 
 export { ApiError };

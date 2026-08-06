@@ -141,6 +141,24 @@ export async function fetchTrendingFeed(): Promise<Draft[]> {
   if (!res.ok) throw new Error("Failed to load trending feed");
   return res.json();
 }
+
+export type GlobalFeedStats = {
+  totalProjects: number;
+  totalInteractions: number;
+  totalLikes: number;
+  avgRevivalScore: number;
+};
+
+export async function fetchGlobalFeedStats(): Promise<GlobalFeedStats> {
+  const res = await fetch(`${API_BASE}/feed/stats`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to fetch feed stats");
+  }
+  return res.json();
+}
 export async function fetchMyDrafts(): Promise<Draft[]> {
   const res = await fetch(`${API_BASE}/drafts/mine`, {
     headers: { ...getAuthHeaders() },
@@ -794,13 +812,24 @@ export async function updateDraftInsights(draftId: string, data: Partial<Insight
 
 // ===== User Profile Data =====
 
+export type GithubConnectionInfo = {
+  connected: boolean;
+  githubId: string | null;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  profileUrl: string | null;
+  accessToken?: string | null;
+  connectedAt: Date | string | null;
+};
+
 export type UserProfile = {
   _id?: string;
   fullName: string;
   username: string;
   bio?: string;
   avatar?: string;
-  github?: string;
+  github?: GithubConnectionInfo | string | null;
   linkedin?: string;
   portfolio?: string;
   skills?: string[];
@@ -846,7 +875,7 @@ export type PublicUser = {
   email: string;
   avatar?: string;
   bio?: string;
-  github?: string;
+  github?: GithubConnectionInfo | string | null;
   linkedin?: string;
   portfolio?: string;
 };

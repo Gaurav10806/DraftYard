@@ -79,6 +79,8 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+import { ConnectedAccountsCard } from "@/components/settings/connected-accounts-card";
+
 // ---------------- Reusable pieces ----------------
 
 function SectionCard({
@@ -211,6 +213,23 @@ function SettingsPage() {
       setEmail((userProfile as any).email || authUser?.email || "");
     }
   }, [userProfile, authUser]);
+
+  // Handle GitHub OAuth redirect params
+  const { refreshUser } = useAuth();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const githubSuccess = params.get("github_success");
+    const githubError = params.get("github_error");
+
+    if (githubSuccess === "true") {
+      toast.success("GitHub account connected successfully!");
+      refreshUser();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (githubError) {
+      toast.error(decodeURIComponent(githubError));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [refreshUser]);
 
   const saveMutation = useMutation({
     mutationFn: () => updateUserProfile({ fullName, username, bio }),
@@ -446,6 +465,11 @@ function SettingsPage() {
                     />
                   </div>
                 </SectionCard>
+
+                {/* Connected Accounts */}
+                <div className="lg:col-span-2">
+                  <ConnectedAccountsCard />
+                </div>
               </div>
 
               {/* Row 2: Notifications + AI Preferences + Data & Privacy */}

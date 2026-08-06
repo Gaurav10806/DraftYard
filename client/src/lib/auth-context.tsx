@@ -11,6 +11,7 @@ type AuthContextValue = {
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithToken: (token: string) => Promise<ApiUser>;
   googleLogin: (data: { credential?: string; idToken?: string; code?: string; user?: any }) => Promise<ApiUser>;
+  refreshUser: () => Promise<ApiUser | null>;
   logout: () => void;
 };
 
@@ -64,6 +65,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user;
   };
 
+  const refreshUser = async (): Promise<ApiUser | null> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+    try {
+      const { user } = await authApi.me();
+      setUser(user);
+      return user;
+    } catch {
+      return null;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem("authToken");
@@ -85,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, login, register,loginWithToken,googleLogin, logout }}
+      value={{ user, isLoading, isAuthenticated: !!user, login, register, loginWithToken, googleLogin, refreshUser, logout }}
     >
       {children}
     </AuthContext.Provider>
