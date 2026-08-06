@@ -140,11 +140,11 @@ export function CompassFeed({ mode }: CompassFeedProps) {
       // ─────────────────────────────────────────────────────────────────────
       if (mode === 'Explore') {
         if (key === 'trending') {
-          navigate({ to: '/feed', state: { compassFilter: 'trending' } });
+          navigate({ to: '/feed', state: { compassFilter: 'trending' } as any });
         } else if (key === 'revival') {
-          navigate({ to: '/feed', state: { compassFilter: 'open' } });
+          navigate({ to: '/feed', state: { compassFilter: 'open' } as any });
         } else if (key === 'featured') {
-          navigate({ to: '/feed', state: { compassFilter: 'featured' } });
+          navigate({ to: '/feed', state: { compassFilter: 'featured' } as any });
         }
       }
 
@@ -155,15 +155,15 @@ export function CompassFeed({ mode }: CompassFeedProps) {
         if (key === 'myCollabs') {
           // Always open Workspace page with "Shared With Me" filter selected
           // Works whether user has collabs or not
-          navigate({ to: '/workspace', state: { compassTab: 'shared' } });
+          navigate({ to: '/workspace', search: { draftId: undefined }, state: { compassTab: 'shared' } as any });
         } else if (key === 'community') {
           // If no Open for Revival projects exist, simply open Feed normally
-          navigate({ to: '/feed', state: { compassFilter: 'open' } });
+          navigate({ to: '/feed', state: { compassFilter: 'open' } as any });
         } else if (key === 'contributors') {
           // Find latest active draft and open Team tab
           if (userDrafts.length > 0) {
             const latestDraft = userDrafts[0]; // Already sorted by most recent
-            navigate({ to: '/workspace', search: { draftId: latestDraft._id }, state: { compassTab: 'team' } });
+            navigate({ to: '/workspace', search: { draftId: latestDraft._id }, state: { compassTab: 'team' } as any });
           } else {
             navigate({ to: '/new-draft' });
           }
@@ -186,7 +186,7 @@ export function CompassFeed({ mode }: CompassFeedProps) {
           // Find latest active draft and open Tasks tab
           if (userDrafts.length > 0) {
             const latestDraft = userDrafts[0]; // Already sorted by most recent
-            navigate({ to: '/workspace', search: { draftId: latestDraft._id }, state: { compassTab: 'tasks' } });
+            navigate({ to: '/workspace', search: { draftId: latestDraft._id }, state: { compassTab: 'tasks' } as any });
           } else {
             navigate({ to: '/new-draft' });
           }

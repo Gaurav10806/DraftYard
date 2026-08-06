@@ -239,7 +239,7 @@ function NewDraftForm() {
   const techContainerRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: {
       projectName: "",
       oneLiner: "",
@@ -259,6 +259,7 @@ function NewDraftForm() {
     onSuccess: (createdDraft) => {
       queryClient.invalidateQueries({ queryKey: ["feed"] });
       queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["user-insights"] });
       toast.success("Draft created successfully.");
       
       // Navigate to dashboard after successful draft creation

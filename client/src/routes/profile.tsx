@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { getInitials } from "@/lib/utils";
@@ -199,6 +199,20 @@ const statusStyle: Record<ProjectStatus, string> = {
 
 function ProfilePage() {
   const { user: authUser } = useAuth();
+  const navigate = useNavigate();
+
+  const isAdmin = authUser?.role === "admin" || authUser?.email?.toLowerCase() === "draftadmin@gmail.com";
+
+  useEffect(() => {
+    if (isAdmin) {
+      navigate({ to: "/admin-users" });
+    }
+  }, [isAdmin, navigate]);
+
+  if (isAdmin) {
+    return null;
+  }
+
   const queryClient = useQueryClient();
   const { data: myDrafts, isLoading: draftsLoading } = useMyDrafts();
   // Use router to read search params (userId)
@@ -427,7 +441,7 @@ function ProfilePage() {
   // Get user's projects from their drafts or from fetchedProfile when viewing another user
   const userProjects = (isOwnerProfile ? myDrafts : (fetchedProfile?.publicProjects as any) || [])
     .slice(0, 3)
-    .map(draft => ({
+    .map((draft: any) => ({
       name: draft.projectName,
       description: draft.oneLiner,
       status: (draft.currentStage === "Launched but abandoned" || draft.currentStage === "Almost complete" 
@@ -700,12 +714,12 @@ function ProfilePage() {
                         )}
                       </div>
                     ) : (
-                      userProjects.map((p) => (
+                      userProjects.map((p: any) => (
                         <div
                           key={p.name}
                           className="group flex items-start gap-3 rounded-xl border border-border bg-background/50 p-3 transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
                         >
-                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-semibold ${tintBg[p.tint]}`}>
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-semibold ${tintBg[p.tint as keyof typeof tintBg] || tintBg[0]}`}>
                             {p.icon}
                           </span>
                           <div className="min-w-0 flex-1">
@@ -714,12 +728,12 @@ function ProfilePage() {
                                 <div className="truncate text-sm font-semibold">{p.name}</div>
                                 <div className="truncate text-xs text-muted-foreground">{p.description}</div>
                               </div>
-                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyle[p.status]}`}>
+                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyle[p.status as keyof typeof statusStyle] || ""}`}>
                                 {p.status}
                               </span>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                              {p.stack.map((t) => (
+                              {p.stack.map((t: string) => (
                                 <span key={t} className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
                                   {t}
                                 </span>
@@ -757,7 +771,7 @@ function ProfilePage() {
 
                     {/* Saved skills */}
                     <div className="flex flex-wrap gap-2">
-                      {(fetchedProfile?.skills ?? []).map((s) => (
+                      {(fetchedProfile?.skills ?? []).map((s: string) => (
                         <span
                           key={s}
                           className={`group flex items-center gap-1 rounded-lg border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground/85 transition-colors ${isOwnerProfile ? "hover:border-primary/40 hover:text-primary" : ""}`}

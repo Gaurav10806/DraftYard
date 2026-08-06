@@ -546,11 +546,13 @@ export function TopBar({ showGreeting = true }: TopBarProps) {
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel className="truncate">{user?.name || "Account"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
-              <UserCircle className="mr-2 h-4 w-4" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
-              <Settings className="mr-2 h-4 w-4" /> Settings
+            {!(user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com") && (
+              <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
+                <UserCircle className="mr-2 h-4 w-4" /> Profile
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => navigate({ to: user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com" ? "/admin-settings" : "/settings" })}>
+              <Settings className="mr-2 h-4 w-4" /> {user?.role === "admin" || user?.email?.toLowerCase() === "draftadmin@gmail.com" ? "Admin Settings" : "Settings"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="text-rose-500 focus:text-rose-500">

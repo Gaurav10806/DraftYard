@@ -510,7 +510,6 @@ function FeedTopBar() {
               onClick={() => {
                 logout();
                 toast("Signed out");
-                navigate({ to: "/login" });
               }}
               className="text-rose-500 focus:text-rose-500"
             >

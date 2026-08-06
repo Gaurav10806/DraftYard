@@ -83,7 +83,6 @@ export function SiteHeader() {
                     onClick={() => {
                       logout();
                       toast("Signed out");
-                      navigate({ to: "/" });
                     }}
                   >
                     Log out

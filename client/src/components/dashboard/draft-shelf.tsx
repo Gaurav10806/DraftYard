@@ -62,7 +62,7 @@ export function DraftShelf() {
     <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-[220ms] hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold tracking-tight">Draft Shelf</h2>
-        <Link to="/feed" className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">
+        <Link to="/workspace" search={{ draftId: undefined }} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">
           View all →
         </Link>
       </div>

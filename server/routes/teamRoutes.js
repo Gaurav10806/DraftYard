@@ -41,42 +41,51 @@ router.get('/team/:draftId', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Workspace/Draft not found' });
     }
 
-    // Seed TeamMembers if empty for this draft
-    let membersCount = await TeamMember.countDocuments({ draftId });
-    if (membersCount === 0) {
-      const initialMembers = [];
-      if (draft.submittedBy) {
-        initialMembers.push({
+    // 1. Ensure Owner exists in TeamMember
+    const ownerId = draft.submittedBy ? draft.submittedBy._id : req.user._id;
+    if (ownerId) {
+      const ownerMember = await TeamMember.findOne({ draftId, userId: ownerId });
+      if (!ownerMember) {
+        await TeamMember.create({
           draftId,
-          userId: draft.submittedBy._id,
+          userId: ownerId,
           role: 'Owner'
         });
-      }
-      if (draft.collaborators && draft.collaborators.length > 0) {
-        draft.collaborators.forEach(c => {
-          initialMembers.push({
-            draftId,
-            userId: c._id,
-            role: 'Contributor'
-          });
-        });
-      }
-      if (initialMembers.length > 0) {
-        await TeamMember.insertMany(initialMembers);
+      } else if (ownerMember.role !== 'Owner') {
+        ownerMember.role = 'Owner';
+        await ownerMember.save();
       }
     }
 
-    // Fetch members
-    const membersList = await TeamMember.find({ draftId }).populate('userId');
-    const members = membersList
-      .filter(m => m.userId)
-      .map(m => ({
-        userId: m.userId._id,
-        name: m.userId.name,
-        email: m.userId.email,
-        avatar: m.userId.avatar || '',
-        role: m.role
-      }));
+    // 2. Fetch all TeamMember records for this draft
+    let membersList = await TeamMember.find({ draftId }).populate('userId');
+
+    // 3. Deduplicate by userId and remove broken or duplicate entries from DB
+    const seenUserIds = new Set();
+    const uniqueMembers = [];
+    for (const m of membersList) {
+      if (!m.userId) {
+        // Clean up invalid TeamMember document where userId doesn't exist
+        await TeamMember.deleteOne({ _id: m._id });
+        continue;
+      }
+      const uIdStr = m.userId._id ? m.userId._id.toString() : m.userId.toString();
+      if (!seenUserIds.has(uIdStr)) {
+        seenUserIds.add(uIdStr);
+        uniqueMembers.push(m);
+      } else {
+        // Delete duplicate TeamMember document from DB
+        await TeamMember.deleteOne({ _id: m._id });
+      }
+    }
+
+    const members = uniqueMembers.map(m => ({
+      userId: m.userId._id,
+      name: m.userId.name || m.userId.username || m.userId.email,
+      email: m.userId.email,
+      avatar: m.userId.avatar || '',
+      role: m.role
+    }));
 
     // Pending join requests (raisedHands)
     const joinRequests = (draft.raisedHands || []).map(r => ({
@@ -88,12 +97,13 @@ router.get('/team/:draftId', requireAuth, async (req, res) => {
     }));
 
     // Recent activity logs
-    const activityLogs = await ActivityLog.find({ draftId }).sort({ createdAt: -1 }).limit(10);
+    const activityLogs = await ActivityLog.find({ draftId }).sort({ createdAt: -1 }).limit(50);
     const activity = activityLogs.map(a => ({
       id: a._id,
       who: a.userName,
       what: a.action,
       when: formatTimeAgo(a.createdAt),
+      createdAt: a.createdAt,
       initials: a.userInitials
     }));
 

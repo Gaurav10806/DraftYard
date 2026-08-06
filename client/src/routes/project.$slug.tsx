@@ -117,7 +117,7 @@ export const Route = createFileRoute("/project/$slug")({
           
           // Get auth token from localStorage if available
           const token = typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null;
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+          const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
           
           const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/draft/${draftId}`, {
             headers
@@ -518,7 +518,6 @@ function ProjectTopBar() {
               onClick={() => {
                 logout();
                 toast("Signed out");
-                navigate({ to: "/login" });
               }}
               className="text-rose-500 focus:text-rose-500"
             >
@@ -1287,7 +1286,7 @@ function OverviewTab({ draft, onViewDiscussions }: { draft: Draft; onViewDiscuss
 
   // Similar projects display format with gradient tints
   const similarProjectsDisplay = useMemo(() => {
-    return backendSimilarProjects.slice(0, 3).map((p, idx) => {
+    return backendSimilarProjects.slice(0, 3).map((p: any, idx: number) => {
       const tints = [
         "from-violet-500 to-fuchsia-500",
         "from-sky-500 to-cyan-500",
@@ -1570,7 +1569,7 @@ function formatGoldItems(strengths: ProjectStrength[]): string[] {
   
   const goldItems = useMemo(() => {
     // Format strengths for display
-    return projectOverviewStrengths.map((s) => ({
+    return projectOverviewStrengths.map((s: any) => ({
       title: s.title,
       explanation: s.explanation,
       score: s.score,
@@ -1654,7 +1653,7 @@ function formatGoldItems(strengths: ProjectStrength[]): string[] {
       <Card>
         <CardTitle icon={<Sparkles className="h-4 w-4 text-amber-500" />}>Gold</CardTitle>
         <ul className="mt-3 space-y-2 text-sm">
-          {goldItems.map((strength) => (
+          {goldItems.map((strength: any) => (
             <li key={strength.title} className="flex items-center gap-2">
               <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
               <span className="text-muted-foreground">{strength.title}: {strength.explanation}</span>
@@ -1673,7 +1672,7 @@ function formatGoldItems(strengths: ProjectStrength[]): string[] {
         </div>
         {similarProjectsDisplay.length > 0 ? (
           <ul className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
-            {similarProjectsDisplay.map((p) => (
+            {similarProjectsDisplay.map((p: any) => (
               <li key={p.id}>
                 <Link
                   to="/project/$slug"
@@ -2137,15 +2136,78 @@ function CollaborationTab({ draft, onApply }: { draft: Draft; onApply: (role: st
   const totalRevivalRequests = (draft.raisedHands || []).length;
   const totalCommunityLikes = draft.likes || 0;
 
-  // CONTRIBUTION OVERVIEW - Chart data
-  const chartData = useMemo(() => {
-    const seed = (draft.projectName.length * 3) + totalCommunityLikes;
-    return Array.from({ length: 12 }, (_, i) => {
-      const base = totalContributors + Math.round((i * (totalRevivalRequests + 1)) / 3);
-      const v = Math.max(1, base + ((i * seed) % 4));
-      return { week: `W${i + 1}`, activity: v };
+  // CONTRIBUTION OVERVIEW - Real dynamic analytics from database
+  const { chartData, timePeriodLabel, hasActivityData } = useMemo(() => {
+    const now = Date.now();
+    const createdTime = draft.createdAt ? new Date(draft.createdAt).getTime() : now - 12 * 7 * 24 * 3600 * 1000;
+    const projectAgeWeeks = Math.max(1, Math.ceil((now - createdTime) / (7 * 24 * 3600 * 1000)));
+    const totalWeeks = Math.min(12, Math.max(1, projectAgeWeeks));
+
+    const timePeriodLabel = totalWeeks === 1 ? "Last 1 week" : `Last ${totalWeeks} weeks`;
+
+    const oneWeekMs = 7 * 24 * 3600 * 1000;
+    const weeklyBuckets = Array.from({ length: totalWeeks }, (_, index) => {
+      const weekIndexFromEnd = totalWeeks - 1 - index;
+      const startTime = now - (weekIndexFromEnd + 1) * oneWeekMs;
+      const endTime = now - weekIndexFromEnd * oneWeekMs;
+      return {
+        weekLabel: `W${index + 1}`,
+        startTime,
+        endTime,
+        activity: 0,
+      };
     });
-  }, [draft.projectName, totalContributors, totalRevivalRequests, totalCommunityLikes]);
+
+    let totalEventsCount = 0;
+
+    // 1. Activity log events
+    if (activityLogs && activityLogs.length > 0) {
+      activityLogs.forEach((log: any) => {
+        const logTime = log.createdAt ? new Date(log.createdAt).getTime() : null;
+        if (logTime) {
+          const bucket = weeklyBuckets.find((b) => logTime >= b.startTime && logTime <= b.endTime);
+          if (bucket) {
+            bucket.activity += 1;
+            totalEventsCount += 1;
+          }
+        }
+      });
+    }
+
+    // 2. Revival request events
+    if (draft.raisedHands && draft.raisedHands.length > 0) {
+      draft.raisedHands.forEach((rh: any) => {
+        const rhTime = rh.createdAt ? new Date(rh.createdAt).getTime() : null;
+        if (rhTime) {
+          const bucket = weeklyBuckets.find((b) => rhTime >= b.startTime && rhTime <= b.endTime);
+          if (bucket) {
+            bucket.activity += 1;
+            totalEventsCount += 1;
+          }
+        }
+      });
+    }
+
+    // 3. Project creation event
+    if (createdTime) {
+      const bucket = weeklyBuckets.find((b) => createdTime >= b.startTime && createdTime <= b.endTime);
+      if (bucket) {
+        bucket.activity += 1;
+        totalEventsCount += 1;
+      }
+    }
+
+    const formattedData = weeklyBuckets.map((b) => ({
+      week: b.weekLabel,
+      activity: b.activity,
+    }));
+
+    return {
+      chartData: formattedData,
+      timePeriodLabel,
+      hasActivityData: totalEventsCount > 0,
+    };
+  }, [draft.createdAt, draft.raisedHands, activityLogs]);
 
   // ACTIVITY TIMELINE - Real events from database
   const dynamicTimeline = useMemo(() => {
@@ -2275,15 +2337,42 @@ function CollaborationTab({ draft, onApply }: { draft: Draft; onApply: (role: st
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Contribution Overview</CardTitle>
-          <span className="text-[10px] text-muted-foreground">Last 12 weeks</span>
+          <span className="text-[10px] text-muted-foreground">{timePeriodLabel}</span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <StatTile label="Total Contributors" value={String(totalContributors)} />
           <StatTile label="Revival Requests" value={String(totalRevivalRequests)} />
         </div>
-        <div className="mt-3 h-24 w-full">
-          <ResponsiveContainer>
-            <BarChart data={chartData}>
+        <div className="relative mt-3 h-36 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.08)" />
+              <XAxis
+                dataKey="week"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "currentColor" }}
+                className="text-muted-foreground"
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "currentColor" }}
+                className="text-muted-foreground"
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  borderColor: "hsl(var(--border))",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  color: "hsl(var(--foreground))",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+                formatter={(val: any) => [`${val} activities`, "Activity"]}
+                labelFormatter={(label: any) => `Time Period: ${label}`}
+              />
               <Bar dataKey="activity" radius={[3, 3, 0, 0]} fill="url(#contrib-grad)" />
               <defs>
                 <linearGradient id="contrib-grad" x1="0" y1="0" x2="0" y2="1">
@@ -2293,6 +2382,11 @@ function CollaborationTab({ draft, onApply }: { draft: Draft; onApply: (role: st
               </defs>
             </BarChart>
           </ResponsiveContainer>
+          {!hasActivityData && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-card/60 border border-dashed border-border/60">
+              <span className="text-[11px] font-medium text-muted-foreground">No recorded activity in this timeframe</span>
+            </div>
+          )}
         </div>
         <div className="mt-1 text-right text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
           {totalRevivalRequests > 0 ? `${totalRevivalRequests} active revival request${totalRevivalRequests > 1 ? "s" : ""}` : `${totalCommunityLikes} community like${totalCommunityLikes !== 1 ? "s" : ""}`}

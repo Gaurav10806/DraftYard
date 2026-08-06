@@ -22,6 +22,7 @@ import { TopBar } from "@/components/dashboard/top-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import { fetchUserInsights, type UserInsightsData } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -31,25 +32,10 @@ const fadeUp = {
 };
 
 export function UserInsights() {
-  const [insights, setInsights] = useState<UserInsightsData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadInsights = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchUserInsights();
-        setInsights(data);
-      } catch (err) {
-        console.error("Failed to load user insights:", err);
-        toast.error("Failed to load insights");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInsights();
-  }, []);
+  const { data: insights = null, isLoading: loading } = useQuery({
+    queryKey: ["user-insights"],
+    queryFn: fetchUserInsights,
+  });
 
   if (loading) {
     return (

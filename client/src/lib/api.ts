@@ -24,6 +24,7 @@ export type Draft = {
   views?: number;
   bookmarks?: number;
   bookmarked?: boolean;
+  bookmarkedBy?: string[];
   lastWorkedOn?: string | null;
   ownerToken?: string | null;
   submittedBy?: {
@@ -188,6 +189,7 @@ export type NewDraft = {
   currentStage: string;
   failureReason: string;
   lastWorkedOn?: string;
+  estimatedHours?: number;
   developmentMethodology?: string;
   timeSpent: { value: number; unit: string };
   projectLink: string;
@@ -207,6 +209,22 @@ export async function createDraft(data: NewDraft): Promise<Draft> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Failed to submit draft");
+  }
+  return res.json();
+}
+
+export async function updateDraft(id: string, updates: Partial<Draft>): Promise<Draft> {
+  const res = await fetch(`${API_BASE}/draft/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to update draft");
   }
   return res.json();
 }
@@ -828,6 +846,9 @@ export type PublicUser = {
   email: string;
   avatar?: string;
   bio?: string;
+  github?: string;
+  linkedin?: string;
+  portfolio?: string;
 };
 
 export async function followUser(userId: string): Promise<void> {
@@ -1112,9 +1133,14 @@ export async function fetchGlobalInsights(): Promise<GlobalInsightsData> {
 
 const ML_API_BASE = import.meta.env.VITE_ML_API_URL ?? "http://localhost:8000";
 export type AiChatMessage = {
+  id?: string;
   role: "user" | "ai";
   content: string;
+  followUps?: string[];
+  createdAt?: string;
+  time?: string;
 };
+export type ChatMessageItem = AiChatMessage;
 
 export type DraftMatch = {
   id: string;

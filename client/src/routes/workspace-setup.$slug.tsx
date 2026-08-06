@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -34,7 +34,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { drafts } from "@/data/drafts";
-import { fetchFeed, createWorkspace, fetchWorkspace, updateWorkspace } from "@/lib/api";
+import { fetchFeed, fetchMyDrafts, createWorkspace, fetchWorkspace, updateWorkspace } from "@/lib/api";
 import { slugify } from "@/routes/project.$slug";
 import { type WorkspaceTask, type WorkspaceMilestone } from "@/lib/workspace-store";
 import { useAuth } from "@/lib/auth-context";
@@ -46,28 +46,36 @@ export const Route = createFileRoute("/workspace-setup/$slug")({
   head: () => ({ meta: [{ title: "Workspace Setup · DraftYard" }] }),
   loader: async ({ params, location }) => {
     try {
-      // Fetch all drafts to find by slug
-      let allDrafts: any[] = [];
-      let page = 1;
-      let hasMore = true;
-      
-      while (hasMore) {
-        const result = await fetchFeed({ page, limit: 50 });
-        allDrafts = allDrafts.concat(result.data);
-        hasMore = result.pagination.hasMore;
-        page++;
+      // 1. Try to find in user's owned & shared drafts first
+      const myDrafts = await fetchMyDrafts().catch(() => []);
+      let draft = myDrafts.find((d) => slugify(d.projectName) === params.slug);
+
+      // 2. If not found in user's drafts, search public feed
+      if (!draft) {
+        let allDrafts: any[] = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore && page <= 5) {
+          const result = await fetchFeed({ page, limit: 50 });
+          allDrafts = allDrafts.concat(result.data);
+          hasMore = result.pagination.hasMore;
+          page++;
+        }
+        draft = allDrafts.find((d) => slugify(d.projectName) === params.slug);
       }
-      
-      const draft = allDrafts.find((d) => slugify(d.projectName) === params.slug);
+
       if (draft) {
-        const workspace = await fetchWorkspace(draft._id);
+        const draftId = draft._id || draft.id;
+        const workspace = draftId ? await fetchWorkspace(draftId).catch(() => null) : null;
         return { draft, workspace };
       }
     } catch {
       /* fallback */
     }
     const draft = drafts.find((d) => slugify(d.projectName) === params.slug);
-    const workspace = draft?._id ? await fetchWorkspace(draft._id) : null;
+    const draftId = (draft as any)?._id || (draft as any)?.id;
+    const workspace = draftId ? await fetchWorkspace(draftId).catch(() => null) : null;
     return { draft: draft ?? null, workspace };
   },
   component: WorkspaceSetupPage,
@@ -119,7 +127,9 @@ function WorkspaceSetupPage() {
             <TopBar showGreeting={false} />
             <main className="flex-1 space-y-6 p-4 sm:p-6">
               <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>DraftYard</span>
+                <Link to="/workspace" search={{ draftId: undefined }} className="hover:text-foreground transition-colors cursor-pointer font-medium">
+                  DraftYard
+                </Link>
                 <ChevronRight className="h-3 w-3" />
                 <span>{draft?.projectName ?? "Project"}</span>
                 <ChevronRight className="h-3 w-3" />
@@ -149,13 +159,13 @@ function WorkspaceSetupForm({ draft, existingWorkspace }: { draft: { _id?: strin
   const [step2Data, setStep2Data] = useState<Step2Values | null>(null);
 
   const form1 = useForm<Step1Values>({
-    resolver: zodResolver(step1Schema),
+    resolver: zodResolver(step1Schema) as any,
     defaultValues: { longDescription: "", featuresCompleted: "", currentBlockers: "", externalLinks: "" },
     mode: "onChange",
   });
 
   const form3 = useForm<Step3Values>({
-    resolver: zodResolver(step3Schema),
+    resolver: zodResolver(step3Schema) as any,
     defaultValues: { attachments: "" },
     mode: "onChange",
   });

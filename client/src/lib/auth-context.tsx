@@ -9,6 +9,8 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<ApiUser>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<ApiUser>;
+  googleLogin: (data: { credential?: string; idToken?: string; code?: string; user?: any }) => Promise<ApiUser>;
   logout: () => void;
 };
 
@@ -64,8 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("authToken");
+    try {
+      sessionStorage.clear();
+    } catch (e) {
+      // Ignore if sessionStorage access is restricted
+    }
+    try {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    } catch (e) {
+      // Ignore cookie errors if restricted
+    }
     setUser(null);
-    window.location.href = "/login";
+    window.location.replace("/");
   };
 
   return (

@@ -47,7 +47,6 @@ const primaryAdminItems = [
   { title: "DraftYard Feed", url: "/feed", icon: Rss },
   { title: "Insights", url: "/insights-lab", icon: BarChart2 },
   { title: "Stack Intelligence", url: "/stack-intelligence", icon: Layers },
-  { title: "Profile", url: "/profile", icon: UserCircle },
   { title: "Admin Settings", url: "/admin-settings", icon: Settings },
 ];
 
@@ -136,44 +135,46 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-3">
-        {!collapsed ? (
-          <div className="rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-4">
-            <p className="font-display text-sm font-semibold leading-tight">
-              Big ideas
-              <br />
-              start here.
-            </p>
+      {!isAdmin && (
+        <SidebarFooter className="border-t border-sidebar-border p-3">
+          {!collapsed ? (
+            <div className="rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-4">
+              <p className="font-display text-sm font-semibold leading-tight">
+                Big ideas
+                <br />
+                start here.
+              </p>
 
-            <p className="mt-1 text-xs text-muted-foreground">
-              Capture today,
-              <br />
-              build tomorrow.
-            </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Capture today,
+                <br />
+                build tomorrow.
+              </p>
 
+              <Button
+                size="sm"
+                className="mt-3 w-full rounded-lg"
+                asChild
+              >
+                <Link to="/new-draft">
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  New Draft
+                </Link>
+              </Button>
+            </div>
+          ) : (
             <Button
-              size="sm"
-              className="mt-3 w-full rounded-lg"
+              size="icon"
+              className="rounded-lg"
               asChild
             >
               <Link to="/new-draft">
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                New Draft
+                <Plus className="h-4 w-4" />
               </Link>
             </Button>
-          </div>
-        ) : (
-          <Button
-            size="icon"
-            className="rounded-lg"
-            asChild
-          >
-            <Link to="/new-draft">
-              <Plus className="h-4 w-4" />
-            </Link>
-          </Button>
-        )}
-      </SidebarFooter>
+          )}
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }

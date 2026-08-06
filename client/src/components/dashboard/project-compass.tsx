@@ -16,6 +16,7 @@ const POLE_HINT: Record<Pole, string> = {
 const CX = 160;
 const CY = 160;
 const RING_R = 108;
+const LABEL_R = 138;
 const LABEL_RADIUS: Record<Pole, number> = {
   Explore: 138,
   Collaborate: 138,

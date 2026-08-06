@@ -408,8 +408,19 @@ router.post('/draft', optionalAuth, async (req, res) => {
     const body = { ...req.body };
     // If the caller is authenticated, link the draft to their account
     if (req.user) body.submittedBy = req.user._id;
+    body.collaborators = [];
     const draft = new Draft(body);
     await draft.save();
+
+    if (req.user) {
+      const TeamMember = require('../models/TeamMember');
+      await TeamMember.findOneAndUpdate(
+        { draftId: draft._id, userId: req.user._id },
+        { draftId: draft._id, userId: req.user._id, role: 'Owner' },
+        { upsert: true, new: true }
+      ).catch(() => {});
+    }
+
     res.status(201).json(draft);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1625,7 +1636,7 @@ router.patch('/draft/:id', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid draft ID format' });
     }
 
-    const { currentStage } = req.body;
+    const { currentStage, projectName, oneLiner, description } = req.body;
     const draft = await Draft.findById(id);
     if (!draft) return res.status(404).json({ error: 'Draft not found' });
 
@@ -1638,17 +1649,30 @@ router.patch('/draft/:id', requireAuth, async (req, res) => {
     const isContributor = teamMemberRecord && (teamMemberRecord.role === 'Owner' || teamMemberRecord.role === 'Contributor');
 
     if (!isOwner && !isContributor) {
-      return res.status(403).json({ error: 'Only workspace owners or contributors can update this stage' });
+      return res.status(403).json({ error: 'Only workspace owners or contributors can update this draft' });
+    }
+
+    const ActivityLog = require('../models/ActivityLog');
+    const initials = req.user.name ? req.user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'US';
+    let updated = false;
+
+    if (projectName && typeof projectName === 'string' && projectName.trim().length > 0 && projectName.trim() !== draft.projectName) {
+      const oldName = draft.projectName;
+      draft.projectName = projectName.trim();
+      updated = true;
+      await ActivityLog.create({
+        draftId: id,
+        user: req.user._id,
+        userName: req.user.name || req.user.username || req.user.email,
+        userInitials: initials.slice(0, 2),
+        action: `renamed project from "${oldName}" to "${draft.projectName}"`
+      });
     }
 
     const previousStage = draft.currentStage;
     if (currentStage && currentStage !== previousStage) {
       draft.currentStage = currentStage;
-      await draft.save();
-
-      // Log in ActivityLog
-      const ActivityLog = require('../models/ActivityLog');
-      const initials = req.user.name ? req.user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'US';
+      updated = true;
       await ActivityLog.create({
         draftId: id,
         user: req.user._id,
@@ -1656,6 +1680,19 @@ router.patch('/draft/:id', requireAuth, async (req, res) => {
         userInitials: initials.slice(0, 2),
         action: `updated stage to ${currentStage}`
       });
+    }
+
+    if (oneLiner !== undefined) {
+      draft.oneLiner = oneLiner;
+      updated = true;
+    }
+    if (description !== undefined) {
+      draft.description = description;
+      updated = true;
+    }
+
+    if (updated) {
+      await draft.save();
     }
 
     res.json(draft);

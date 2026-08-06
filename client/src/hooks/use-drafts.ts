@@ -85,6 +85,7 @@ export function useLikeDraftMutation() {
       });
 
       queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["user-insights"] });
     },
     onError: (error) => {
       console.error("Failed to like draft:", error);
@@ -134,6 +135,7 @@ export function useBookmarkDraftMutation() {
 
       queryClient.invalidateQueries({ queryKey: ["feed"] });
       queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["user-insights"] });
     },
     onError: (error) => {
       console.error("Failed to bookmark draft:", error);

@@ -280,17 +280,62 @@ router.delete('/user/skills', requireAuth, async (req, res) => {
 // GET /api/user/insights - Get real user-specific insights & community analysis
 router.get('/user/insights', requireAuth, async (req, res) => {
   try {
-    const userId = req.user._id;
+    const rawUserId = req.user._id;
+    const userIdStr = rawUserId ? rawUserId.toString() : '';
+    const userIdObj = (userIdStr && mongoose.Types.ObjectId.isValid(userIdStr))
+      ? new mongoose.Types.ObjectId(userIdStr)
+      : rawUserId;
 
-    // Get all drafts created by the authenticated user
-    const userDrafts = await Draft.find({ submittedBy: userId });
+    // 1. Fetch owned drafts
+    const ownedDrafts = await Draft.find({
+      $or: [
+        { submittedBy: userIdObj },
+        { submittedBy: userIdStr }
+      ]
+    }).lean();
+
+    const ownedDraftObjIds = ownedDrafts.map(d => d._id);
+    const ownedDraftIdStrs = new Set(ownedDrafts.map(d => d._id.toString()));
+
+    // 2. Fetch TeamMember records for this user to get shared drafts
+    const TeamMember = require('../models/TeamMember');
+    const teamMemberships = await TeamMember.find({
+      $or: [
+        { userId: userIdObj },
+        { userId: userIdStr }
+      ]
+    }).lean();
+
+    const teamDraftObjIds = [];
+    teamMemberships.forEach(tm => {
+      if (tm.draftId) {
+        const idStr = tm.draftId.toString();
+        if (!ownedDraftIdStrs.has(idStr) && mongoose.Types.ObjectId.isValid(idStr)) {
+          teamDraftObjIds.push(new mongoose.Types.ObjectId(idStr));
+        }
+      }
+    });
+
+    // 3. Query shared drafts (either in collaborators array or in TeamMember records)
+    const sharedDraftsDocs = await Draft.find({
+      _id: { $nin: ownedDraftObjIds },
+      $or: [
+        { collaborators: userIdObj },
+        { collaborators: userIdStr },
+        ...(teamDraftObjIds.length > 0 ? [{ _id: { $in: teamDraftObjIds } }] : [])
+      ]
+    }).lean();
+
+    // Combined dataset of ALL drafts accessible to the user (Owned + Shared)
+    const userDrafts = [...ownedDrafts, ...sharedDraftsDocs];
 
     // Query real similar community projects from MongoDB matching user's domains/tech stacks
+    const userDraftIds = userDrafts.map(d => d._id);
     const userDomains = Array.from(new Set(userDrafts.map(d => d.domain).filter(Boolean)));
     const userTechs = Array.from(new Set(userDrafts.flatMap(d => d.techStack || [])));
 
     const similarCommunityDrafts = await Draft.find({
-      submittedBy: { $ne: userId },
+      _id: { $nin: userDraftIds },
       ...(userDomains.length > 0 ? { domain: { $in: userDomains } } : {})
     })
       .select('projectName domain currentStage failureReason upvotes raisedHands timeSpent')

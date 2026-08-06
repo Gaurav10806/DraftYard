@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { fetchUserProfile, updateUserProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import { toast } from "sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
@@ -281,7 +282,8 @@ function SettingsPage() {
   const isAdmin = authUser?.role === "admin" || authUser?.email?.toLowerCase() === "draftadmin@gmail.com";
 
   return (
-    <SidebarProvider>
+    <ProtectedRoute>
+      <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <SidebarInset>
@@ -549,5 +551,6 @@ function SettingsPage() {
         </SidebarInset>
       </div>
     </SidebarProvider>
+    </ProtectedRoute>
   );
 }

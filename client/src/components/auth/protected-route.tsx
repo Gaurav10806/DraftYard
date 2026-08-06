@@ -9,7 +9,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      navigate({ to: "/login" });
+      navigate({ to: "/", replace: true });
     }
   }, [isLoading, isAuthenticated, navigate]);
 

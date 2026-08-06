@@ -2987,6 +2987,7 @@ import {
   approveJoinRequest,
   declineJoinRequest,
   updateDraftStage,
+  updateDraft,
   type TeamMemberData,
   type JoinRequestData,
   type ActivityLogData,
@@ -3037,11 +3038,11 @@ export const Route = createFileRoute("/workspace")({
       ) {
         draft = workspace.draftId as unknown as Draft;
       } else {
-        draft = await fetchDraftById(draftId);
+        draft = (await fetchDraftById(draftId)) as unknown as Draft;
       }
     } catch {
       try {
-        draft = await fetchDraftById(draftId);
+        draft = (await fetchDraftById(draftId)) as unknown as Draft;
       } catch {
         draft = null;
       }
@@ -3111,6 +3112,7 @@ function WorkspaceHomePage({ initialFilter = 'all' }: { initialFilter?: 'all' | 
       await leaveWorkspace(d._id);
       toast.success(`You have left "${d.projectName}".`);
       await queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-insights"] });
     } catch (err: any) {
       toast.error(err.message ?? "Failed to leave workspace");
     }
@@ -3259,6 +3261,9 @@ function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: Work
   const [available, setAvailable] = useState(true);
   const [stage, setStage] = useState<Stage>((draft?.currentStage as Stage) || "Building");
   const [pendingStage, setPendingStage] = useState<Stage | null>(null);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [renameInput, setRenameInput] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
@@ -3349,6 +3354,40 @@ function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: Work
     workspaceData: workspace,
     activityLog: teamData?.activity ?? [],
   };
+  const handleRenameSubmit = async () => {
+    const rawId = draft?._id || (draft as any)?.id || workspace?.draftId;
+    const targetDraftId =
+      typeof rawId === "string"
+        ? rawId
+        : rawId?._id?.toString() || rawId?.id?.toString() || "";
+
+    if (!targetDraftId) {
+      toast.error("Draft ID is required to rename project");
+      return;
+    }
+
+    const trimmed = renameInput.trim();
+    if (!trimmed) {
+      toast.error("Project name cannot be empty");
+      return;
+    }
+
+    try {
+      setRenaming(true);
+      await updateDraft(targetDraftId, { projectName: trimmed });
+      await queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
+      await queryClient.invalidateQueries({ queryKey: ["feed"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-insights"] });
+      toast.success("Draft renamed successfully!");
+      setIsRenameOpen(false);
+      refreshTeam();
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to rename draft");
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <SidebarProvider>
@@ -3379,6 +3418,10 @@ function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: Work
                     ? () => setTab("team")
                     : undefined
                 }
+                onRename={() => {
+                  setRenameInput(projectName);
+                  setIsRenameOpen(true);
+                }}
                 onEditForm={() => {
                   const targetDraftId = draft?._id || (draft as any)?.id || workspace?.draftId;
                   if (!targetDraftId) {
@@ -3470,6 +3513,7 @@ function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: Work
                         setStage(pendingStage);
                         queryClient.invalidateQueries({ queryKey: ["my-drafts"] });
                         queryClient.invalidateQueries({ queryKey: ["feed"] });
+                        queryClient.invalidateQueries({ queryKey: ["user-insights"] });
                         toast.success(`Stage updated to ${pendingStage}!`);
                         refreshTeam();
                       })
@@ -3485,6 +3529,44 @@ function WorkspaceDetailPage({ workspace, draft, initialTab }: { workspace: Work
                 }}
               >
                 Update stage
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Rename project dialog */}
+        <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Rename Project Draft</DialogTitle>
+              <DialogDescription>
+                Enter a new title for your project draft.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2">
+              <Input
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                placeholder="Project name"
+                className="h-10 rounded-xl"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && renameInput.trim() && !renaming) {
+                    e.preventDefault();
+                    handleRenameSubmit();
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsRenameOpen(false)} disabled={renaming}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!renameInput.trim() || renaming}
+                onClick={handleRenameSubmit}
+              >
+                {renaming ? "Saving..." : "Save changes"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -3550,7 +3632,6 @@ function WorkspaceTopBar({ projectName }: { projectName: string }) {
               onClick={() => {
                 logout();
                 toast("Signed out");
-                navigate({ to: "/login" });
               }}
               className="text-rose-500 focus:text-rose-500"
             >
@@ -3580,6 +3661,7 @@ function ProjectHeader({
   userRole,
   raisedHandsCount = 0,
   onEditForm,
+  onRename,
 }: {
   stage: Stage;
   onStageClick: (s: Stage) => void;
@@ -3593,6 +3675,7 @@ function ProjectHeader({
   userRole?: string;
   raisedHandsCount?: number;
   onEditForm?: () => void;
+  onRename?: () => void;
 }) {
   const initials = projectName.slice(0, 2).toUpperCase();
 
@@ -3609,7 +3692,12 @@ function ProjectHeader({
               <h1 className="font-display text-[24px] font-semibold leading-tight tracking-tight">
                 {projectName}
               </h1>
-              <button className="text-muted-foreground transition-colors duration-[180ms] hover:text-foreground">
+              <button
+                type="button"
+                onClick={onRename}
+                title="Rename draft"
+                className="text-muted-foreground transition-colors duration-[180ms] hover:text-foreground p-1 rounded-md hover:bg-muted/50"
+              >
                 <Edit3 className="h-3.5 w-3.5" />
               </button>
               <Badge variant="secondary" className="rounded-full text-[10px]">
@@ -3618,9 +3706,6 @@ function ProjectHeader({
               </Badge>
               <Badge variant="outline" className="gap-1 rounded-full text-[10px]">
                 <Globe2 className="h-3 w-3" /> Public
-              </Badge>
-              <Badge variant="outline" className="gap-1 rounded-full text-[10px]">
-                <Github className="h-3 w-3" /> Connected
               </Badge>
               {/* Role badge — only shown for non-owners and when role is available */}
               {userRole && userRole !== "Owner" && (
@@ -6007,7 +6092,7 @@ Time Spent: ${draft?.timeSpent ? `${draft.timeSpent.value} ${draft.timeSpent.uni
     try {
       // Convert chat history to AI API format
       const historyPayload: AiChatMessage[] = updatedMessages
-        .filter((m) => m.role !== "ai" || m.id.startsWith("welcome"))
+        .filter((m) => m.role !== "ai" || m.id?.startsWith("welcome"))
         .map((m) => ({
           role: m.role,
           content: m.content,
@@ -6128,7 +6213,7 @@ Time Spent: ${draft?.timeSpent ? `${draft.timeSpent.value} ${draft.timeSpent.uni
                     {/* Follow-up suggestions for AI messages */}
                     {!isUser && msg.followUps && msg.followUps.length > 0 && (
                       <div className="ml-9 flex flex-wrap gap-1.5 pt-1">
-                        {msg.followUps.map((f) => (
+                        {msg.followUps.map((f: string) => (
                           <button
                             key={f}
                             onClick={() => handleSend(f)}

@@ -1293,7 +1293,7 @@ function MatchedDraftsSection({ matches, error, queryText, communityStatistics }
                         <span className="font-semibold">{breakdown.semantic}%</span>
                       </div>
                       <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.semantic / breakdown.total) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-primary" />
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.semantic / ((breakdown as any).total || 100)) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-primary" />
                       </div>
                     </div>
                     <div className="flex gap-4">
@@ -1303,7 +1303,7 @@ function MatchedDraftsSection({ matches, error, queryText, communityStatistics }
                           <span className="font-semibold">{breakdown.tech}%</span>
                         </div>
                         <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.tech / breakdown.total) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-indigo-500" />
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.tech / ((breakdown as any).total || 100)) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-indigo-500" />
                         </div>
                       </div>
                       <div className="flex-1 space-y-1">
@@ -1312,7 +1312,7 @@ function MatchedDraftsSection({ matches, error, queryText, communityStatistics }
                           <span className="font-semibold">{breakdown.category}%</span>
                         </div>
                         <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.category / breakdown.total) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-pink-500" />
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.category / ((breakdown as any).total || 100)) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-pink-500" />
                         </div>
                       </div>
                     </div>
@@ -1323,7 +1323,7 @@ function MatchedDraftsSection({ matches, error, queryText, communityStatistics }
                           <span className="font-semibold">{breakdown.stage}%</span>
                         </div>
                         <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.stage / breakdown.total) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-amber-500" />
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.stage / ((breakdown as any).total || 100)) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-amber-500" />
                         </div>
                       </div>
                       <div className="flex-1 space-y-1">
@@ -1332,7 +1332,7 @@ function MatchedDraftsSection({ matches, error, queryText, communityStatistics }
                           <span className="font-semibold">{breakdown.quality}%</span>
                         </div>
                         <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.quality / breakdown.total) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-emerald-500" />
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${(breakdown.quality / ((breakdown as any).total || 100)) * 100}%` }} transition={{ duration: 0.5 }} className="h-full bg-emerald-500" />
                         </div>
                       </div>
                     </div>
