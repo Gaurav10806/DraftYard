@@ -50,6 +50,18 @@ const draftSchema = new mongoose.Schema({
     ],
     default: [],
   },
+  projectLink: { type: String, default: '' },
+  github: {
+    imported: { type: Boolean, default: false },
+    repoId: { type: String, default: null },
+    owner: { type: String, default: null },
+    repository: { type: String, default: null },
+    repoUrl: { type: String, default: null },
+    defaultBranch: { type: String, default: null },
+    visibility: { type: String, default: null },
+    importedAt: { type: Date, default: null },
+    lastSynced: { type: Date, default: null },
+  },
 }, { timestamps: true, collection: 'drafts' });
 
 module.exports = mongoose.model('Draft', draftSchema, 'drafts');

@@ -63,7 +63,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
-import { useDrafts, useBookmarkDraftMutation } from "@/hooks/use-drafts";
+import { useDrafts, useBookmarkDraftMutation, useGlobalFeedStats } from "@/hooks/use-drafts";
 import { likeDraft, recordView, raiseHand } from "@/lib/api";
 import { JoinRequestModal } from "@/components/JoinRequestModal";
 import { TopBar } from "@/components/dashboard/top-bar";
@@ -224,22 +224,11 @@ function FeedPage() {
 
   const enriched = useMemo(() => enrichDrafts(allDrafts), [allDrafts]);
 
-  // Calculate dynamic statistics from real data
-  const totalDraftsCount = useMemo(() => enriched.length, [enriched]);
+  const { data: globalStats, isLoading: isStatsLoading } = useGlobalFeedStats();
 
-  const totalCommunityInteractions = useMemo(() => {
-    return enriched.reduce((sum, d) => (sum + (d.likes || 0) + (d.views || 0) + (d.raisedHands?.length || 0)), 0);
-  }, [enriched]);
-
-  const totalLikes = useMemo(() => {
-    return enriched.reduce((sum, d) => sum + (d.likes || 0), 0);
-  }, [enriched]);
-
-  const avgRevivalScore = useMemo(() => {
-    if (enriched.length === 0) return 0;
-    const totalScore = enriched.reduce((sum, d) => sum + (d.revivalScore || 0), 0);
-    return Math.round(totalScore / enriched.length);
-  }, [enriched]);
+  const totalDraftsCount = globalStats?.totalProjects ?? 0;
+  const totalCommunityInteractions = globalStats?.totalInteractions ?? 0;
+  const avgRevivalScore = globalStats?.avgRevivalScore ?? 0;
 
   // Stall patterns derived from failure reasons (top 5)
   const stallPatterns = useMemo(() => {
@@ -356,7 +345,7 @@ function FeedPage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
               {/* Left column */}
               <div className="min-w-0">
-                <HeroHeader draftsCount={totalDraftsCount} isLoading={isLoading} totalInteractions={totalCommunityInteractions} avgRevival={avgRevivalScore} />
+                <HeroHeader draftsCount={totalDraftsCount} isLoading={isStatsLoading} totalInteractions={totalCommunityInteractions} avgRevival={avgRevivalScore} />
                 <div className="h-8" />
                 {enriched.length > 0 && (
                   <>
@@ -1402,12 +1391,22 @@ function FeedCard({
             </p>
           </div>
         </div>
-        <Badge
-          variant="outline"
-          className="shrink-0 rounded-full border-border/60 bg-background/60 text-[10px] font-medium dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
-        >
-          {draft.currentStage}
-        </Badge>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <Badge
+            variant="outline"
+            className="rounded-full border-border/60 bg-background/60 text-[10px] font-medium dark:border-[#2a2a3d] dark:bg-[#0d0d14]"
+          >
+            {draft.currentStage}
+          </Badge>
+          {draft.github?.imported && (
+            <Badge
+              variant="outline"
+              className="gap-1 rounded-full border-violet-500/40 bg-violet-500/10 text-[9px] font-medium text-violet-600 dark:text-violet-400"
+            >
+              🐙 Imported from GitHub
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Tech pills */}

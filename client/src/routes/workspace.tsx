@@ -3091,11 +3091,15 @@ function WorkspacePage() {
   return <WorkspaceHomePage initialFilter={compassState?.compassTab === 'shared' ? 'shared' : 'all'} />;
 }
 
+import { ImportRepoModal } from "@/components/dashboard/import-repo-modal";
+
 function WorkspaceHomePage({ initialFilter = 'all' }: { initialFilter?: 'all' | 'owned' | 'shared' }) {
+  const { user } = useAuth();
   const { data: myDrafts = [], isLoading } = useMyDrafts();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [roleFilter, setRoleFilter] = useState<"all" | "owned" | "shared">(initialFilter);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const ownedDrafts = myDrafts.filter((d: any) => d.isOwner || (!d._sharedRole && d.userRole !== "Contributor" && d.userRole !== "Viewer"));
   const sharedDrafts = myDrafts.filter((d: any) => !d.isOwner && (d._sharedRole || d.userRole === "Contributor" || d.userRole === "Viewer"));
@@ -3148,12 +3152,40 @@ function WorkspaceHomePage({ initialFilter = 'all' }: { initialFilter?: 'all' | 
                       : `${myDrafts.length} workspace${myDrafts.length !== 1 ? "s" : ""} available (${ownedDrafts.length} owned, ${sharedDrafts.length} shared)`}
                   </p>
                 </div>
-                <Button asChild className="rounded-xl gap-2">
-                  <Link to="/new-draft">
-                    <Plus className="h-4 w-4" /> New Draft
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                  {user?.github?.connected ? (
+                    <Button
+                      onClick={() => setIsImportModalOpen(true)}
+                      variant="outline"
+                      className="rounded-xl gap-2 border-primary/40 text-primary hover:bg-primary/10"
+                    >
+                      <Github className="h-4 w-4" /> Import Repository
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const { url } = await githubApi.getAuthUrl();
+                          if (url) window.location.href = url;
+                        } catch (err: any) {
+                          toast.error(err.message || "Failed to initiate GitHub connect");
+                        }
+                      }}
+                      variant="outline"
+                      className="rounded-xl gap-2 border-border"
+                    >
+                      <Github className="h-4 w-4" /> Connect GitHub
+                    </Button>
+                  )}
+                  <Button asChild className="rounded-xl gap-2">
+                    <Link to="/new-draft">
+                      <Plus className="h-4 w-4" /> New Draft
+                    </Link>
+                  </Button>
+                </div>
               </div>
+
+              <ImportRepoModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />
 
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 border-b border-border/60 pb-3">

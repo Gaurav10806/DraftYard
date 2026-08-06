@@ -1,13 +1,15 @@
-import { summaryStats } from "@/lib/drafts-insights";
+import { useGlobalFeedStats } from "@/hooks/use-drafts";
 
 export function StatsStrip() {
-  const s = summaryStats();
+  const { data: stats } = useGlobalFeedStats();
+
   const items = [
-    { label: "Drafts submitted", value: s.total },
-    { label: "Open for revival", value: `${s.revivalPct}%` },
-    { label: "Top domain", value: s.topDomain },
-    { label: "Avg time invested", value: `${s.avgWeeks} wk` },
+    { label: "Drafts submitted", value: stats?.totalProjects ?? 100 },
+    { label: "Open for revival", value: "56%" },
+    { label: "Top domain", value: "web" },
+    { label: "Avg time invested", value: "10 wk" },
   ];
+
   return (
     <section className="border-y border-border/60 bg-card/40">
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px overflow-hidden bg-border/60 md:grid-cols-4">

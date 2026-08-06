@@ -63,7 +63,7 @@ export function Hero() {
               </svg>
             </motion.div>
           </div>
-          {["Explore", "Learn", "Build", "Collaborate", "Publish"].map((label, i) => {
+          {["Explore", "Learn", "Build", "Collaborate", "Level Up"].map((label, i) => {
             const angle = (i / 5) * 2 * Math.PI - Math.PI / 2;
             const r = 48;
             const x = 50 + r * Math.cos(angle);

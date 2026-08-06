@@ -119,19 +119,27 @@ export function ProfilePreviewModal({
           )}
 
           {/* Social links */}
-          {(profile.github || profile.linkedin || profile.portfolio) && (
+          {((profile.github && (typeof profile.github === "string" ? profile.github : profile.github.connected || profile.github.username || profile.github.profileUrl)) || profile.linkedin || profile.portfolio) && (
             <div className="flex flex-wrap justify-center gap-2">
-              {profile.github && (
-                <a
-                  href={`https://${profile.github}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/40 bg-background/60 px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Github className="h-3.5 w-3.5" />
-                  GitHub
-                </a>
-              )}
+              {profile.github && (() => {
+                const ghObj = typeof profile.github === "object" ? profile.github : null;
+                const ghUrl = ghObj
+                  ? ghObj.profileUrl || (ghObj.username ? `https://github.com/${ghObj.username}` : null)
+                  : `https://${profile.github}`;
+                const ghDisplay = ghObj ? `@${ghObj.username || 'GitHub'}` : 'GitHub';
+
+                return ghUrl ? (
+                  <a
+                    href={ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/40 bg-background/60 px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    <Github className="h-3.5 w-3.5" />
+                    {ghDisplay}
+                  </a>
+                ) : null;
+              })()}
               {profile.linkedin && (
                 <a
                   href={`https://${profile.linkedin}`}

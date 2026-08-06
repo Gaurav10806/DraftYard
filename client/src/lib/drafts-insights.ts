@@ -76,16 +76,21 @@ export function teamSizeVsStage(list: Draft[] = drafts) {
 }
 
 export function summaryStats(list: Draft[] = drafts) {
-  const revival = list.filter((d) => (d.raisedHands && d.raisedHands.length > 0) || d.openForRevival).length;
+  if (!list || list.length === 0) {
+    return { total: 0, revivalPct: 0, topDomain: "—", avgWeeks: 0 };
+  }
+  const revival = list.filter((d) => (d?.raisedHands && d.raisedHands.length > 0) || d?.openForRevival).length;
   const domains = domainDistribution(list);
   const totalDays = list.reduce((sum, d) => {
-    const m = d.timeSpent.unit === "months" ? 30 : d.timeSpent.unit === "weeks" ? 7 : 1;
-    return sum + d.timeSpent.value * m;
+    const unit = d?.timeSpent?.unit;
+    const value = typeof d?.timeSpent?.value === 'number' ? d.timeSpent.value : 0;
+    const m = unit === "months" ? 30 : unit === "weeks" ? 7 : 1;
+    return sum + value * m;
   }, 0);
   return {
     total: list.length,
-    revivalPct: Math.round((revival / list.length) * 100),
+    revivalPct: Math.round((revival / list.length) * 100) || 0,
     topDomain: domains[0]?.name ?? "—",
-    avgWeeks: Math.round(totalDays / list.length / 7),
+    avgWeeks: Math.round(totalDays / list.length / 7) || 0,
   };
 }

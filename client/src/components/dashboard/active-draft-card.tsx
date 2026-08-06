@@ -53,9 +53,15 @@ export function ActiveDraftCard() {
     );
   }
 
-  const d = hasUserDrafts
+  const storedActiveDraftId = typeof window !== "undefined" ? localStorage.getItem("activeDraftId") : null;
+
+  const foundActive = storedActiveDraftId && myDrafts
+    ? myDrafts.find((d: any) => d._id === storedActiveDraftId)
+    : null;
+
+  const d = foundActive || (hasUserDrafts
     ? myDrafts[0]
-    : (serverDrafts && serverDrafts.length > 0 ? serverDrafts[0] : drafts[0]);
+    : (serverDrafts && serverDrafts.length > 0 ? serverDrafts[0] : drafts[0]));
 
   const progress = stageToProgress(d.currentStage);
 

@@ -1628,6 +1628,60 @@ router.get('/draft/:id', optionalAuth, async (req, res) => {
   }
 });
 
+// GET /api/feed/stats — Return global platform feed statistics directly from MongoDB
+router.get('/feed/stats', async (req, res) => {
+  try {
+    const statsResult = await Draft.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalProjects: { $sum: 1 },
+          totalLikes: { $sum: { $ifNull: ['$likes', 0] } },
+          totalViews: { $sum: { $ifNull: ['$views', 0] } },
+          totalRaisedHands: { $sum: { $size: { $ifNull: ['$raisedHands', []] } } },
+          totalBookmarks: { $sum: { $ifNull: ['$bookmarks', 0] } },
+          totalUpvotes: { $sum: { $ifNull: ['$upvotes', 0] } },
+        }
+      }
+    ]);
+
+    const stats = statsResult[0] || {
+      totalProjects: 0,
+      totalLikes: 0,
+      totalViews: 0,
+      totalRaisedHands: 0,
+      totalBookmarks: 0,
+      totalUpvotes: 0,
+    };
+
+    const totalInteractions = stats.totalLikes + stats.totalViews + stats.totalRaisedHands + stats.totalBookmarks;
+
+    // Calculate average revival score across all drafts
+    // Formula: Math.min(100, 55 + upvotes * 0.05 + raisedHands * 10 + bookmarks * 0.5)
+    const allDrafts = await Draft.find({}).select('upvotes raisedHands bookmarks').lean();
+    let avgRevivalScore = 0;
+    if (allDrafts.length > 0) {
+      const totalScore = allDrafts.reduce((sum, d) => {
+        const upvotes = d.upvotes || 0;
+        const raisedHandsCount = (d.raisedHands || []).length;
+        const bookmarks = d.bookmarks || 0;
+        const score = Math.min(100, 55 + upvotes * 0.05 + raisedHandsCount * 10 + bookmarks * 0.5);
+        return sum + Math.round(score);
+      }, 0);
+      avgRevivalScore = Math.round(totalScore / allDrafts.length);
+    }
+
+    res.json({
+      totalProjects: stats.totalProjects,
+      totalInteractions,
+      totalLikes: stats.totalLikes,
+      avgRevivalScore,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch('/draft/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
