@@ -63,6 +63,7 @@ import {
   type Draft,
   type AiChatMessage,
 } from "@/lib/api";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { drafts as staticDrafts } from "@/data/drafts";
 
 export const Route = createFileRoute("/ai-assistant")({
@@ -974,8 +975,12 @@ function MessageBubble({ msg, onFollowUp }: { msg: ChatMessageItem; onFollowUp: 
             <span className="text-[10px] text-muted-foreground">{msg.time}</span>
           </div>
 
-          <div className="mt-1.5 text-sm leading-relaxed text-foreground/90 space-y-2">
-            <FormattedContent content={msg.content} />
+          <div className="mt-1.5 text-sm leading-relaxed text-foreground/90">
+            {isUser ? (
+              <p className="whitespace-pre-wrap">{msg.content}</p>
+            ) : (
+              <MarkdownRenderer content={msg.content} />
+            )}
           </div>
 
           {/* Render Structured Idea Analysis Card if available */}
@@ -1085,121 +1090,7 @@ function AnalysisCard({ data }: { data: any }) {
   );
 }
 
-// Markdown parser & renderer
-function FormattedContent({ content }: { content: string }) {
-  if (!content) return null;
 
-  // Split content by codeblocks ``` lang \n code ```
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: "text", value: content.slice(lastIndex, match.index) });
-    }
-    parts.push({ type: "code", lang: match[1] || "code", value: match[2] });
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < content.length) {
-    parts.push({ type: "text", value: content.slice(lastIndex) });
-  }
-
-  return (
-    <>
-      {parts.map((p, idx) => {
-        if (p.type === "code") {
-          return <CodeBlock key={idx} code={p.value} lang={p.lang || "code"} />;
-        }
-
-        // Process bold and paragraph breaks
-        const paragraphs = p.value.split("\n\n");
-        return (
-          <div key={idx} className="space-y-2">
-            {paragraphs.map((para, pIdx) => {
-              const lines = para.split("\n");
-              return (
-                <div key={pIdx}>
-                  {lines.map((line, lIdx) => {
-                    if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
-                      return (
-                        <li key={lIdx} className="ml-4 list-disc text-foreground/90">
-                          {renderInlineMarkdown(line.replace(/^[-*]\s+/, ""))}
-                        </li>
-                      );
-                    }
-                    if (/^\d+\.\s+/.test(line.trim())) {
-                      return (
-                        <li key={lIdx} className="ml-4 list-decimal text-foreground/90">
-                          {renderInlineMarkdown(line.replace(/^\d+\.\s+/, ""))}
-                        </li>
-                      );
-                    }
-                    return (
-                      <p key={lIdx} className="leading-relaxed">
-                        {renderInlineMarkdown(line)}
-                      </p>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </>
-  );
-}
-
-function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code key={i} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px] text-primary">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-}
-
-function CodeBlock({ code, lang }: { code: string; lang: string }) {
-  const [copied, setCopied] = useState(false);
-
-  function copy() {
-    navigator.clipboard?.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  return (
-    <div className="my-3 overflow-hidden rounded-xl border border-border/70 bg-muted/60">
-      <div className="flex items-center justify-between border-b border-border/60 bg-muted/80 px-3 py-1.5">
-        <span className="text-[11px] font-mono font-medium text-muted-foreground">{lang}</span>
-        <button
-          onClick={copy}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition hover:bg-background hover:text-foreground"
-        >
-          {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <pre className="overflow-x-auto p-3.5 font-mono text-[12px] leading-relaxed text-foreground/90">
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
-}
 
 function Composer({
   value,

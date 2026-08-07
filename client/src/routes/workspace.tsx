@@ -6009,6 +6009,8 @@ function TeamTab({
 // Floating AI
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+
 function FloatingAI({
   open,
   onOpenChange,
@@ -6232,13 +6234,17 @@ Time Spent: ${draft?.timeSpent ? `${draft.timeSpent.value} ${draft.timeSpent.uni
                         </span>
                       )}
                       <div
-                        className={`max-w-xs rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                        className={`max-w-xs sm:max-w-sm rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           isUser
                             ? "rounded-br-sm bg-primary text-primary-foreground"
                             : "rounded-tl-sm bg-muted/60 text-foreground/90"
                         }`}
                       >
-                        {msg.content}
+                        {isUser ? (
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        ) : (
+                          <MarkdownRenderer content={msg.content} />
+                        )}
                       </div>
                     </div>
 
