@@ -55,6 +55,9 @@ import {
 import { matchIdea, fetchAiIdeaAnalysis, type DraftMatch, type AiIdeaAnalysis, createReview, updateReview, fetchReviews, deleteReview, renameReview, type Review } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { useInputValidation } from "@/hooks/use-input-validation";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { AiRewriteButton } from "@/components/ui/ai-rewrite-button";
 
 export const Route = createFileRoute("/idea-review")({
   head: () => ({
@@ -568,7 +571,37 @@ function IdeaForm({
   onSubmit: () => void;
   analyzing: boolean;
 }) {
-  const canSubmit = form.pitch.trim().length > 0 && form.context.trim().length > 0;
+  const contextValidation = useInputValidation(form.context, 50, 10, 400);
+  const pitchValidation = useInputValidation(form.pitch, 15, 3, 300);
+
+  const isPitchValid = form.pitch.trim().length >= 10 && pitchValidation.failedRules.length === 0;
+  const canSubmit = isPitchValid && contextValidation.isValid && !analyzing;
+
+  const handleChipClick = (prefix: string) => {
+    const current = form.context.trim();
+    const addition = current ? `\n\n${prefix}` : prefix;
+    setForm({ ...form, context: form.context + addition });
+  };
+
+  const getQualityColor = (level: string) => {
+    switch (level) {
+      case "Excellent":
+        return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
+      case "Good":
+        return "text-amber-500 bg-amber-500/10 border-amber-500/30";
+      case "Basic":
+        return "text-orange-500 bg-orange-500/10 border-orange-500/30";
+      default:
+        return "text-rose-500 bg-rose-500/10 border-rose-500/30";
+    }
+  };
+
+  const getMeterColor = (score: number) => {
+    if (score >= 80) return "bg-emerald-500";
+    if (score >= 60) return "bg-amber-500";
+    if (score >= 40) return "bg-orange-500";
+    return "bg-rose-500";
+  };
 
   return (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
@@ -595,41 +628,171 @@ function IdeaForm({
           <Input
             value={form.pitch}
             onChange={(e) => setForm({ ...form, pitch: e.target.value })}
-            placeholder="e.g. An AI that creates adaptive study plans"
+            placeholder="e.g. An AI that creates adaptive study plans for college students"
             className="h-10 rounded-lg"
           />
+          {form.pitch.length > 0 && pitchValidation.warnings.length > 0 && (
+            <p className="mt-1.5 text-xs text-rose-500 flex items-center gap-1 font-medium">
+              <AlertTriangle className="h-3.5 w-3.5" /> {pitchValidation.warnings[0]}
+            </p>
+          )}
         </Field>
 
         <Field label="Additional Context" required>
-          <Textarea
-            value={form.context}
-            onChange={(e) => setForm({ ...form, context: e.target.value })}
-            placeholder="Tell us more about the idea, why you want to build it, and any specific context…"
-            rows={4}
-            className="resize-none rounded-lg"
-          />
+          <div className="relative">
+            <Textarea
+              value={form.context}
+              onChange={(e) => setForm({ ...form, context: e.target.value })}
+              placeholder="Tell us more about the idea, the specific problem you are solving, target users, and key features…"
+              rows={5}
+              className="resize-none rounded-xl pb-10 text-sm leading-relaxed"
+            />
+
+            {/* Character & Word counter bar */}
+            <div className="absolute bottom-2.5 right-3 flex items-center gap-3 text-[11px] font-mono text-muted-foreground bg-card/90 px-2 py-1 rounded-md border border-border/50 backdrop-blur-sm">
+              <span>{contextValidation.liveCharCount} / 500 chars</span>
+              <span>•</span>
+              <span>{contextValidation.liveWordCount} words</span>
+            </div>
+          </div>
+
+          {/* Contextual Warnings */}
+          <AnimatePresence>
+            {form.context.length > 0 && contextValidation.warnings.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                <span>{contextValidation.warnings[0]}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Live Quality Meter */}
+          {form.context.trim().length > 0 && (
+            <div className="mt-3.5 rounded-xl border border-border/60 bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs font-medium">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  Description Quality
+                </span>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${getQualityColor(contextValidation.qualityLevel)}`}>
+                  {contextValidation.qualityLevel === "Excellent" && "🟢"}
+                  {contextValidation.qualityLevel === "Good" && "🟡"}
+                  {contextValidation.qualityLevel === "Basic" && "🟠"}
+                  {contextValidation.qualityLevel === "Poor" && "🔴"}
+                  {contextValidation.qualityLevel} ({contextValidation.qualityScore}%)
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-full transition-all duration-300 ${getMeterColor(contextValidation.qualityScore)}`}
+                  style={{ width: `${Math.max(5, contextValidation.qualityScore)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* AI Writing Assistant Card (Triggered when context is insufficient) */}
+          {(!contextValidation.isValid || form.context.trim().length < 50) && (
+            <div className="mt-4 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Sparkles className="h-4 w-4" />
+                <span>AI Writing Assistant</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Describe your project idea clearly so AI can produce an accurate viability score and roadmap. Try including:
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-foreground/80 pl-1">
+                <li className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" /> What problem are you solving?
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Who is your target audience?
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" /> What technologies do you plan to use?
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" /> What makes this idea unique?
+                </li>
+              </ul>
+
+              {/* Starter Suggestion Chips */}
+              <div className="pt-2 border-t border-primary/20 space-y-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground mb-2">One-click starter chips:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {contextValidation.starterSuggestions.map((chip) => (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        onClick={() => handleChipClick(chip.prefix)}
+                        className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-card px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-primary hover:bg-primary/10 active:scale-95"
+                      >
+                        <Plus className="h-3 w-3 text-primary" /> {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rewrite with AI secondary action button */}
+                {form.context.trim().length > 0 && (
+                  <div className="pt-2 border-t border-primary/20 flex justify-start">
+                    <AiRewriteButton
+                      text={form.context}
+                      contextType="project_description"
+                      onApply={(newText, mode) => {
+                        if (mode === "replace") {
+                          setForm({ ...form, context: newText });
+                        } else {
+                          const current = form.context.trim();
+                          setForm({ ...form, context: current ? `${current}\n\n${newText}` : newText });
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </Field>
       </div>
 
       <div className="mt-10 flex flex-col items-center gap-2">
-        <Button
-          size="lg"
-          onClick={onSubmit}
-          disabled={!canSubmit || analyzing}
-          className="h-12 min-w-[280px] gap-2 rounded-xl px-8 text-sm font-semibold"
-        >
-          {analyzing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Analyzing your idea…
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Analyze Idea
-            </>
-          )}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Button
+                  size="lg"
+                  onClick={onSubmit}
+                  disabled={!canSubmit}
+                  className="h-12 min-w-[280px] gap-2 rounded-xl px-8 text-sm font-semibold transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {analyzing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Analyzing your idea…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Analyze Idea
+                    </>
+                  )}
+                </Button>
+              </div>
+            </TooltipTrigger>
+            {!canSubmit && (
+              <TooltipContent side="top" className="max-w-xs text-center font-medium">
+                Provide a clearer project description (at least 50 chars & 10 words) to unlock AI analysis.
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
         <p className="text-xs text-muted-foreground">Analysis usually takes 30–60 seconds.</p>
       </div>
     </section>

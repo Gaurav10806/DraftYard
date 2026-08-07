@@ -1312,6 +1312,72 @@ export async function fetchAiIdeaAnalysis(
 
 export const getIdeaAnalysis = fetchAiIdeaAnalysis;
 
+export async function rewriteWithAi(input: {
+  text: string;
+  contextType?: "project_description" | "pitch" | "workspace" | "bio";
+}): Promise<string> {
+  const prompt = `You are a product manager assisting a developer with their project description.
+
+RULES FOR OUTPUT:
+1. Return ONLY a raw JSON object with key "rewritten". Do NOT include internal reasoning, chain-of-thought, or markdown codeblocks outside JSON.
+2. CASE 1: If input is a valid project idea (even if short/one-line like "Student expense tracker" or "Smart farming using IoT"):
+   - Expand it into a clean, professional project description (80–150 words). Infer reasonable details naturally without inventing unrealistic features.
+   - After the description, append a section starting with "To improve this further:" followed by EXACTLY TWO short, highly relevant follow-up questions specific to this project idea (e.g. tech choices, target users, unique value).
+3. CASE 2: If input is meaningless noise/gibberish/placeholder (e.g. "abc", "test", "asdf", "qwerty", "website"):
+   - Do NOT generate a description.
+   - Return ONLY two or three concise questions asking for the minimum missing details (e.g., Problem solved, Target audience, Planned tech stack).
+
+JSON Schema:
+{"rewritten": "Output text here"}
+
+Input Text: "${input.text}"`;
+
+  const rawResponse = await sendAiChatMessage({
+    message: prompt,
+    context: "Product Manager assistant expanding project descriptions and asking 2 targeted follow-up questions. Output MUST be valid JSON only.",
+    history: [],
+  });
+
+  if (!rawResponse) return "";
+
+  const BANNED_LEAK_HEADERS = [
+    /^\s*Role\s*:\s*/i,
+    /^\s*Task\s*:\s*/i,
+    /^\s*Constraint\s*:\s*/i,
+    /^\s*Self-Correction\s*:\s*/i,
+    /^\s*Internal Monologue\s*:\s*/i,
+    /^\s*Draft\s*\d*\s*:\s*/i,
+    /^\s*Reasoning\s*:\s*/i,
+    /^\s*Thought\s*:\s*/i,
+    /^\s*Planning\s*:\s*/i,
+    /^\s*Prompt\s*:\s*/i,
+    /^\s*Instructions\s*:\s*/i,
+  ];
+
+  let extractedText = "";
+
+  try {
+    const cleanedJson = rawResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(cleanedJson);
+    if (parsed && typeof parsed.rewritten === "string" && parsed.rewritten.trim()) {
+      extractedText = parsed.rewritten.trim();
+    }
+  } catch {
+    extractedText = rawResponse;
+  }
+
+  if (!extractedText) extractedText = rawResponse;
+
+  // Filter out any leaked reasoning headers line-by-line
+  const lines = extractedText.split("\n");
+  const filtered = lines.filter((line) => {
+    return !BANNED_LEAK_HEADERS.some((pattern) => pattern.test(line));
+  });
+
+  const finalOutput = filtered.join("\n").replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+  return finalOutput;
+}
+
 // ===== Idea Review (MongoDB persistence) =====
 
 export type Review = {
