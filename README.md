@@ -163,6 +163,9 @@ JWT_SECRET=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_CALLBACK_URL=
 ```
 
 ## ML Backend
@@ -188,20 +191,12 @@ MONGODB_URI=
 
 # 🚀 Future Scope
 
-- GitHub Repository Integration
 - AI Contributor Matching
 - Advanced Project Analytics
 - Mobile Application
 - Mentor & Investor Discovery
 - Multi-language Support
 
----
-
-# 👥 Team
-
-- Gaurav Soni
-- Het Bhikadiya
-- Parth Vaghela
 
 ---
 
