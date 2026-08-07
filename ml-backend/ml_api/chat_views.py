@@ -3,7 +3,7 @@ import requests
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_MODEL = "gemini-2.0-flash"
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
@@ -41,26 +41,12 @@ def chat(request):
         
     full_prompt += f"\nUser: {message}\nAssistant:"
     
-    try:
-        resp = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json={
-                "contents": [{"parts": [{"text": system_prompt + "\n\n" + full_prompt}]}],
-                "generationConfig": {
-                    "maxOutputTokens": 1024,
-                },
-            },
-            timeout=30,
-        )
-    except requests.RequestException as exc:
-        return Response({"error": f"Couldn't reach Gemini: {exc}"}, status=502)
-        
-    if resp.status_code != 200:
-        return Response(
-            {"error": f"Gemini API error ({resp.status_code}): {resp.text[:500]}"},
-            status=502,
-        )
+    from .idea_analysis_views import _call_gemini_with_fallback
+
+    resp, error_text = _call_gemini_with_fallback(system_prompt + "\n\n" + full_prompt, api_key, max_tokens=1024)
+
+    if not resp:
+        return Response({"error": f"Gemini API error: {error_text[:500]}"}, status=502)
         
     data = resp.json()
     try:

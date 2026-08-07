@@ -19,11 +19,55 @@ import requests
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-GEMINI_MODEL = "gemini-3.6-flash"
-GEMINI_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent"
-)
+def _call_gemini_with_fallback(prompt: str, api_key: str, max_tokens: int = 2048):
+    """
+    Dynamically queries available models from Gemini API for the API key,
+    or falls back through standard names, preventing 404 and 429 quota errors.
+    """
+    # Preferred models order
+    candidates = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    
+    # Try fetching real available models for this specific API key
+    try:
+        models_resp = requests.get(
+            f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+            timeout=5
+        )
+        if models_resp.status_code == 200:
+            available = [
+                m["name"].replace("models/", "")
+                for m in models_resp.json().get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ]
+            if available:
+                # Intersect candidate list with actual available models for this key
+                valid_candidates = [m for m in candidates if m in available] + [m for m in available if m not in candidates]
+                candidates = valid_candidates
+    except Exception as e:
+        print(f"[Gemini Helper] Failed to list models: {e}")
+
+    last_err = ""
+    for model_name in candidates:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+        try:
+            r = requests.post(
+                url,
+                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"maxOutputTokens": max_tokens},
+                },
+                timeout=25,
+            )
+            print(f"[Gemini Helper] Model '{model_name}' -> HTTP {r.status_code}")
+            if r.status_code == 200:
+                return r, None
+            else:
+                last_err = f"[{model_name} HTTP {r.status_code}]: {r.text}"
+        except requests.RequestException as exc:
+            last_err = f"[{model_name} EXCEPTION]: {exc}"
+
+    return None, last_err
 
 PROMPT_TEMPLATE = """You are a pragmatic startup/software-project advisor reviewing a student's project idea.
 
@@ -85,38 +129,11 @@ def idea_analysis(request):
 
     prompt = PROMPT_TEMPLATE.format(project_name=project_name, pitch=pitch, context=context)
 
-    try:
-        resp = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "maxOutputTokens": 2048,
-                    # Gemini 3 models "think" before answering by default
-                    # (medium level), which eats into maxOutputTokens and
-                    # was truncating our JSON mid-string. This is a
-                    # straightforward structured-output task, not deep
-                    # reasoning, so a low thinking level leaves far more
-                    # of the token budget for the actual answer.
-                    "thinkingConfig": {"thinkingLevel": "LOW"},
-                },
-            },
-            timeout=30,
-        )
-    except requests.RequestException as exc:
-        print(f"[idea_analysis] Gemini request failed: {exc}")
-        return Response({"error": f"Couldn't reach Gemini: {exc}"}, status=502)
+    resp, error_text = _call_gemini_with_fallback(prompt, api_key)
 
-    if resp.status_code != 200:
-        # Print the full body server-side (not just the 500-char slice sent
-        # to the client) — this is almost always the fastest way to see
-        # *why* every request is falling back to generic data, e.g. an
-        # invalid/expired GEMINI_API_KEY, an unsupported model name, or a
-        # quota/region block.
-        print(f"[idea_analysis] Gemini API error ({resp.status_code}): {resp.text}")
+    if not resp:
         return Response(
-            {"error": f"Gemini API error ({resp.status_code}): {resp.text[:500]}"},
+            {"error": f"Gemini API error: {error_text[:500]}"},
             status=502,
         )
 

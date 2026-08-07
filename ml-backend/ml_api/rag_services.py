@@ -9,7 +9,7 @@ from .mongo_utils import get_burials_collection, get_workspaces_collection
 from .embedding_store import get_model
 
 # Constants for Gemini
-GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_MODEL = "gemini-2.0-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 # Small, deliberately short stopword list — just enough to stop "the", "a",
@@ -528,27 +528,20 @@ class LLMGenerationService:
                 "scoreDimensions": []
             }
             
-        try:
-            resp = requests.post(
-                GEMINI_URL,
-                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {
-                        "maxOutputTokens": 2048,
-                        "thinkingConfig": {"thinkingLevel": "LOW"},
-                    },
-                },
-                timeout=30,
-            )
-            
-            if resp.status_code == 200:
+        from .idea_analysis_views import _call_gemini_with_fallback
+        
+        resp, error_text = _call_gemini_with_fallback(prompt, api_key)
+        
+        if resp:
+            try:
                 data = resp.json()
                 raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                 cleaned = re.sub(r"^```(?:json)?|```$", "", raw_text, flags=re.MULTILINE).strip()
                 return json.loads(cleaned)
-        except Exception as e:
-            print(f"[RAG Generation] Error invoking Gemini: {e}")
+            except Exception as e:
+                print(f"[RAG Generation] Parsing error: {e}")
+        else:
+            print(f"[RAG Generation] Gemini failed: {error_text}")
             
         return {
             "summary": "Failed to generate RAG insights from database context.",
