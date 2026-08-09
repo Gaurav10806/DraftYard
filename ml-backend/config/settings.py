@@ -28,9 +28,13 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = 'django-insecure-p(k*#n75=ut7)co93lif(%@3g@_m3j1#(dujb*pr1e6^t9ld4i'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "draftyard-ml-backend.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition

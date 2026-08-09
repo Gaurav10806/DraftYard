@@ -9,10 +9,10 @@ pattern as model_store.py uses for the TF-IDF/KMeans classifier).
 """
 from sentence_transformers import SentenceTransformer
 
-# all-MiniLM-L6-v2: ~80MB, runs fine on CPU, good general-purpose
+# paraphrase-MiniLM-L3-v2: ~80MB, runs fine on CPU, good general-purpose
 # semantic quality. Downloaded automatically from Hugging Face the
 # first time this is called (needs internet once; cached locally after).
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "paraphrase-MiniLM-L3-v2"
 
 _model = None
 
