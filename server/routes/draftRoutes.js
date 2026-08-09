@@ -6,6 +6,20 @@ const Notification = require('../models/Notification');
 const AdminSetting = require('../models/AdminSetting');
 const { requireAuth } = require('../middleware/authMiddleware');
 
+const ML_URL = process.env.ML_URL || 'http://127.0.0.1:5001';
+
+function triggerDraftEmbeddingSync(draftId) {
+  if (!draftId) return;
+  const url = `${ML_URL}/api/ml/sync-draft-embedding/`;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draftId: draftId.toString() }),
+  }).catch(err => {
+    console.warn(`[ML Sync Trigger] Non-blocking embedding sync failed for draft ${draftId}:`, err.message);
+  });
+}
+
 function getRawHexId(val) {
   if (!val) return null;
   if (typeof val === 'string') {
@@ -411,6 +425,7 @@ router.post('/draft', optionalAuth, async (req, res) => {
     body.collaborators = [];
     const draft = new Draft(body);
     await draft.save();
+    triggerDraftEmbeddingSync(draft._id);
 
     if (req.user) {
       const TeamMember = require('../models/TeamMember');
@@ -1747,6 +1762,7 @@ router.patch('/draft/:id', requireAuth, async (req, res) => {
 
     if (updated) {
       await draft.save();
+      triggerDraftEmbeddingSync(draft._id);
     }
 
     res.json(draft);
