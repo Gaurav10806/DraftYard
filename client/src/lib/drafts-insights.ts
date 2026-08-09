@@ -40,7 +40,7 @@ const REASON_BUCKETS: Array<{ label: string; keywords: string[] }> = [
   { label: "Team fell apart", keywords: ["team", "cofounder", "co-founder", "stopped showing"] },
   { label: "Ran out of time", keywords: ["time", "exams", "semester", "job", "internship", "deadline"] },
   { label: "Technical blocker", keywords: ["accuracy", "bug", "technical", "api", "cost", "gpu"] },
-  { label: "No users / market", keywords: ["users", "market", "traction", "no one"] },
+  { label: "No users / market", keywords: ["users", "traction", "no one"] },
 ];
 
 export function whyDiedBuckets(list: Draft[] = drafts) {

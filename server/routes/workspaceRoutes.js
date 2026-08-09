@@ -6,6 +6,20 @@ const Task = require('../models/Task');
 const TeamMember = require('../models/TeamMember');
 const { requireAuth } = require('../middleware/authMiddleware');
 
+const ML_URL = process.env.ML_URL || 'http://127.0.0.1:5001';
+
+function triggerDraftEmbeddingSync(draftId) {
+  if (!draftId) return;
+  const url = `${ML_URL}/api/ml/sync-draft-embedding/`;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draftId: draftId.toString() }),
+  }).catch(err => {
+    console.warn(`[ML Sync Trigger] Non-blocking embedding sync failed for draft ${draftId}:`, err.message);
+  });
+}
+
 /**
  * Sync workspace setup tasks to Task collection.
  * Creates Task documents for each setup task if they don't already exist.
@@ -155,6 +169,7 @@ router.post('/workspace', optionalAuth, async (req, res) => {
     });
 
     await workspace.save();
+    triggerDraftEmbeddingSync(draftId);
 
     // Sync setup tasks to Task collection (create tasks in Task model)
     if (tasks && tasks.length > 0) {
@@ -235,6 +250,7 @@ router.patch('/workspace/:draftId', optionalAuth, async (req, res) => {
     if (attachments !== undefined) workspace.attachments = attachments;
 
     await workspace.save();
+    triggerDraftEmbeddingSync(draftId);
 
     // Sync updated tasks to Task collection
     if (tasks !== undefined && tasks.length > 0) {
