@@ -19,56 +19,105 @@ import requests
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-def _call_gemini_with_fallback(prompt: str, api_key: str, max_tokens: int = 2048):
+def _call_gemini_with_fallback(prompt: str, api_key: str, max_tokens: int = 4096):
     """
-    Dynamically queries available models from Gemini API for the API key,
-    or falls back through standard names, preventing 404 and 429 quota errors.
+    Dynamically queries available Gemini models and falls back through them.
     """
-    # Preferred models order
-    candidates = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-    
-    # Try fetching real available models for this specific API key
+
+    # Preferred models (best -> fallback)
+    candidates = [
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+    "gemini-3.1-flash-lite",
+    ]
+
+    # Discover models available for this API key
     try:
         models_resp = requests.get(
             f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
-            timeout=5
+            timeout=10,
         )
+
         if models_resp.status_code == 200:
             available = [
                 m["name"].replace("models/", "")
                 for m in models_resp.json().get("models", [])
                 if "generateContent" in m.get("supportedGenerationMethods", [])
             ]
+
             if available:
-                # Intersect candidate list with actual available models for this key
-                valid_candidates = [m for m in candidates if m in available] + [m for m in available if m not in candidates]
-                candidates = valid_candidates
+                candidates = (
+                    [m for m in candidates if m in available]
+                    + [m for m in available if m not in candidates]
+                )
+
+            print(f"[Gemini Helper] Available models: {candidates}")
+
+        else:
+            print(
+                f"[Gemini Helper] Failed to list models ({models_resp.status_code})"
+            )
+
     except Exception as e:
         print(f"[Gemini Helper] Failed to list models: {e}")
 
     last_err = ""
+
     for model_name in candidates:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_name}:generateContent?key={api_key}"
+        )
+
         try:
             r = requests.post(
                 url,
-                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"maxOutputTokens": max_tokens},
+                headers={
+                    "Content-Type": "application/json",
                 },
-                timeout=25,
+                json={
+                    "contents": [
+                        {
+                            "parts": [
+                                {
+                                    "text": prompt
+                                }
+                            ]
+                        }
+                    ],
+                   "generationConfig": {
+    "temperature": 0.2,
+    "maxOutputTokens": 1024,
+    "responseMimeType": "application/json",
+     "thinkingConfig": {
+        "thinkingBudget": 0
+    }
+},
+                },
+                timeout=30,
             )
+
             print(f"[Gemini Helper] Model '{model_name}' -> HTTP {r.status_code}")
+            print(f"\n[Gemini] Model: {model_name}")
+            print(f"[Gemini] Status: {r.status_code}")
+            print(r.text)
+
             if r.status_code == 200:
                 return r, None
-            else:
-                last_err = f"[{model_name} HTTP {r.status_code}]: {r.text}"
+
+            print(f"[Gemini Helper] Response: {r.text}")
+
+            last_err = (
+                f"[{model_name} HTTP {r.status_code}] "
+                f"{r.text}"
+            )
+
         except requests.RequestException as exc:
-            last_err = f"[{model_name} EXCEPTION]: {exc}"
+            last_err = f"[{model_name} EXCEPTION] {exc}"
+            print(last_err)
 
     return None, last_err
-
 PROMPT_TEMPLATE = """You are a pragmatic startup/software-project advisor reviewing a student's project idea.
 
 Project name: {project_name}
@@ -78,21 +127,39 @@ Additional context: {context}
 Respond with ONLY a single valid JSON object (no markdown fences, no commentary before or after) matching exactly this shape:
 
 {{
-  "score": <integer 0-100, overall viability>,
-  "verdict": <one of "Worth Building", "Needs Refinement", "Reconsider">,
-  "summary": <1-2 sentence honest summary>,
-  "feasibility": {{"label": <"High"|"Medium"|"Low">, "note": <one short sentence>}},
-  "competition": {{"label": <"High"|"Medium"|"Low">, "note": <one short sentence>}},
-  "complexity": {{"label": <"High"|"Medium"|"Low">, "note": <one short sentence>}},
-  "scalability": {{"label": <"High"|"Medium"|"Low">, "note": <one short sentence>}},
-  "market": {{"headline": <very short market-size or opportunity phrase>, "note": <one short sentence>}},
-  "recommendations": [<3-5 short, concrete, actionable instruction strings that directly reference the pitch and context>],
-  "techStack": {{"frontend": <string>, "backend": <string>, "database": <string>, "ai": <string>, "hosting": <string>}},
-  "roadmap": [{{"week": <e.g. "Week 1">, "label": <short milestone>}}, ... 5-7 items covering research through launch],
-  "finalNote": <1-2 sentence closing recommendation>
+  "score": <integer 0-100>,
+  "verdict": <"Worth Building" | "Needs Refinement" | "Reconsider">,
+  "summary": <maximum 50 words>,
+  "strengths": [
+    <3 concise points>
+  ],
+  "weaknesses": [
+    <3 concise points>
+  ],
+  "recommendations": [
+    <3 concise action items>
+  ],
+  "techStack": {{
+    "frontend": "",
+    "backend": "",
+    "database": "",
+    "ai": ""
+}}
 }}
 
-Be honest and specific to THIS idea, not generic. If the idea is weak or overdone, say so plainly rather than being falsely encouraging.
+Be honest and specific to THIS idea.
+
+Keep the entire response under 350 words.
+
+Summary must be under 30 words.
+
+Each note must be under 15 words.
+
+Recommendations: exactly 3 short bullet points.
+
+Roadmap: exactly 3 milestones.
+
+Return ONLY valid JSON.  
 """
 
 
@@ -142,6 +209,9 @@ def idea_analysis(request):
         candidate = data["candidates"][0]
         finish_reason = candidate.get("finishReason")
         raw_text = candidate["content"]["parts"][0]["text"]
+        print("\n========== RAW MODEL OUTPUT ==========")
+        print(raw_text)
+        print("======================================\n")
     except (KeyError, IndexError) as exc:
         return Response(
             {"error": f"Unexpected Gemini response shape: {exc}"},

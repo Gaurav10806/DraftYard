@@ -7,7 +7,11 @@ Instead we load it once, the first time it's needed, and keep it in a
 module-level variable for the lifetime of the Django process (same
 pattern as model_store.py uses for the TF-IDF/KMeans classifier).
 """
+import logging
+import time
 from sentence_transformers import SentenceTransformer
+
+logger = logging.getLogger(__name__)
 
 # paraphrase-MiniLM-L3-v2: ~80MB, runs fine on CPU, good general-purpose
 # semantic quality. Downloaded automatically from Hugging Face the
@@ -20,5 +24,12 @@ _model = None
 def get_model() -> SentenceTransformer:
     global _model
     if _model is None:
+        logger.info(f"[EmbeddingStore] Loading SentenceTransformer model: {MODEL_NAME}...")
+        print(f"[EmbeddingStore] Loading SentenceTransformer model: {MODEL_NAME}...")
+        start_time = time.time()
         _model = SentenceTransformer(MODEL_NAME)
+        duration = time.time() - start_time
+        logger.info(f"[EmbeddingStore] SentenceTransformer model loaded successfully in {duration:.2f}s")
+        print(f"[EmbeddingStore] SentenceTransformer model loaded successfully in {duration:.2f}s")
     return _model
+

@@ -128,7 +128,11 @@ def chat(request):
     
     from .idea_analysis_views import _call_gemini_with_fallback
 
-    resp, error_text = _call_gemini_with_fallback(system_prompt + "\n\n" + full_prompt, api_key, max_tokens=1024)
+    resp, error_text = _call_gemini_with_fallback(
+    system_prompt + "\n\n" + full_prompt,
+    api_key,
+    max_tokens=2048
+)
 
     if not resp:
         return Response({"error": f"Gemini API error: {error_text[:500]}"}, status=502)
