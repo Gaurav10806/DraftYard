@@ -37,6 +37,10 @@ build/
 db.sqlite3
 ml-backend/db.sqlite3
 
+# Django Static Files
+ml-backend/staticfiles/
+
+
 # ML Models
 ml_api/ml_models/*.pkl
 
