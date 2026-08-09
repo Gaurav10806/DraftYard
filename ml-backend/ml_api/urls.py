@@ -24,5 +24,7 @@ urlpatterns = [
     path("idea-analysis/", idea_analysis_views.idea_analysis),
     path("idea-match/", idea_match_views.idea_match),
     path("sync-embeddings/", idea_match_views.sync_embeddings, name="sync-embeddings"),
+    path("sync-draft-embedding/", idea_match_views.sync_draft_embedding, name="sync-draft-embedding"),
+    path("sync-draft-embedding/<str:draft_id>/", idea_match_views.sync_draft_embedding, name="sync-draft-embedding-id"),
     path("chat/", chat_views.chat),
 ]

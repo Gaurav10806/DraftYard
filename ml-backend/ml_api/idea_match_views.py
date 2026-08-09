@@ -151,7 +151,41 @@ def idea_match(request):
 def sync_embeddings(request):
     try:
         from .rag_services import EmbeddingService
-        EmbeddingService.sync_draft_embeddings()
-        return Response({"status": "success", "message": "All draft embeddings checked and synchronized."})
+        count = EmbeddingService.sync_draft_embeddings()
+        return Response({
+            "status": "success",
+            "updatedCount": count,
+            "message": "All draft embeddings checked and synchronized."
+        })
     except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)
+
+
+@api_view(["POST", "GET"])
+def sync_draft_embedding(request, draft_id=None):
+    """
+    Generates or refreshes embedding for a single draft.
+    Accepts draft_id in URL pattern or query params or request body {"draftId": "..."}.
+    """
+    did = draft_id
+    if not did and hasattr(request, "data") and isinstance(request.data, dict):
+        did = request.data.get("draftId") or request.data.get("draft_id")
+    if not did and hasattr(request, "query_params"):
+        did = request.query_params.get("draftId") or request.query_params.get("draft_id")
+
+    if not did:
+        return Response({"error": "Provide a draftId parameter"}, status=400)
+
+    try:
+        from .rag_services import EmbeddingService
+        updated = EmbeddingService.sync_single_draft_embedding(str(did))
+        return Response({
+            "status": "success",
+            "draftId": str(did),
+            "updated": updated,
+            "message": "Draft embedding refreshed successfully." if updated else "Draft embedding up to date or draft not found."
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[SyncDraftEmbedding] Error syncing draft {did}: {e}")
         return Response({"status": "error", "message": str(e)}, status=500)

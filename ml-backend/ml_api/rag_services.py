@@ -1,12 +1,16 @@
 import os
 import re
 import json
+import time
+import logging
 import hashlib
 import numpy as np
 import requests
 
 from .mongo_utils import get_burials_collection, get_workspaces_collection
 from .embedding_store import get_model
+
+logger = logging.getLogger(__name__)
 
 # Constants for Gemini
 GEMINI_MODEL = "gemini-2.0-flash"
@@ -64,42 +68,87 @@ class EmbeddingService:
         model = get_model()
         emb = model.encode(text, show_progress_bar=False)
         return emb.tolist()
-        
+
     @staticmethod
-    def sync_draft_embeddings():
+    def sync_single_draft_embedding(draft_id: str) -> bool:
         """
-        Calculates and updates draft embeddings in bulk if out of date or missing.
+        Generates or refreshes embedding for a specific draft ID.
+        Returns True if an embedding was updated, False otherwise.
+        Best-effort: handles errors gracefully without throwing.
         """
-        db_drafts = list(get_burials_collection().find({}))
-        workspaces = list(get_workspaces_collection().find({}))
-        ws_map = {str(ws.get("draftId")): ws for ws in workspaces if ws.get("draftId")}
-        
-        for draft in db_drafts:
+        from bson import ObjectId
+        try:
+            try:
+                query = {"_id": ObjectId(draft_id)} if isinstance(draft_id, str) and len(draft_id) == 24 else {"_id": draft_id}
+            except Exception:
+                query = {"_id": draft_id}
+
+            draft = get_burials_collection().find_one(query)
+            if not draft:
+                logger.warning(f"[EmbeddingService] Draft not found for single sync: {draft_id}")
+                return False
+
             did = str(draft["_id"])
-            ws = ws_map.get(did)
+            ws = (
+                get_workspaces_collection().find_one({"draftId": draft["_id"]})
+                or get_workspaces_collection().find_one({"draftId": did})
+            )
             text = get_searchable_text(draft, ws)
             curr_hash = calculate_content_hash(text)
-            
+
             stored_hash = draft.get("embedding_hash")
             stored_emb = draft.get("embedding")
-            
+
             if not stored_emb or stored_hash != curr_hash:
-                emb = EmbeddingService.get_embedding(text)
-                get_burials_collection().update_one(
-                    {"_id": draft["_id"]},
-                    {"$set": {"embedding": emb, "embedding_hash": curr_hash}}
-                )
+                try:
+                    emb = EmbeddingService.get_embedding(text)
+                    get_burials_collection().update_one(
+                        {"_id": draft["_id"]},
+                        {"$set": {"embedding": emb, "embedding_hash": curr_hash}}
+                    )
+                    logger.info(f"[EmbeddingService] Regenerated embedding for draft ID: {did} ('{draft.get('projectName')}')")
+                    print(f"[EmbeddingService] Regenerated embedding for draft ID: {did} ('{draft.get('projectName')}')")
+                    return True
+                except Exception as gen_err:
+                    logger.error(f"[EmbeddingService] Failed to generate embedding for draft ID {did}: {gen_err}")
+                    print(f"[EmbeddingService] Failed to generate embedding for draft ID {did}: {gen_err}")
+                    return False
+            return False
+        except Exception as e:
+            logger.error(f"[EmbeddingService] Unexpected error during single draft sync for {draft_id}: {e}")
+            return False
+
+    @staticmethod
+    def sync_draft_embeddings() -> int:
+        """
+        Calculates and updates draft embeddings in bulk if out of date or missing.
+        Safe and idempotent to call multiple times.
+        """
+        db_drafts = list(get_burials_collection().find({}))
+        updated_count = 0
+        for draft in db_drafts:
+            did = str(draft["_id"])
+            if EmbeddingService.sync_single_draft_embedding(did):
+                updated_count += 1
+        logger.info(f"[EmbeddingService] Bulk embedding sync completed. Updated {updated_count} drafts.")
+        print(f"[EmbeddingService] Bulk embedding sync completed. Updated {updated_count} drafts.")
+        return updated_count
 
 
 class RetrievalService:
     @staticmethod
     def retrieve_similar_drafts(query_text: str, top_k: int = 20, origin_draft_id: str = None, exclude_self: bool = False) -> list:
-        EmbeddingService.sync_draft_embeddings()
+        # NOTE: Automatic DB-wide embedding sync removed to keep search fast and memory-efficient.
+        start_time = time.time()
         
         query_emb = np.array(EmbeddingService.get_embedding(query_text))
         drafts = list(get_burials_collection().find({"status": {"$ne": "deleted"}}))
         
         candidates = []
+        searched_count = 0
+        skipped_no_emb_count = 0
+
+        logger.info(f"[RAG Retrieval] Starting retrieval for query: '{query_text[:60]}...' (exclude_self={exclude_self}, origin_draft_id={origin_draft_id})")
         print(f"[RAG Retrieval] Starting retrieval for query: '{query_text[:60]}...' (exclude_self={exclude_self}, origin_draft_id={origin_draft_id})")
         
         for d in drafts:
@@ -107,14 +156,18 @@ class RetrievalService:
             
             # Exclude check
             if exclude_self and origin_draft_id and did == str(origin_draft_id):
+                logger.info(f"[RAG Retrieval] Draft ID {did} ('{d.get('projectName')}') filtered out: reason=exclude_self is True")
                 print(f"[RAG Retrieval] Draft ID {did} ('{d.get('projectName')}') filtered out: reason=exclude_self is True")
                 continue
                 
             emb_list = d.get("embedding")
             if not emb_list:
-                print(f"[RAG Retrieval] Draft ID {did} ('{d.get('projectName')}') filtered out: reason=no stored embedding found")
+                skipped_no_emb_count += 1
+                logger.info(f"[RAG Retrieval] Draft ID {did} ('{d.get('projectName')}') skipped: no stored embedding found")
+                print(f"[RAG Retrieval] Draft ID {did} ('{d.get('projectName')}') skipped: no stored embedding found")
                 continue
                 
+            searched_count += 1
             emb = np.array(emb_list)
             dot = np.dot(query_emb, emb)
             norm_q = np.linalg.norm(query_emb)
@@ -124,13 +177,18 @@ class RetrievalService:
             
             # Log cosine similarity calculation
             if origin_draft_id and did == str(origin_draft_id):
+                logger.info(f"[RAG Retrieval] Cosine similarity computed for origin draft {did} ('{d.get('projectName')}'): {similarity:.4f}")
                 print(f"[RAG Retrieval] Cosine similarity computed for origin draft {did} ('{d.get('projectName')}'): {similarity:.4f}")
                 
             candidates.append((d, similarity))
             
         candidates.sort(key=lambda x: x[1], reverse=True)
+        duration = time.time() - start_time
         retrieved_ids = [str(c[0]["_id"]) for c in candidates[:top_k]]
-        print(f"[RAG Retrieval] Retrieved top draft IDs: {retrieved_ids}")
+
+        logger.info(f"[RAG Retrieval] Search completed in {duration:.4f}s. Searched {searched_count} stored embeddings. Skipped {skipped_no_emb_count} drafts without embeddings. Top draft IDs: {retrieved_ids}")
+        print(f"[RAG Retrieval] Search completed in {duration:.4f}s. Searched {searched_count} stored embeddings. Skipped {skipped_no_emb_count} drafts without embeddings. Top draft IDs: {retrieved_ids}")
+
         return candidates[:top_k]
 
 
@@ -492,7 +550,11 @@ Respond with ONLY a single valid JSON object matching exactly this structure:
   "commonFailures": ["List of common failure patterns / reasons observed in these drafts"],
   "successPatterns": ["List of success patterns or positive metrics observed in these drafts"],
   "recommendedStack": ["Recommended tech stack or libraries based on these drafts' stack"],
-  "roadmap": ["Actionable milestones based on the retrieved projects' path"],
+  "roadmap": [
+  "Week 1: Research",
+  "Week 2: MVP",
+  "Week 3: Testing"
+],
   "risks": ["Potential risks / blockers identified from these drafts' failureReasons"],
   "revivalSuggestions": ["Actionable ideas for collaboration or revival based on these drafts' state"],
   "overallAnalysis": "Grounded AI synthesis referencing retrieved evidence and statistics (e.g. '3 of 5 projects stalled because of authentication complexity')",
