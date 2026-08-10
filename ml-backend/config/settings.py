@@ -65,8 +65,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
+    "https://draft-yard.vercel.app",
     "http://localhost:8080",
     "http://localhost:5173",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://draft-yard.vercel.app",
 ]
 
 ROOT_URLCONF = 'config.urls'
