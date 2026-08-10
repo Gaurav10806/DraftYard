@@ -119,7 +119,10 @@ export const Route = createFileRoute("/project/$slug")({
           const token = typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null;
           const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
           
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/draft/${draftId}`, {
+          const apiBaseUrl = import.meta.env.VITE_API_URL
+            ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`)
+            : (import.meta.env.PROD ? 'https://draftyard-backend.onrender.com/api' : 'http://localhost:5000/api');
+          const response = await fetch(`${apiBaseUrl}/draft/${draftId}`, {
             headers
           });
           if (response.ok) {
@@ -2089,7 +2092,9 @@ function CollaborationTab({ draft, onApply }: { draft: Draft; onApply: (role: st
         const token = typeof window !== "undefined" ? localStorage.getItem("draftyard_token") : null;
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         
-        const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+        const apiBase = import.meta.env.VITE_API_URL
+          ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`)
+          : (import.meta.env.PROD ? "https://draftyard-backend.onrender.com/api" : "http://localhost:5000/api");
         const res = await fetch(`${apiBase}/team/${draft._id}`, { headers });
         
         if (res.ok) {

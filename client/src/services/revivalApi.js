@@ -2,7 +2,9 @@
 // Small fetch wrapper for the Revival Board page.
 // No axios dependency needed — plain fetch keeps this drop-in ready.
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`)
+  : (import.meta.env.PROD ? 'https://draftyard-backend.onrender.com/api' : 'http://localhost:5000/api');
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));

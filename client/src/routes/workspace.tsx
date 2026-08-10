@@ -2999,6 +2999,7 @@ import {
   type AiChatMessage,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { githubApi } from "@/lib/api-client";
 import { LogOut, Settings, UserCircle } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";

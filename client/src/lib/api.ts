@@ -61,7 +61,9 @@ _sharedRole?: "Contributor" | "Viewer";
 _ownerName?: string;
 };
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`)
+  : (import.meta.env.PROD ? "https://draftyard-backend.onrender.com/api" : "http://localhost:5000/api");
 
 function getAuthHeaders(): Record<string, string> {
   const token = typeof window !== "undefined" ? localStorage.getItem("draftyard_token") : null;
@@ -1160,7 +1162,9 @@ export async function fetchGlobalInsights(): Promise<GlobalInsightsData> {
 
 // ===== Idea Matching (Django ML backend) =====
 
-const ML_API_BASE = import.meta.env.VITE_ML_API_URL ?? "http://localhost:8000";
+const ML_API_BASE = import.meta.env.VITE_ML_API_URL 
+  ? import.meta.env.VITE_ML_API_URL.replace(/\/+$/, '') 
+  : (import.meta.env.PROD ? "https://draftyard-production.up.railway.app" : "http://localhost:8000");
 export type AiChatMessage = {
   id?: string;
   role: "user" | "ai";

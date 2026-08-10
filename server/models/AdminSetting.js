@@ -30,7 +30,7 @@ const adminSettingSchema = new mongoose.Schema(
     defaultAiModel: { type: String, default: 'gemini-1.5-pro' },
     maxDailyAiQueriesPerUser: { type: Number, default: 100 },
     aiTemperature: { type: Number, default: 0.7 },
-    mlBackendUrl: { type: String, default: 'http://localhost:8000' },
+    mlBackendUrl: { type: String, default: process.env.ML_API_URL || process.env.ML_BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://draftyard-production.up.railway.app' : 'http://localhost:8000') },
     aiAutoSuggestions: { type: Boolean, default: true },
 
     // Security & Audit
