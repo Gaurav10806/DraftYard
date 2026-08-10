@@ -272,7 +272,8 @@ await user.save();
 // GET /api/auth/google/callback (OAuth Redirect Callback)
 const googleCallback = async (req, res) => {
   const { code, error } = req.query;
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:8080';
+  const clientUrl =
+  process.env.CLIENT_URL || "https://draft-yard.vercel.app";
 
   if (error || !code) {
     return res.redirect(`${clientUrl}/login?error=${encodeURIComponent(error || 'Google login cancelled or failed')}`);

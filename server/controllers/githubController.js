@@ -47,7 +47,8 @@ const getGithubAuthUrl = async (req, res) => {
 // GET /auth/github/callback
 const githubCallback = async (req, res) => {
   const { code, state, error } = req.query;
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:8080';
+  const clientUrl =
+  process.env.CLIENT_URL || "https://draft-yard.vercel.app";
 
   if (error) {
     return res.redirect(`${clientUrl}/settings?github_error=${encodeURIComponent(error)}`);
