@@ -14,6 +14,23 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+const getBackendUrl = () => {
+  const raw = process.env.BACKEND_URL || process.env.SERVER_URL || process.env.API_URL || (process.env.NODE_ENV === 'production' ? 'https://draftyard-backend.onrender.com' : 'http://localhost:5000');
+  return raw.replace(/\/api$/, '').replace(/\/+$/, '');
+};
+
+const getGithubCallbackUrl = () => {
+  if (process.env.GITHUB_CALLBACK_URL) {
+    return process.env.GITHUB_CALLBACK_URL;
+  }
+  return `${getBackendUrl()}/auth/github/callback`;
+};
+
+const getClientUrl = () => {
+  const raw = process.env.FRONTEND_URL || process.env.CLIENT_URL || (process.env.NODE_ENV === 'production' ? 'https://draft-yard.vercel.app' : 'http://localhost:8080');
+  return raw.replace(/\/+$/, '');
+};
+
 // GET /auth/github
 const getGithubAuthUrl = async (req, res) => {
   try {
@@ -22,7 +39,7 @@ const getGithubAuthUrl = async (req, res) => {
       return res.status(500).json({ error: 'GITHUB_CLIENT_ID is not configured.' });
     }
 
-    const redirectUri = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/auth/github/callback';
+    const redirectUri = getGithubCallbackUrl();
 
     // Generate random state and store with user id
     const state = crypto.randomBytes(16).toString('hex');
@@ -47,8 +64,7 @@ const getGithubAuthUrl = async (req, res) => {
 // GET /auth/github/callback
 const githubCallback = async (req, res) => {
   const { code, state, error } = req.query;
-  const clientUrl =
-  process.env.CLIENT_URL || "https://draft-yard.vercel.app";
+  const clientUrl = getClientUrl();
 
   if (error) {
     return res.redirect(`${clientUrl}/settings?github_error=${encodeURIComponent(error)}`);
@@ -69,7 +85,7 @@ const githubCallback = async (req, res) => {
   try {
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    const redirectUri = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/auth/github/callback';
+    const redirectUri = getGithubCallbackUrl();
 
     // 1. Exchange code for access token
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {

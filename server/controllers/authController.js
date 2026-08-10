@@ -128,6 +128,23 @@ const login = async (req, res) => {
   }
 };
 
+const getBackendUrl = () => {
+  const raw = process.env.BACKEND_URL || process.env.SERVER_URL || process.env.API_URL || (process.env.NODE_ENV === 'production' ? 'https://draftyard-backend.onrender.com' : 'http://localhost:5000');
+  return raw.replace(/\/+$/, '');
+};
+
+const getClientUrl = () => {
+  const raw = process.env.FRONTEND_URL || process.env.CLIENT_URL || (process.env.NODE_ENV === 'production' ? 'https://draft-yard.vercel.app' : 'http://localhost:8080');
+  return raw.replace(/\/+$/, '');
+};
+
+const getGoogleCallbackUrl = () => {
+  if (process.env.GOOGLE_CALLBACK_URL) {
+    return process.env.GOOGLE_CALLBACK_URL;
+  }
+  return `${getBackendUrl()}/api/auth/google/callback`;
+};
+
 // GET /api/auth/me  (requires requireAuth middleware)
 const getMe = async (req, res) => {
   res.json({ user: req.user });
@@ -135,9 +152,7 @@ const getMe = async (req, res) => {
 
 const getGoogleAuthUrl = (req, res) => {
   try {
-    const redirectUri =
-      process.env.GOOGLE_CALLBACK_URL ||
-      "http://localhost:5000/api/auth/google/callback";
+    const redirectUri = getGoogleCallbackUrl();
 
     const clientId = process.env.GOOGLE_CLIENT_ID || "";
 
@@ -202,7 +217,7 @@ const googleAuth = async (req, res) => {
       const client = new OAuth2Client(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
-        process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback'
+        getGoogleCallbackUrl()
       );
       const { tokens } = await client.getToken(code);
       const ticket = await client.verifyIdToken({
@@ -272,8 +287,7 @@ await user.save();
 // GET /api/auth/google/callback (OAuth Redirect Callback)
 const googleCallback = async (req, res) => {
   const { code, error } = req.query;
-  const clientUrl =
-  process.env.CLIENT_URL || "https://draft-yard.vercel.app";
+  const clientUrl = getClientUrl();
 
   if (error || !code) {
     return res.redirect(`${clientUrl}/login?error=${encodeURIComponent(error || 'Google login cancelled or failed')}`);
@@ -284,7 +298,7 @@ const googleCallback = async (req, res) => {
     const client = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback'
+      getGoogleCallbackUrl()
     );
     const { tokens } = await client.getToken(code);
     const ticket = await client.verifyIdToken({

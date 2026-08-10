@@ -39,7 +39,9 @@ import { useAuth } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { toast } from "sonner";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`)
+  : (import.meta.env.PROD ? "https://draftyard-backend.onrender.com/api" : "http://localhost:5000/api");
 
 function getAuthHeaders(): Record<string, string> {
   const token = typeof window !== "undefined" ? localStorage.getItem("draftyard_token") : null;
