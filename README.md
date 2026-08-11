@@ -1,66 +1,104 @@
-
 # 🚀 DraftYard
 
 > **AI-Powered Collaborative Platform for Reviving Startup Ideas**
 
-DraftYard is an AI-powered collaborative platform that helps developers validate new ideas, revive unfinished projects, discover similar work, and collaborate with other builders. It combines Hybrid Retrieval (RAG), Sentence Transformers, Google Gemini AI, and community collaboration.
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)]()
+[![Node.js](https://img.shields.io/badge/Node.js-Express-green?logo=node.js)]()
+[![MongoDB](https://img.shields.io/badge/MongoDB-Database-green?logo=mongodb)]()
+[![Django](https://img.shields.io/badge/Django-ML_Backend-darkgreen?logo=django)]()
+[![License](https://img.shields.io/badge/License-Educational-blue)]()
+
+DraftYard is an AI-powered collaborative platform that helps developers validate startup ideas, revive unfinished software projects, discover similar work using Hybrid RAG retrieval, and collaborate with other builders to bring promising ideas back to life.
 
 ---
 
-## ✨ Key Features
+# 🌐 Live Demo
+
+### 🚀 Live Website
+
+https://draft-yard.vercel.app/
+
+### 📂 GitHub Repository
+
+https://github.com/Gaurav10806/DraftYard
+
+---
+
+# ✨ Key Features
 
 ### 🤖 AI-Powered Idea Review
-- Feasibility analysis
+
+- AI feasibility analysis
 - Market potential assessment
 - Risk identification
 - AI recommendations
-- Tech stack suggestions
+- Suggested tech stack
 
-### 🔍 Hybrid Semantic Retrieval
+---
+
+### 🔍 Hybrid RAG Retrieval
+
 - Sentence Transformer embeddings
 - Semantic similarity search
 - Metadata-aware re-ranking
 - Similar project discovery
 
+---
+
 ### 👥 Community Collaboration
+
 - Revive abandoned projects
-- Join teams
-- Community feed
-- Collaboration requests
-
-### 📂 Draft Workspace
-- Tasks & milestones
-- Team management
-- Progress tracking
-
-### 📊 Intelligent Insights
-- Stack Intelligence
-- AI Assistant
-- Analytics
-
-### 🔐 Authentication
-- JWT Authentication
-- Google OAuth 2.0
+- Join development teams
+- Community Feed
+- Revival requests
 
 ---
 
-# 🏗️ Architecture
+### 📂 Draft Workspace
 
-```text
-React + TanStack Start
-        │
-        ▼
- Node.js + Express API
-        │
- ┌──────┴────────┐
- ▼               ▼
-MongoDB     Django ML Backend
-                   │
-     Hybrid Retrieval Engine
-                   │
-        Google Gemini API
-                   │
-          AI Idea Analysis
+- Task management
+- Stage tracking
+- Team collaboration
+- Progress monitoring
+
+---
+
+### 📊 Intelligent Insights
+
+- Personal project analytics
+- Community analytics
+- Stack Intelligence
+- AI Assistant
+
+---
+
+### 🔐 Authentication
+
+- JWT Authentication
+- Google OAuth 2.0
+- GitHub OAuth
+
+---
+
+# 🏗️ System Architecture
+
+```
+                React + TanStack Start
+                        │
+                        ▼
+              Node.js + Express Server
+                        │
+          ┌─────────────┴─────────────┐
+          ▼                           ▼
+     MongoDB Database          Django ML Backend
+                                        │
+                          Hybrid RAG Retrieval Engine
+                                        │
+                           Sentence Transformers
+                                        │
+                               Google Gemini API
+                                        │
+                              AI Idea Analysis
 ```
 
 ---
@@ -68,65 +106,134 @@ MongoDB     Django ML Backend
 # 🧠 AI Workflow
 
 1. User submits an idea.
-2. Embeddings are generated.
-3. Hybrid Retrieval finds similar drafts.
-4. Metadata-aware re-ranking improves results.
-5. Gemini performs AI analysis.
-6. Structured response is returned.
+2. Project title, pitch, and context are combined.
+3. Sentence Transformer generates semantic embeddings.
+4. Hybrid RAG searches similar projects.
+5. Metadata-aware re-ranking improves search quality.
+6. Google Gemini analyzes retrieved evidence.
+7. AI generates recommendations and insights.
+8. Results are displayed to the user.
 
 ---
 
 # 🛠️ Tech Stack
 
-**Frontend**
+## Frontend
+
 - React 19
 - TypeScript
 - TanStack Start
 - Tailwind CSS
+- Framer Motion
+- Radix UI
 
-**Backend**
+---
+
+## Backend
+
 - Node.js
 - Express.js
 - Django
 - Django REST Framework
 
-**Database**
+---
+
+## Database
+
 - MongoDB
 - Mongoose
 
-**AI & ML**
+---
+
+## AI & Machine Learning
+
 - Google Gemini API
 - Sentence Transformers
 - Hybrid RAG Retrieval
-- AI Idea Analysis
+- Semantic Search
+- Metadata-aware Re-ranking
 
-**Authentication**
+---
+
+## Authentication
+
 - JWT
 - Google OAuth 2.0
+- GitHub OAuth
 
 ---
 
 # 📁 Project Structure
 
-```text
+```
 DraftYard/
-├── client/
-├── server/
-├── ml-backend/
+│
+├── client/             # React Frontend
+├── server/             # Express Backend
+├── ml-backend/         # Django AI Backend
 ├── docs/
+│   └── screenshots/
 └── README.md
 ```
 
 ---
 
+# 📸 Screenshots
+
+## 🌐 Landing Page
+
+![Landing Page](docs/screenshots/landing.png)
+
+---
+
+## 📊 Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
+
+## 🤖 AI Idea Review
+
+![Idea Review](docs/screenshots/idea-review.png)
+
+---
+
+## 💼 Workspace
+
+![Workspace](docs/screenshots/workspace.png)
+
+---
+
+## 🌍 Community Feed
+
+![Community Feed](docs/screenshots/feed.png)
+
+---
+
+## 📈 Insights Dashboard
+
+![Insights](docs/screenshots/insights.png)
+
+---
+
+## 🐙 GitHub Repository Import
+
+![GitHub Import](docs/screenshots/github-import.png)
+
+---
+
 # ⚙️ Installation
 
+Clone the repository
+
 ```bash
-git clone https://github.com/<your-username>/DraftYard.git
+git clone https://github.com/Gaurav10806/DraftYard.git
 cd DraftYard
 ```
 
-Frontend
+---
+
+## Frontend
 
 ```bash
 cd client
@@ -134,7 +241,9 @@ npm install
 npm run dev
 ```
 
-Backend
+---
+
+## Backend
 
 ```bash
 cd server
@@ -142,7 +251,9 @@ npm install
 npm run dev
 ```
 
-ML Backend
+---
+
+## ML Backend
 
 ```bash
 cd ml-backend
@@ -154,21 +265,25 @@ python manage.py runserver
 
 # 🔑 Environment Variables
 
-## Server
+## Server (.env)
 
 ```env
 PORT=
 MONGO_URI=
 JWT_SECRET=
+
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=
+
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 GITHUB_CALLBACK_URL=
 ```
 
-## ML Backend
+---
+
+## ML Backend (.env)
 
 ```env
 GEMINI_API_KEY=
@@ -177,31 +292,24 @@ MONGODB_URI=
 
 ---
 
-# 📸 Screenshots
-
-- Landing Page
-- Dashboard
-- AI Idea Review
-- Community Feed
-- Draft Workspace
-- Stack Intelligence
-- Admin Dashboard
-
----
-
 # 🚀 Future Scope
 
 - AI Contributor Matching
 - Advanced Project Analytics
-- Mobile Application
 - Mentor & Investor Discovery
+- Mobile Application
+- Project Recommendation Engine
 - Multi-language Support
-
 
 ---
 
+
 # 📄 License
 
-Developed for educational and academic purposes.
+This project was developed for educational and academic purposes.
 
-⭐ If you like this project, give it a star on GitHub!
+---
+
+## ⭐ Support
+
+If you found this project interesting, consider giving it a **Star ⭐** on GitHub!
